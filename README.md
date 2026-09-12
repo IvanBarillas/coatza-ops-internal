@@ -155,3 +155,8 @@ administrativas y verificar el correo. **Mi cuenta** concentra estas opciones.
 Consultar [el procedimiento de identidad](docs/apps/identity-security.md) antes de
 desplegar: se necesitan `uv sync --frozen`, migraciones django-otp/0011 y SMTP
 configurado. Las sesiones anteriores deberán iniciar sesión nuevamente.
+
+El panel **Mi cuenta → Sesiones y dispositivos** requiere también la migración
+`0012_account_sessions`. Permite revocación individual y de todas las otras sesiones
+con contraseña. Consultar [seguimiento y límites de sesiones](docs/apps/identity-security.md#sesiones--op39)
+para IP detrás del proxy, incorporación de sesiones previas y retención.

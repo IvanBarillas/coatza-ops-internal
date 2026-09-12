@@ -1,0 +1,23 @@
+{% extends "registration/identity_base.html" %}
+{% block content %}
+<h1 class="text-xl font-bold">Mis sesiones</h1>
+<p class="text-sm">La IP corresponde a la conexión al servidor y puede ser la del proxy institucional. El dispositivo es información declarada por el navegador.</p>
+{% if error %}<p role="alert" class="text-red-700">{{ error }}</p>{% endif %}
+<form method="post" class="space-y-4">{% csrf_token %}
+<label class="block">Contraseña actual para revocar sesiones
+<input type="password" name="password" autocomplete="current-password" required class="block w-full border rounded-lg p-2"></label>
+<button name="action" value="others" class="border rounded-lg p-2">Cerrar todas las otras sesiones</button>
+<ul class="space-y-4">
+{% for session in sessions %}
+<li class="border rounded-lg p-3 space-y-2 break-words">
+<p class="font-bold">{% if session.pk == current_session %}Esta sesión{% else %}Otra sesión{% endif %}</p>
+<p class="text-sm break-all">{{ session.user_agent|default:"Dispositivo no identificado" }}</p>
+<p class="text-sm">IP: {{ session.ip_address|default:"No disponible" }}</p>
+<p class="text-sm">Inicio: {{ session.created_at|date:"d/m/Y H:i" }}<br>Última actividad: {{ session.last_seen_at|date:"d/m/Y H:i" }}</p>
+<button name="session" value="{{ session.pk }}" class="underline">{% if session.pk == current_session %}Cerrar esta sesión{% else %}Revocar sesión{% endif %}</button>
+</li>{% empty %}<li>No hay sesiones activas.</li>{% endfor %}
+</ul></form>
+<p class="text-sm">Página {{ sessions.number }} de {{ sessions.paginator.num_pages }}</p>
+<nav class="flex gap-4">{% if sessions.has_previous %}<a class="underline" href="?page={{ sessions.previous_page_number }}">Anterior</a>{% endif %}{% if sessions.has_next %}<a class="underline" href="?page={{ sessions.next_page_number }}">Siguiente</a>{% endif %}</nav>
+<a class="underline" href="{% url 'accounts:account_security' %}">Volver a mi cuenta</a>
+{% endblock %}

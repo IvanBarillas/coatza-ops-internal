@@ -13,7 +13,10 @@ from apps.security.views.accounts_views import (
     )
 
 
+from apps.security.views.session_views import sessions_view
+
 urls_accounts = [
+    path('account/sessions/', sessions_view, name='sessions'),
     path('account/security/', account_security_view, name='account_security'),
     path('email/verify/', email_verification_view, name='email_verify'),
     path('email/confirm/<str:token>/', email_confirm_view, name='email_confirm'),

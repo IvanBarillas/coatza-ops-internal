@@ -125,3 +125,8 @@ Commits citan la subtarea y OP#37; cuerpos de PR incluyen `Closes OP#38`/39/40 y
 resultados de pruebas. Trabajo local: no hacer push ni publicar PR sin nueva autorización.
 Ver `docs/apps/identity-security.md`: middleware de ciclo de identidad, MFA TOTP,
 verificación de correo y cambio inicial. No omitir esos controles en nuevas rutas.
+
+OP#39: `AccountSessionMiddleware` inventaría sesiones y exige revocación antes de las
+vistas. Mantener su UUID durante rotaciones de cookie; nunca almacenar/exponer llaves
+Django. Panel `accounts:sessions` solo admite sesiones propias y POST con contraseña.
+Aplicar 0012 antes de iniciar. REMOTE_ADDR es orientativo, no confiar en XFF.

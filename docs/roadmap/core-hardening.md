@@ -179,3 +179,10 @@ La fase 1 no modifica bypass administrativo ni introduce aislamiento multi-tenan
 Trabajar con ramas apiladas en ese orden por dependencias; todos los commits citan
 subtarea y OP#37. No hay push ni PR publicado; mantener cuerpos locales con
 `Closes OP#38`, `Closes OP#39` y `Closes OP#40` y evidencia de suite acumulada.
+
+### OP#39 — sesiones implementadas
+
+Panel personal paginado, IP/navegador, revocación individual y total, comprobación
+de contraseña, CSRF y auditoría. Middleware rechaza registros revocados o ausentes
+sin restaurarlos; rotaciones conservan la sesión actual. Migración 0012 pendiente
+en BD real. Suite acumulada: **95 pruebas pasan**. Evidencia en `docs/reviews/OP-39.md`.

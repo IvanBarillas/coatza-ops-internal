@@ -70,5 +70,28 @@ reloj de servidores y dispositivos. Los tests usan correo en memoria; no prueban
 entrega de correo real ni recuperación operativa en producción.
 
 La separación de autoridad técnica/funcional y SUDO corresponde a OP#40. El panel
-por sesión con IP/dispositivo corresponde a OP#39; no confundir el mecanismo de
-invalidación de identidad con ese panel.
+por sesión con IP/dispositivo se implementa en OP#39, descrito a continuación.
+
+## Sesiones — OP#39
+
+Aplicar `0012_account_sessions` antes de iniciar la nueva versión. Mi cuenta →
+Sesiones y dispositivos lista hasta 20 sesiones activas por página de la propia
+cuenta. Permite cerrar una sesión, la actual o todas las demás, con contraseña
+actual y CSRF. La revocación queda auditada y se exige en la siguiente petición,
+incluido HTMX; una petición que ya estaba ejecutándose no se cancela retroactivamente.
+
+El registro usa un UUID dentro de la sesión y un digest del estado de autenticación;
+no almacena ni muestra cookies o llaves de sesión Django. La rotación de cookie por
+TOTP o cambio de contraseña conserva el registro del navegador actual. Revocar todas
+rota además la versión del usuario, cubriendo sesiones anteriores aún no inventariadas.
+Las sesiones anteriores se registran en su siguiente acceso; el panel no puede
+conocer retrospectivamente su IP/dispositivo. El backend de sesiones Django sigue
+siendo responsable de la expiración y validez de la cookie.
+
+Se toma exclusivamente REMOTE_ADDR, sin confiar en X-Forwarded-For. Detrás del proxy
+puede verse la IP del proxy. User-Agent se limita a 500 caracteres y se muestra
+escapado: es orientativo, modificable por el cliente. Actividad/IP se actualizan como
+máximo una vez por minuto. Los registros vencidos o revocados se excluyen del panel;
+no hay purga automática de historial hasta definir retención institucional (fase 5).
+La eliminación manual de una sesión Django puede dejar su registro visible hasta
+el vencimiento; ese registro no permite restaurar el acceso.
