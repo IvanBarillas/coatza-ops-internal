@@ -893,3 +893,11 @@ class DepartmentAccessGrantAdmin(admin.ModelAdmin):
         if not change:
             obj.granted_by = request.user
         super().save_model(request, obj, form, change)
+
+# Las claves OTP se gestionan exclusivamente con prueba de contraseña y segundo
+# factor en las vistas propias; no exponer secretos/códigos mediante Admin.
+from django_otp.plugins.otp_totp.models import TOTPDevice
+from django_otp.plugins.otp_static.models import StaticDevice
+for device_model in (TOTPDevice, StaticDevice):
+    if admin.site.is_registered(device_model):
+        admin.site.unregister(device_model)

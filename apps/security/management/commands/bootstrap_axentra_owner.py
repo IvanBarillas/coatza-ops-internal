@@ -63,7 +63,7 @@ class Command(BaseCommand):
                 "is_deleted": False,
                 "is_manager": True,
                 "must_change_password": True,
-                "is_email_verified": True,
+                "is_email_verified": False,
             },
         )
 
@@ -74,7 +74,6 @@ class Command(BaseCommand):
             "is_active": True,
             "is_deleted": False,
             "is_manager": True,
-            "is_email_verified": True,
         }
         for field, expected in protected_flags.items():
             if hasattr(user, field) and getattr(user, field) != expected:

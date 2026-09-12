@@ -9,7 +9,7 @@ iniciar la siguiente. No fusionar ni publicar una fase sin autorización.
 | --- | --- | --- |
 | 1 | Panel y catálogo de aplicaciones escalables | Implementada y validada localmente |
 | 2 | Aislamiento municipal y autorización sobre datos | Contrato inicial implementado; adopción por consumidores pendiente |
-| 3 | Identidad, sesiones y privilegios administrativos | Pendiente |
+| 3 | Identidad, sesiones y privilegios administrativos | OP#38 validada; OP#39 y OP#40 en secuencia |
 | 4 | Auditoría y continuidad operativa | Pendiente |
 | 5 | Organigrama e historial de adscripciones | Pendiente |
 | 6 | Configuración institucional y servicios compartidos | Pendiente |
@@ -168,3 +168,14 @@ La fase 1 no modifica bypass administrativo ni introduce aislamiento multi-tenan
   bajas, membresías suspendidas, módulos desactivados, managers sin bypass y
   gestión en Admin con registro de otorgante y bitácora.
 - `makemigrations --check --dry-run`: sin cambios pendientes fuera de 0010.
+
+## Seguimiento OpenProject — épica OP#37
+
+- OP#38: `feature/OP-38-identidad-password-correo`, identidad/TOTP/correo. 83 pruebas
+  pasan; evidencia y cuerpo de PR en `docs/reviews/OP-38.md`.
+- OP#39: `feature/OP-39-sesiones-panel-revocacion`, panel, IP/dispositivo y revocación.
+- OP#40: `feature/OP-40-privilegios-sudo-reauth`, separación de autoridad y SUDO.
+
+Trabajar con ramas apiladas en ese orden por dependencias; todos los commits citan
+subtarea y OP#37. No hay push ni PR publicado; mantener cuerpos locales con
+`Closes OP#38`, `Closes OP#39` y `Closes OP#40` y evidencia de suite acumulada.

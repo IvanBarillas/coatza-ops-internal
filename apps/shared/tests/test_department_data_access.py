@@ -15,7 +15,7 @@ from apps.security.models import (
 from apps.shared.module_sdk.data_access import authorized_departments, scope_queryset
 
 
-@override_settings(AXENTRA_CORE_VERBOSE_RADAR=False)
+@override_settings(AXENTRA_REQUIRE_VERIFIED_EMAIL=False, AXENTRA_REQUIRE_ADMIN_MFA=False, AXENTRA_CORE_VERBOSE_RADAR=False)
 class DepartmentDataAccessTests(TestCase):
     @classmethod
     def setUpTestData(cls):

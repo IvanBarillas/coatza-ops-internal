@@ -1,8 +1,11 @@
 # apps/security/services/accounts_services.py
 import logging
+import secrets
 import uuid
 from typing import Optional, Tuple, Dict, Any
 from django.db import transaction
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError as PasswordValidationError
 from django.contrib.auth import get_user_model
 from pydantic import ValidationError
 
@@ -33,7 +36,11 @@ class FuncionarioService:
         try:
             with transaction.atomic():
                 area = AreaOperativa.objects.get(id=input_dto.area_id)
-                password_final = raw_password or User.objects.make_random_password()
+                password_final = raw_password or secrets.token_urlsafe(24)
+                try:
+                    validate_password(password_final, User(email=input_dto.email, first_name=input_dto.first_name, last_name=input_dto.last_name))
+                except PasswordValidationError as exc:
+                    return False, None, {'password': exc.messages}
                 
                 # 🛡️ Aduana estricta: Machacamos privilegios en False por diseño de seguridad
                 usuario = User.objects.create_user(
@@ -44,7 +51,8 @@ class FuncionarioService:
                     phone=input_dto.phone,
                     is_staff=False,
                     is_superuser=False,
-                    is_manager=False
+                    is_manager=False,
+                    must_change_password=True,
                 )
 
                 UserProfile.objects.create(

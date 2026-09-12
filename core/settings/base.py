@@ -40,6 +40,9 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     'axes',
+    'django_otp',
+    'django_otp.plugins.otp_totp',
+    'django_otp.plugins.otp_static',
 
 ]
 
@@ -60,6 +63,8 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'django_otp.middleware.OTPMiddleware',
+    'apps.security.middleware.identity.IdentityLifecycleMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'axes.middleware.AxesMiddleware',
@@ -210,3 +215,10 @@ AXENTRA_OWNER_DEFAULT_PASSWORD = config(
     "AXENTRA_OWNER_DEFAULT_PASSWORD",
     default="",
 )
+
+# MFA obligatorio para cuentas administrativas; otros usuarios pueden inscribirse.
+AXENTRA_REQUIRE_ADMIN_MFA = config('AXENTRA_REQUIRE_ADMIN_MFA', default=True, cast=bool)
+OTP_TOTP_ISSUER = config('OTP_TOTP_ISSUER', default='Axentra OS')
+OTP_TOTP_THROTTLE_FACTOR = 1
+OTP_STATIC_THROTTLE_FACTOR = 1
+AXENTRA_REQUIRE_VERIFIED_EMAIL = config('AXENTRA_REQUIRE_VERIFIED_EMAIL', default=True, cast=bool)

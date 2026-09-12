@@ -1,0 +1,13 @@
+{% extends "registration/identity_base.html" %}
+{% block content %}
+<h1 class="text-xl font-bold">{{ title }}</h1>
+{% if error %}<p class="text-sm text-red-700" role="alert">{{ error }}</p>{% endif %}
+{% for message in messages %}<p class="text-sm">{{ message }}</p>{% endfor %}
+{% if verified %}<p>Tu correo ya está verificado.</p>{% elif not invalid %}
+<form method="post" class="space-y-4">{% csrf_token %}
+    {% if password_required %}<p class="text-sm">Se cerrarán las otras sesiones; esta permanecerá abierta.</p><label class="block text-sm">Contraseña actual<input type="password" name="password" required autocomplete="current-password" class="mt-2 w-full rounded-lg border border-gray-300 p-3"></label>{% endif %}
+    <button type="submit" class="rounded-lg bg-brand-primary text-white p-3">Continuar</button>
+</form>
+{% endif %}
+<a href="{% url 'index_hub' %}" class="text-sm underline">Volver al inicio</a>
+{% endblock %}

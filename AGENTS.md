@@ -116,3 +116,12 @@ autorización explícita, sin herencia jerárquica. El contrato inicial está en
 El SDK requiere adopción explícita en consumidores y no cambia automáticamente
 el alcance administrativo de los paneles existentes. La migración 0010 crea
 las autorizaciones; aplicarla antes de utilizar este contrato.
+
+## Fase 3 en OpenProject
+
+Épica OP#37: ramas `feature/OP-38-identidad-password-correo`,
+`feature/OP-39-sesiones-panel-revocacion`, `feature/OP-40-privilegios-sudo-reauth`.
+Commits citan la subtarea y OP#37; cuerpos de PR incluyen `Closes OP#38`/39/40 y
+resultados de pruebas. Trabajo local: no hacer push ni publicar PR sin nueva autorización.
+Ver `docs/apps/identity-security.md`: middleware de ciclo de identidad, MFA TOTP,
+verificación de correo y cambio inicial. No omitir esos controles en nuevas rutas.

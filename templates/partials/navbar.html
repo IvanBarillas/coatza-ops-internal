@@ -88,6 +88,7 @@
                 </details>
 
                 <!-- Botón Hermético de Salida -->
+                <a href="{% url 'accounts:account_security' %}" class="text-xs text-gray-600 underline">Mi cuenta</a>
                 <form action="{% url 'accounts:logout' %}" method="post" class="border-l border-gray-200/80 pl-2 sm:pl-3 flex items-center">
                     {% csrf_token %}
                     <button type="submit" 

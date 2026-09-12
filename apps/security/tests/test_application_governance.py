@@ -6,7 +6,7 @@ from apps.security.models import AppModule, UserAppRole
 from apps.security.selectors.application_selectors import ApplicationGovernanceSelectors as Governance
 
 
-@override_settings(DEBUG=True, AXENTRA_CORE_VERBOSE_RADAR=False)
+@override_settings(AXENTRA_REQUIRE_VERIFIED_EMAIL=False, AXENTRA_REQUIRE_ADMIN_MFA=False, DEBUG=True, AXENTRA_CORE_VERBOSE_RADAR=False)
 class ApplicationGovernanceTests(TestCase):
     @classmethod
     def setUpTestData(cls):

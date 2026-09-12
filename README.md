@@ -147,3 +147,11 @@ autorización explícita, sin herencia jerárquica. El contrato inicial está en
 El SDK requiere adopción explícita en consumidores y no cambia automáticamente
 el alcance administrativo de los paneles existentes. La migración 0010 crea
 las autorizaciones; aplicarla antes de utilizar este contrato.
+
+## Identidad — OP#38 / Fase 3 OP#37
+
+El acceso exige reemplazar contraseñas provisionales, completar TOTP en cuentas
+administrativas y verificar el correo. **Mi cuenta** concentra estas opciones.
+Consultar [el procedimiento de identidad](docs/apps/identity-security.md) antes de
+desplegar: se necesitan `uv sync --frozen`, migraciones django-otp/0011 y SMTP
+configurado. Las sesiones anteriores deberán iniciar sesión nuevamente.

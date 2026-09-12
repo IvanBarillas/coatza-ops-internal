@@ -30,6 +30,9 @@ class UserManager(BaseUserManager):
 class User(AbstractUser):
     """Identidad digital inmutable del funcionario público dentro de Axentra OS."""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    session_version = models.UUIDField(default=uuid.uuid4, editable=False)
+    email_verification_nonce = models.UUIDField(default=uuid.uuid4, editable=False)
+    email_verification_sent_at = models.DateTimeField(null=True, blank=True, editable=False)
     username = None
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150)
@@ -46,6 +49,32 @@ class User(AbstractUser):
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []
     objects = UserManager()
+
+    def _get_session_auth_hash(self, secret=None):
+        from django.utils.crypto import salted_hmac
+        return salted_hmac(
+            "axentra.user.session", f"{self.password}:{self.session_version}",
+            secret=secret, algorithm="sha256",
+        ).hexdigest()
+
+    def save(self, *args, **kwargs):
+        update_fields = kwargs.get('update_fields')
+        watched = {'email', 'is_active', 'is_deleted'}
+        if not self._state.adding and (update_fields is None or watched.intersection(update_fields)):
+            previous = type(self).objects.filter(pk=self.pk).values(*watched).first()
+            extra = set()
+            if previous:
+                if (update_fields is None or 'email' in update_fields) and previous['email'] != self.email:
+                    self.is_email_verified = False
+                    self.email_verification_nonce = uuid.uuid4()
+                    self.email_verification_sent_at = None
+                    extra.update({'is_email_verified', 'email_verification_nonce', 'email_verification_sent_at'})
+                if any(previous[field] != getattr(self, field) for field in ('is_active', 'is_deleted') if update_fields is None or field in update_fields):
+                    self.session_version = uuid.uuid4()
+                    extra.add('session_version')
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | extra
+        super().save(*args, **kwargs)
 
     @property
     def full_name(self): return f"{self.first_name} {self.last_name}".strip()

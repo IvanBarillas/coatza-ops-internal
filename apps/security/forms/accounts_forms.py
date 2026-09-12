@@ -1,5 +1,7 @@
 # apps/security/forms/accounts_forms.py
 from django import forms
+from django.contrib.auth.password_validation import validate_password
+from django.core.exceptions import ValidationError
 from django.contrib.auth import get_user_model
 from django.contrib.auth.forms import ReadOnlyPasswordHashField  
 from apps.security.forms.base_styler import AxentraFormStylerMixin
@@ -7,7 +9,17 @@ from apps.security.models import UserProfile, AreaOperativa
 
 User = get_user_model()
 
-class CustomUserCreationForm(forms.ModelForm):
+class InitialPasswordValidationMixin:
+    def _post_clean(self):
+        super()._post_clean()
+        if self.cleaned_data.get('password'):
+            try:
+                validate_password(self.cleaned_data['password'], self.instance)
+            except ValidationError as exc:
+                self.add_error('password', exc)
+
+
+class CustomUserCreationForm(InitialPasswordValidationMixin, forms.ModelForm):
     password = forms.CharField(label='Contraseña', widget=forms.PasswordInput, help_text='Ingrese una contraseña segura.')
     class Meta:
         model = User
@@ -16,6 +28,7 @@ class CustomUserCreationForm(forms.ModelForm):
     def save(self, commit=True):
         user = super().save(commit=False)
         user.set_password(self.cleaned_data["password"])
+        user.must_change_password = True
         if commit: user.save()
         return user
 
@@ -27,7 +40,7 @@ class CustomUserChangeForm(forms.ModelForm):
         fields = ('email', 'first_name', 'last_name', 'phone', 'password', 'is_active', 'is_staff', 'is_superuser')
 
 
-class StaffUserCreationForm(AxentraFormStylerMixin, forms.ModelForm):
+class StaffUserCreationForm(InitialPasswordValidationMixin, AxentraFormStylerMixin, forms.ModelForm):
     password = forms.CharField(
         label='Contraseña Inicial',
         widget=forms.PasswordInput(attrs={'placeholder': '••••••••••••'}),

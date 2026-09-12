@@ -2,6 +2,9 @@
 from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
+from apps.security.views.mfa_views import mfa_setup_view, mfa_verify_view, mfa_replace_view
+from apps.security.forms.identity_forms import ActiveIdentityAuthenticationForm
+from apps.security.views.identity_views import IdentityPasswordChangeView, email_verification_view, email_confirm_view, account_security_view
 
 from apps.security.views.accounts_views import (
     accounts_analytics_view, funcionario_list_view, funcionario_detail_view,
@@ -11,7 +14,14 @@ from apps.security.views.accounts_views import (
 
 
 urls_accounts = [
-    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html', redirect_authenticated_user=True), name='login'),
+    path('account/security/', account_security_view, name='account_security'),
+    path('email/verify/', email_verification_view, name='email_verify'),
+    path('email/confirm/<str:token>/', email_confirm_view, name='email_confirm'),
+    path('mfa/replace/', mfa_replace_view, name='mfa_replace'),
+    path('mfa/setup/', mfa_setup_view, name='mfa_setup'),
+    path('mfa/verify/', mfa_verify_view, name='mfa_verify'),
+    path('password/change/', IdentityPasswordChangeView.as_view(), name='password_change'),
+    path('login/', auth_views.LoginView.as_view(template_name='registration/login.html', authentication_form=ActiveIdentityAuthenticationForm, redirect_authenticated_user=True), name='login'),
     path('logout/', auth_views.LogoutView.as_view(next_page='accounts:login'), name='logout'),
     path('acceso-denegado/', TemplateView.as_view(template_name='errors/403.html'), name='access_denied'),
 
