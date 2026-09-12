@@ -30,13 +30,8 @@ def _usuario_tiene_baja_logica(user) -> bool:
 
 
 def _resolver_is_root(request) -> bool:
-    """Determina si el usuario tiene bypass jerárquico global."""
-    profile = getattr(request.user, "axentra_profile", None)
-    return bool(
-        getattr(profile, "is_root_admin", False)
-        or getattr(request.user, "is_manager", False)
-        or getattr(request.user, "is_superuser", False)
-    )
+    from apps.security.services.authority import is_platform_admin
+    return is_platform_admin(request.user)
 
 
 def _tiene_permiso_fino(*, permisos: dict, lista_llaves_reales: list, module_identifier: str, required_fine_permission: str) -> bool:
@@ -130,8 +125,8 @@ def axentra_module_gate(module_identifier: str, required_fine_permission: str = 
             # dentro de un satélite expresamente suspendido.
             from apps.shared.module_sdk.services import get_module_runtime_status
             runtime = get_module_runtime_status(module_identifier)
-            if runtime and not runtime.available:
-                detail = runtime.message or "El módulo no está disponible."
+            if runtime is None or not runtime.available:
+                detail = runtime.message if runtime else "El módulo no está instalado."
                 if is_htmx:
                     return HttpResponse(detail, status=503)
                 messages.warning(request, detail)
@@ -140,7 +135,8 @@ def axentra_module_gate(module_identifier: str, required_fine_permission: str = 
             # ==========================================================
             # 3. RESOLUCIÓN DE PERMISOS Y BYPASS
             # ==========================================================
-            is_root = _resolver_is_root(request)
+            from apps.security.services.authority import has_governance_bypass
+            is_root = has_governance_bypass(request.user, module_identifier)
             permisos = get_user_permissions_for_app(request.user, module_identifier)
             lista_llaves_reales = permisos.get("permissions_list", []) or []
             tiene_acceso_modulo = bool(permisos.get("has_access_module", False) or permisos.get("has_access", False))

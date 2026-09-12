@@ -130,3 +130,11 @@ OP#39: `AccountSessionMiddleware` inventaría sesiones y exige revocación antes
 vistas. Mantener su UUID durante rotaciones de cookie; nunca almacenar/exponer llaves
 Django. Panel `accounts:sessions` solo admite sesiones propias y POST con contraseña.
 Aplicar 0012 antes de iniciar. REMOTE_ADDR es orientativo, no confiar en XFF.
+
+OP#40: `services/authority.py` limita bypass técnico a security/configuration.
+Cuentas/Organigrama/satélites exigen membresía y permiso fino aun para superusuarios.
+No reintroducir bypass global en loaders, gates o navegación. SudoMiddleware exige
+reautenticación de 300 s en mutaciones administrativas; satélites adoptan
+`sudo_required` además del gate. Leer `docs/apps/administrative-authority.md`.
+Roles owner/admin funcionales requieren MFA. Cambios en flags administrativos usan
+User.save() para invalidar sesiones; no sustituirlo por update/SQL directo.

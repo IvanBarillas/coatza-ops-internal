@@ -1,4 +1,5 @@
 from django.conf import settings
+from apps.security.models import UserAppRole
 from django.contrib.auth import logout
 from django_otp.plugins.otp_totp.models import TOTPDevice
 from django.http import HttpResponse
@@ -22,7 +23,10 @@ class IdentityLifecycleMiddleware(MiddlewareMixin):
             has_device = TOTPDevice.objects.filter(user=user, confirmed=True).exists()
             required = has_device or (
                 settings.AXENTRA_REQUIRE_ADMIN_MFA
-                and (user.is_staff or user.is_manager or user.is_superuser)
+                and (user.is_staff or user.is_manager or user.is_superuser or UserAppRole.objects.filter(
+                    user=user, role__in=['owner', 'admin'], is_active=True, is_deleted=False,
+                    app__is_active=True, app__is_deleted=False,
+                ).exists())
             )
             if view_name == 'accounts:logout':
                 return None

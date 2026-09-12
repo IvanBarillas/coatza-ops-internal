@@ -41,7 +41,7 @@ class User(AbstractUser):
     must_change_password = models.BooleanField(default=False)
     is_email_verified = models.BooleanField(default=False)
     is_deleted = models.BooleanField(default=False, db_index=True)
-    is_manager = models.BooleanField(default=False, help_text="Indica si el usuario cuenta con inmunidad jerárquica y bypass global.")
+    is_manager = models.BooleanField(default=False, help_text="Administrador técnico de Seguridad y Configuración; otros módulos requieren membresía y permisos.")
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -59,7 +59,7 @@ class User(AbstractUser):
 
     def save(self, *args, **kwargs):
         update_fields = kwargs.get('update_fields')
-        watched = {'email', 'is_active', 'is_deleted'}
+        watched = {'email', 'is_active', 'is_deleted', 'is_manager', 'is_staff', 'is_superuser'}
         if not self._state.adding and (update_fields is None or watched.intersection(update_fields)):
             previous = type(self).objects.filter(pk=self.pk).values(*watched).first()
             extra = set()
@@ -69,7 +69,7 @@ class User(AbstractUser):
                     self.email_verification_nonce = uuid.uuid4()
                     self.email_verification_sent_at = None
                     extra.update({'is_email_verified', 'email_verification_nonce', 'email_verification_sent_at'})
-                if any(previous[field] != getattr(self, field) for field in ('is_active', 'is_deleted') if update_fields is None or field in update_fields):
+                if any(previous[field] != getattr(self, field) for field in ('is_active', 'is_deleted', 'is_manager', 'is_staff', 'is_superuser') if update_fields is None or field in update_fields):
                     self.session_version = uuid.uuid4()
                     extra.add('session_version')
             if update_fields is not None:

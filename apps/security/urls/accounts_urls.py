@@ -15,7 +15,10 @@ from apps.security.views.accounts_views import (
 
 from apps.security.views.session_views import sessions_view
 
+from apps.security.views.sudo_views import sudo_view
+
 urls_accounts = [
+    path('account/sudo/', sudo_view, name='sudo'),
     path('account/sessions/', sessions_view, name='sessions'),
     path('account/security/', account_security_view, name='account_security'),
     path('email/verify/', email_verification_view, name='email_verify'),

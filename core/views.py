@@ -21,13 +21,8 @@ def index_hub_view(request):
     if not request.user.is_authenticated:
         return redirect("accounts:login")
 
-    is_manager = getattr(request.user, "is_manager", False)
-    profile = getattr(request.user, "axentra_profile", None)
-    is_root = bool(
-        getattr(profile, "is_root_admin", False)
-        or is_manager
-        or request.user.is_superuser
-    )
+    from apps.security.services.authority import is_platform_admin
+    is_root = is_platform_admin(request.user)
 
     if AxentraRadar.enabled():
         AxentraRadar.imprimir_auditoria(

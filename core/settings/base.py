@@ -66,6 +66,7 @@ MIDDLEWARE = [
     'django_otp.middleware.OTPMiddleware',
     'apps.security.middleware.sessions.AccountSessionMiddleware',
     'apps.security.middleware.identity.IdentityLifecycleMiddleware',
+    'apps.security.middleware.sudo.SudoMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'axes.middleware.AxesMiddleware',

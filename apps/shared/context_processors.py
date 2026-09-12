@@ -19,16 +19,12 @@ def _normalizar_module_identifier(module_identifier) -> str:
 
 
 def _usuario_es_root(request) -> bool:
-    profile = getattr(request.user, "axentra_profile", None)
-    return bool(
-        getattr(request.user, "is_superuser", False)
-        or getattr(request.user, "is_manager", False)
-        or getattr(profile, "is_root_admin", False)
-    )
+    from apps.security.services.authority import is_platform_admin
+    return is_platform_admin(request.user)
 
 
 def _usuario_dado_de_baja(user) -> bool:
-    return bool(getattr(user, "is_deleted", False))
+    return bool(getattr(user, "is_deleted", False) or not user.is_active)
 
 
 def _operator_identity(request, modulo_activo="launcher"):
@@ -65,8 +61,8 @@ def _operator_identity(request, modulo_activo="launcher"):
             if dependencia:
                 identity["department"] = dependencia.nombre
 
-    if identity["is_global_admin"]:
-        identity["role"] = "Administrador global"
+    if identity["is_global_admin"] and modulo_activo in {"launcher", "security", "configuration"}:
+        identity["role"] = "Administrador técnico"
         identity["role_code"] = "root"
         return identity
 
@@ -146,7 +142,8 @@ def _tiene_permiso_fino(permisos, lista_llaves, modulo_activo, permiso_req) -> b
 
 
 def _filtrar_sidebar_menu(request, modulo_activo, menu_crudo):
-    es_root = _usuario_es_root(request)
+    from apps.security.services.authority import has_governance_bypass
+    es_root = has_governance_bypass(request.user, modulo_activo)
     menu_filtrado = []
 
     if es_root:
@@ -232,75 +229,19 @@ def user_module_permissions(request):
     if _usuario_dado_de_baja(request.user):
         return context
 
-    if _usuario_es_root(request):
-        from apps.shared.module_sdk.registry import module_registry
-        from apps.security.models import AppModule
-        slugs_totales = [
-            module.slug for module in AppModule.objects.filter(
-                slug__in=module_registry.codes(),
-                is_active=True,
-                is_deleted=False,
-            ).only("slug")
-        ]
-
-        if AxentraRadar.enabled():
-            AxentraRadar.imprimir_auditoria(
-                componente="user_module_permissions",
-                request=request,
-                titulo="Bypass de Nivel Maestro Detectado",
-                icono="👑",
-                extra_data={
-                    "Estado Privilegios": (
-                        f"SUPERUSER={request.user.is_superuser} | "
-                        f"MANAGER={getattr(request.user, 'is_manager', False)} | "
-                        f"ROOT_ADMIN={_usuario_es_root(request)}"
-                    ),
-                    "Módulos Forzados Globales": slugs_totales,
-                },
-            )
-
-        return {
-            "is_global_admin": True,
-            "allowed_modules": slugs_totales,
-        }
-
-    roles_activos = (
-        UserAppRole.objects
-        .select_related("app")
-        .filter(
-            user=request.user,
-            is_active=True,
-            is_deleted=False,
-            app__is_active=True,
-            app__is_deleted=False,
-        )
-    )
-
-    allowed_slugs = [
-        role.app.slug
-        for role in roles_activos
-    ]
-
-    if AxentraRadar.enabled():
-        AxentraRadar.imprimir_auditoria(
-            componente="user_module_permissions",
-            request=request,
-            titulo="Radar Perimetral de Launcher",
-            icono="🔍",
-            extra_data={
-                "Celdas Localizadas en BD": roles_activos.count(),
-                "Slugs Despachados al DOM": allowed_slugs,
-                "Análisis de Permisos": [
-                    f"App: '{role.app.slug}' | Rol: '{role.role}' | Llaves: {role.permissions_list}"
-                    for role in roles_activos
-                ] if roles_activos.exists() else "⚠️ ADVERTENCIA: 0 aplicativos para este ID.",
-            },
-        )
-
-    return {
-        "is_global_admin": False,
-        "allowed_modules": allowed_slugs,
-    }
+    from django.db.models import Q
+    from apps.security.models import AppModule
+    from apps.security.services.authority import GOVERNANCE_MODULES
+    from apps.shared.module_sdk.registry import module_registry
+    scope = Q(roles__user=request.user, roles__is_active=True, roles__is_deleted=False)
+    root = _usuario_es_root(request)
+    if root:
+        scope |= Q(slug__in=GOVERNANCE_MODULES)
+    # Una consulta para el menú, sin resolver permisos por cada aplicación.
+    allowed = AppModule.objects.filter(
+        scope, slug__in=module_registry.codes(), is_active=True, is_deleted=False,
+    ).values_list('slug', flat=True).distinct()
+    return {'is_global_admin': root, 'allowed_modules': list(allowed)}
 
 
 def menu_dinamico_processor(request):

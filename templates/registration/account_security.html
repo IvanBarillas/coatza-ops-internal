@@ -3,6 +3,7 @@
 <h1 class="text-xl font-bold">Seguridad de mi cuenta</h1>
 <p class="text-sm break-all">{{ user.email }}</p>
 <nav class="flex flex-col gap-4 text-sm">
+    <a class="underline" href="{% url 'accounts:sudo' %}">Confirmar identidad para administrar</a>
     <a class="underline" href="{% url 'accounts:sessions' %}">Sesiones y dispositivos</a>
     <a class="underline" href="{% url 'accounts:password_change' %}">Cambiar contraseña</a>
     <a class="underline" href="{% url 'accounts:mfa_replace' %}">Configurar o reemplazar autenticador</a>

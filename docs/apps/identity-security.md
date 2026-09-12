@@ -9,7 +9,7 @@ nuevo. Si ya tiene TOTP inscrito, verifica primero el segundo factor incluso ant
 de cambiar contraseña. La baja/reactivación rota la versión de sesión para que
 sesiones antiguas no vuelvan a funcionar al reactivar una cuenta.
 
-Después, cuentas staff/manager/superusuario deben inscribir TOTP si les falta;
+Después, cuentas staff/manager/superusuario y roles funcionales owner/admin deben inscribir TOTP si les falta;
 usuarios con TOTP configurado deben verificarlo aunque dejen de ser administradores.
 Finalmente se requiere correo verificado. Los pasos pendientes bloquean todas las
 vistas funcionales y Django Admin; HTMX recibe HX-Redirect. Logout sigue permitido.
@@ -69,7 +69,8 @@ no desactivar controles para resolver un incidente sin un procedimiento explíci
 reloj de servidores y dispositivos. Los tests usan correo en memoria; no prueban
 entrega de correo real ni recuperación operativa en producción.
 
-La separación de autoridad técnica/funcional y SUDO corresponde a OP#40. El panel
+La separación de autoridad técnica/funcional y SUDO de OP#40 se documenta en
+[administrative-authority.md](administrative-authority.md). El panel
 por sesión con IP/dispositivo se implementa en OP#39, descrito a continuación.
 
 ## Sesiones — OP#39

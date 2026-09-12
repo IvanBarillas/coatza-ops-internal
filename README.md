@@ -160,3 +160,12 @@ El panel **Mi cuenta → Sesiones y dispositivos** requiere también la migraci�
 `0012_account_sessions`. Permite revocación individual y de todas las otras sesiones
 con contraseña. Consultar [seguimiento y límites de sesiones](docs/apps/identity-security.md#sesiones--op39)
 para IP detrás del proxy, incorporación de sesiones previas y retención.
+
+## Privilegios administrativos — OP#40
+
+`is_manager` gobierna Seguridad y Configuración. Cuentas, Organigrama y satélites
+requieren membresía y permisos explícitos, también para administradores técnicos.
+Las operaciones administrativas exigen **SUDO** (contraseña y TOTP, cinco minutos).
+Aplicar `0013_technical_authority` y revisar membresías existentes antes de desplegar.
+Los cambios en flags administrativos invalidan sesiones anteriores. Consultar
+[autoridad administrativa y recuperación](docs/apps/administrative-authority.md).

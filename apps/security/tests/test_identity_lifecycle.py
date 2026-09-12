@@ -26,6 +26,7 @@ class IdentityLifecycleTests(TestCase):
     def admin(self):
         self.user.is_manager = True
         self.user.save()
+        self.client.force_login(self.user)
 
     def device(self):
         return TOTPDevice.objects.create(user=self.user, name='Axentra', confirmed=True)

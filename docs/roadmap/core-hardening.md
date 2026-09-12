@@ -9,7 +9,7 @@ iniciar la siguiente. No fusionar ni publicar una fase sin autorización.
 | --- | --- | --- |
 | 1 | Panel y catálogo de aplicaciones escalables | Implementada y validada localmente |
 | 2 | Aislamiento municipal y autorización sobre datos | Contrato inicial implementado; adopción por consumidores pendiente |
-| 3 | Identidad, sesiones y privilegios administrativos | OP#38 validada; OP#39 y OP#40 en secuencia |
+| 3 | Identidad, sesiones y privilegios administrativos | OP#38–40 implementadas localmente; validación operativa pendiente |
 | 4 | Auditoría y continuidad operativa | Pendiente |
 | 5 | Organigrama e historial de adscripciones | Pendiente |
 | 6 | Configuración institucional y servicios compartidos | Pendiente |
@@ -58,7 +58,8 @@ y revocación de sesiones. Separar administrador técnico de autorizador funcion
 con procedimiento de acceso excepcional. Definir identidad ciudadana separada del
 expediente laboral, manteniendo UUID como identidad estable.
 
-Decisiones: proveedor/método MFA, recuperación, eventual SSO y responsabilidades.
+Decisión: TOTP local con códigos de recuperación. SSO queda opcional; recuperación
+operativa y responsabilidades institucionales se deben ensayar antes de producción.
 Aceptación: cuentas inactivas/bajas sin acceso, sesiones revocadas, flujos de
 recuperación probados y compatibilidad de cuentas existentes.
 
@@ -186,3 +187,20 @@ Panel personal paginado, IP/navegador, revocación individual y total, comprobac
 de contraseña, CSRF y auditoría. Middleware rechaza registros revocados o ausentes
 sin restaurarlos; rotaciones conservan la sesión actual. Migración 0012 pendiente
 en BD real. Suite acumulada: **95 pruebas pasan**. Evidencia en `docs/reviews/OP-39.md`.
+
+### OP#40 — privilegios y SUDO implementados
+
+Bypass técnico limitado a Seguridad/Configuración; membresías/permisos explícitos
+en funciones y capacidades departamentales. SUDO por sesión de 300 segundos,
+contraseña y nuevo TOTP, protección de POST administrativo/HTMX y auditoría.
+Roles funcionales owner/admin requieren MFA. Cambiar flags administrativos invalida
+sesiones. UserAdmin restringe edición de cuentas al superusuario para evitar elevación.
+
+Suite acumulada: **120 pruebas pasan** (64 iniciales + 56 nuevas). Evidencia de las
+subtareas en `docs/reviews/OP-38.md`, `OP-39.md` y `OP-40.md`, con sintaxis de cierre.
+Las tres ramas permanecen locales y apiladas; no hay push ni PR publicado.
+
+Pendiente operativo de fase 3: aplicar migraciones 0011–0013 y django-otp al entorno
+destino, revisar roles históricos, probar SMTP real y ensayar recuperación con la
+institución. El contrato de futura identidad ciudadana usa UUID y perfil separado
+del laboral; no se construye un registro ciudadano en estas tres subtareas.

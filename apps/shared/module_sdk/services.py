@@ -120,28 +120,19 @@ def get_module_runtime_status(code, *, persist=False, _cache=None):
 
 
 def _is_root(user):
-    profile = getattr(user, "axentra_profile", None)
-    return bool(
-        getattr(user, "is_superuser", False)
-        or getattr(user, "is_manager", False)
-        or getattr(profile, "is_root_admin", False)
-    )
+    from apps.security.services.authority import is_platform_admin
+    return is_platform_admin(user)
 
 
 def user_can_open_module(user, code, *, _cache=None):
     status = get_module_runtime_status(code, _cache=_cache)
     if not status or not status.available or not user or not user.is_authenticated:
         return False
-    if _is_root(user):
-        return True
-    return UserAppRole.objects.filter(
-        user=user,
-        app__slug=status.manifest.code,
-        app__is_active=True,
-        app__is_deleted=False,
-        is_active=True,
-        is_deleted=False,
-    ).exists()
+    if not user.is_active or user.is_deleted:
+        return False
+    from apps.security.services.permission_loader import get_user_permissions_for_app
+    permissions = get_user_permissions_for_app(user, code)
+    return bool(permissions.get('has_access_module'))
 
 
 def launcher_cards(user):

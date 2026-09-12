@@ -5,7 +5,7 @@
      x-data="{ openMenu: '{{ modulo_actual|default:"admin" }}' }">
 
     {# ADMINISTRACIÓN #}
-    {% if is_global_admin or 'security' in allowed_modules or 'accounts' in allowed_modules or 'organigrama' in allowed_modules %}
+    {% if 'security' in allowed_modules or 'accounts' in allowed_modules or 'organigrama' in allowed_modules %}
         <div class="space-y-1">
             {% include "navigation/module_group.html" with group_id="admin" title="Administración" icon="sliders" %}
 
@@ -13,17 +13,17 @@
                  x-cloak
                  class="ml-4 pl-3 border-l border-white/10 space-y-1">
 
-                {% if is_global_admin or 'organigrama' in allowed_modules %}
+                {% if 'organigrama' in allowed_modules %}
                     {% url 'organigrama:estructura_list' as organigrama_url %}
                     {% include "navigation/module_item.html" with title="Organización" icon="git-fork" href=organigrama_url hx_target="#workbench" hx_swap="innerHTML" hx_push_url="true" %}
                 {% endif %}
 
-                {% if is_global_admin or 'accounts' in allowed_modules %}
+                {% if 'accounts' in allowed_modules %}
                     {% url 'accounts:funcionario_list' as accounts_url %}
                     {% include "navigation/module_item.html" with title="Usuarios" icon="users" href=accounts_url hx_target="#workbench" hx_swap="innerHTML" hx_push_url="true" %}
                 {% endif %}
 
-                {% if is_global_admin or 'security' in allowed_modules %}
+                {% if 'security' in allowed_modules %}
                     {% url 'security:control_panel' as security_url %}
                     {% include "navigation/module_item.html" with title="Ciberseguridad" icon="shield-check" href=security_url hx_target="#workbench" hx_swap="innerHTML" hx_push_url="true" %}
                 {% endif %}
@@ -32,7 +32,7 @@
     {% endif %}
 
     {# CONFIGURACIÓN #}
-    {% if is_global_admin or 'configuration' in allowed_modules %}
+    {% if 'configuration' in allowed_modules %}
         <div class="space-y-1">
             {% include "navigation/module_group.html" with group_id="config" title="Configuración" icon="settings" %}
 

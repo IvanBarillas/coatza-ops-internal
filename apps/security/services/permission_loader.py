@@ -84,7 +84,7 @@ def get_user_permissions_for_app(user, app_slug):
         'permissions_list': []
     }
 
-    if not user or not user.is_authenticated:
+    if not user or not user.is_authenticated or not user.is_active or user.is_deleted:
         return permisos
 
     # La introspección sólo se calcula cuando la telemetría está encendida.
@@ -104,9 +104,10 @@ def get_user_permissions_for_app(user, app_slug):
     weights_map = config_app.get('weights', {})
 
     # =========================================================================
-    # 👑 1. BYPASS MAESTRO (IS_MANAGER GLOBAL)
+    # 👑 1. AUTORIDAD TÉCNICA EN GOBIERNO DEL CORE
     # =========================================================================
-    if getattr(user, 'is_manager', False):
+    from apps.security.services.authority import has_governance_bypass
+    if has_governance_bypass(user, app_slug):
         permisos['has_access'] = True
         permisos['has_access_module'] = True
         
@@ -126,7 +127,7 @@ def get_user_permissions_for_app(user, app_slug):
             
         AxentraRadar.emitir_evento(
             componente="permission_loader",
-            titulo=f"Bypass global concedido en {app_slug}",
+            titulo=f"Autoridad técnica concedida en {app_slug}",
             actor_email=user.email,
             icono="👑",
             extra_data={

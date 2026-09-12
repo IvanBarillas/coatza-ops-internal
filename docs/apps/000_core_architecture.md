@@ -325,7 +325,7 @@ Un enlace global aparece cuando:
 
 - el manifiesto fue descubierto;
 - el módulo está activo;
-- el usuario es root o tiene membresía activa;
+- el usuario tiene membresía activa; solo Seguridad/Configuración admiten autoridad técnica;
 - `entry_url` resuelve.
 
 El sidebar interno se genera desde `SIDEBAR_MENU` y los permisos efectivos.
@@ -687,3 +687,18 @@ autorización explícita, sin herencia jerárquica. El contrato inicial está en
 El SDK requiere adopción explícita en consumidores y no cambia automáticamente
 el alcance administrativo de los paneles existentes. La migración 0010 crea
 las autorizaciones; aplicarla antes de utilizar este contrato.
+
+## Autoridad técnica y reautenticación
+
+OP#40 limita el bypass a security/configuration. Cuentas, Organigrama y satélites
+requieren membresía activa y permiso fino incluso para técnicos y superusuarios.
+El SDK de datos mantiene aislamiento por dependencia. Django Admin conserva el
+poder del superusuario de emergencia; no es una vía operativa para dependencias.
+SUDO se exige durante cinco minutos en mutaciones administrativas y no concede
+permisos. Satélites adoptan sudo_required para sus operaciones sensibles, además
+del gate. Contrato completo en [administrative-authority.md](administrative-authority.md).
+
+La identidad estable es User.id (UUID), nunca el correo ni el área. UserProfile
+representa adscripción laboral opcional; una futura identidad ciudadana debe tener
+su propio perfil/relación y no recibir un expediente laboral ficticio. Su producto
+de registro, representación y trámites ciudadanos no se implementa en OP#38–40.

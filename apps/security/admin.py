@@ -56,6 +56,15 @@ class UserProfileInline(admin.StackedInline):
 class AxentraUserAdmin(BaseUserAdmin):
     """Administrador adaptado al esquema funcional por email."""
 
+    def has_add_permission(self, request):
+        return request.user.is_superuser and super().has_add_permission(request)
+
+    def has_change_permission(self, request, obj=None):
+        return request.user.is_superuser and super().has_change_permission(request, obj)
+
+    def has_delete_permission(self, request, obj=None):
+        return request.user.is_superuser and super().has_delete_permission(request, obj)
+
     add_form = CustomUserCreationForm
     form = CustomUserChangeForm
 

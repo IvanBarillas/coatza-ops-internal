@@ -42,7 +42,7 @@ class AxentraCapabilityOrchestrator:
 
     @staticmethod
     def _resolver_area(perfil):
-        if not perfil:
+        if not perfil or not perfil.is_active or perfil.is_deleted:
             return None
         return (
             getattr(perfil, "area", None)
@@ -50,16 +50,8 @@ class AxentraCapabilityOrchestrator:
         )
 
     @staticmethod
-    def _usuario_es_root(user, perfil=None) -> bool:
-        return bool(
-            getattr(user, "is_superuser", False)
-            or getattr(user, "is_manager", False)
-            or getattr(perfil, "is_root_admin", False)
-        )
-
-    @staticmethod
     def _usuario_dado_de_baja(user) -> bool:
-        return bool(getattr(user, "is_deleted", False))
+        return bool(getattr(user, "is_deleted", False) or not user.is_active)
 
     @staticmethod
     def obtener_estatus_capacidad(user, app_slug: str) -> dict:
@@ -94,26 +86,7 @@ class AxentraCapabilityOrchestrator:
             return resultado
 
         perfil = AxentraCapabilityOrchestrator._resolver_perfil(user)
-        is_root = AxentraCapabilityOrchestrator._usuario_es_root(user, perfil)
-
-        if is_root:
-            resultado.update({
-                "tiene_acceso": True,
-                "can_operate": True,
-                "can_supervise": True,
-                "can_authorize": True,
-                "es_alfa": True,
-                "es_beta": True,
-                "es_hibrido": True,
-            })
-
-            area = AxentraCapabilityOrchestrator._resolver_area(perfil)
-            if area and getattr(area, "dependencia", None):
-                resultado["dependencia"] = area.dependencia
-
-            return resultado
-
-        if not perfil:
+        if not perfil or not perfil.is_active or perfil.is_deleted:
             resultado["error_codigo"] = "MISSING_PROFILE"
             return resultado
 
@@ -123,6 +96,9 @@ class AxentraCapabilityOrchestrator:
             return resultado
 
         dependencia = area.dependencia
+        if not area.is_active or area.is_deleted or not dependencia.is_active or dependencia.is_deleted:
+            resultado['error_codigo'] = 'INACTIVE_ORGANIZATION_NODE'
+            return resultado
         resultado["dependencia"] = dependencia
 
         try:

@@ -137,6 +137,12 @@ class DepartmentDataAccessTests(TestCase):
         from django.contrib.admin.models import LogEntry
         from django.urls import reverse
         self.client.force_login(self.admin)
+        # Esta prueba verifica el grant; SUDO se cubre en su suite dedicada.
+        import time
+        from apps.security.middleware.sessions import auth_digest
+        session = self.client.session
+        session['axentra_sudo'] = {'at': time.time(), 'auth': auth_digest(self.admin), 'device': None}
+        session.save()
         response = self.client.post(reverse('admin:security_departmentaccessgrant_add'), {
             'membership': str(self.membership.pk),
             'source_department': str(self.source.pk),
