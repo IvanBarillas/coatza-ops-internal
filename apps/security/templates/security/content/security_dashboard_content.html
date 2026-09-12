@@ -12,9 +12,9 @@
     {% include "components/dashboard_header.html" with module_label="Seguridad" status_label="Auditoría activa" title="Consola analítica" description="Monitoreo de operaciones críticas, alertas de consistencia y actividad registrada en los módulos del sistema." icon="shield-check" action_url=control_url action_label="Panel de seguridad" action_icon="layout-dashboard" %}
 
     <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-        {% stats_card label="Aplicaciones auditadas" value=total_apps icon="satellite" subtext="Módulos con actividad registrada" value_color="slate-950" hover_color="brand-accent" bg_icon="bg-brand-accent/10" %}
+        {% stats_card label="Aplicaciones activas" value=total_apps icon="satellite" subtext="Módulos activos registrados" value_color="slate-950" hover_color="brand-accent" bg_icon="bg-brand-accent/10" %}
 
-        {% stats_card label="Permisos asignados" value=llaves_activas_db icon="key" subtext="Membresías activas" subtext_highlight=True value_color="emerald-600" hover_color="emerald-600" bg_icon="bg-emerald-50/60" %}
+        {% stats_card label="Membresías vigentes" value=llaves_activas_db icon="key" subtext="Membresías activas" subtext_highlight=True value_color="emerald-600" hover_color="emerald-600" bg_icon="bg-emerald-50/60" %}
 
         {% if cuentas_riesgo > 0 %}
             {% stats_card label="Alertas de consistencia" value=cuentas_riesgo icon="triangle-alert" subtext="Cuentas inactivas con permisos" subtext_highlight=True value_color="red-600" hover_color="red-600" bg_icon="bg-red-50/60" %}

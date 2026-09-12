@@ -33,7 +33,7 @@
 
                     <p class="mt-2 text-xs font-bold uppercase tracking-wider text-gray-400 leading-relaxed font-mono max-w-5xl">
                         {% if es_platform_manager %}
-                            Vista global de plataforma: apps instaladas, owners, accesos activos, roles suspendidos y riesgos operativos.
+                            Vista global de plataforma: apps activas, owners, membresías vigentes, roles suspendidos y riesgos operativos.
                         {% else %}
                             Vista delegada: sólo se muestran las aplicaciones donde tienes rol owner activo y puedes gobernar permisos.
                         {% endif %}
@@ -53,7 +53,7 @@
 
                 <div class="rounded-xl border border-gray-100 bg-slate-50 px-3 py-2.5">
                     <div class="text-xs font-black uppercase tracking-widest text-gray-400 font-mono">
-                        Usuarios
+                        Usuarios con membresía vigente
                     </div>
                     <div class="mt-1 text-xl font-black text-gray-950 font-mono">
                         {{ total_usuarios_con_acceso|default:0 }}
@@ -62,7 +62,7 @@
 
                 <div class="rounded-xl border border-gray-100 bg-slate-50 px-3 py-2.5">
                     <div class="text-xs font-black uppercase tracking-widest text-gray-400 font-mono">
-                        Owners
+                        Asignaciones owner
                     </div>
                     <div class="mt-1 text-xl font-black text-gray-950 font-mono">
                         {{ total_owners|default:0 }}
@@ -91,7 +91,7 @@
                         Alcance de Gobierno
                     </div>
                     <h2 class="mt-1 text-sm font-black uppercase tracking-tight text-gray-950 font-mono">
-                        Aplicaciones bajo tu administración
+                        Resumen de aplicaciones
                     </h2>
                 </div>
 
@@ -101,6 +101,9 @@
                 </div>
             </header>
 
+            <p class="px-5 py-3 text-sm text-gray-600">Hasta cinco aplicaciones; primero las que no tienen responsable. Los conteos indican membresías vigentes, no permisos finos efectivos.
+                <a class="text-brand-primary underline" href="{% url 'security:applications' %}" hx-get="{% url 'security:applications' %}" hx-target="#page-content" hx-push-url="true">Ver todas las aplicaciones</a>
+            </p>
             <div class="max-h-[34rem] divide-y divide-gray-100 overflow-y-auto overscroll-contain [scrollbar-gutter:stable]">
                 {% if resumen_apps %}
                     {% for item in resumen_apps %}
@@ -114,11 +117,11 @@
 
                                     <div class="min-w-0">
                                         <div class="text-sm font-black uppercase tracking-tight text-gray-950 font-mono truncate">
-                                            {{ item.app.name|default:item.app.slug }}
+                                            {{ item.name|default:item.slug }}
                                         </div>
 
                                         <div class="mt-1 text-xs font-bold uppercase tracking-wider text-gray-400 font-mono">
-                                            {{ item.app.slug }}
+                                            {{ item.slug }}
                                         </div>
 
                                         <div class="mt-3 flex flex-wrap gap-2">
@@ -138,8 +141,8 @@
                                 </div>
 
                                 <a
-                                    href="{{ item.matrix_url }}"
-                                    hx-get="{{ item.matrix_url }}"
+                                    href="{% url 'security:dynamic_matrix' %}?app_slug={{ item.slug|urlencode }}"
+                                    hx-get="{% url 'security:dynamic_matrix' %}?app_slug={{ item.slug|urlencode }}"
                                     hx-target="#page-content"
                                     hx-swap="innerHTML"
                                     hx-push-url="true"
@@ -198,16 +201,16 @@
                                 </div>
                             </div>
                         </div>
-                    {% else %}
+                    {% elif total_apps_gobernadas %}
                         <div class="rounded-xl border border-emerald-100 bg-emerald-50 p-4">
                             <div class="flex items-start gap-3">
                                 <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600 mt-0.5 shrink-0"></i>
                                 <div>
                                     <div class="text-xs font-black uppercase tracking-widest text-emerald-800 font-mono">
-                                        Gobierno consistente
+                                        Responsables asignados
                                     </div>
                                     <p class="mt-1 text-xs font-bold text-emerald-700/80 leading-relaxed">
-                                        No se detectan alertas críticas en tu alcance inmediato.
+                                        Las aplicaciones activas de tu alcance tienen owner vigente; este indicador no evalúa otros riesgos.
                                     </p>
                                 </div>
                             </div>

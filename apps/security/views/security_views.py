@@ -1,7 +1,9 @@
 # apps/security/views/security_views.py
 import json
 import logging
-from django.db.models import Count
+from urllib.parse import urlencode
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import get_user_model
@@ -15,6 +17,7 @@ from apps.shared.apps_config import AppIdentifier
 from apps.security.decorators import axentra_module_gate
 from apps.security.models import AppModule, UserAppRole, TenantConfig, SecurityAuditLog
 from apps.security.forms import TenantConfigForm
+from apps.security.selectors.application_selectors import ApplicationGovernanceSelectors
 from apps.security.selectors.permission_selectors import PermissionSelectors
 from apps.security.selectors.security_selectors import CapabilitySelectors, SecurityDashboardSelectors
 from apps.security.services.security_services import PermissionService
@@ -44,120 +47,12 @@ def security_control_panel_view(request):
         or getattr(request.user, "is_manager", False)
     )
 
-    roles_owner = (
-        UserAppRole.objects
-        .filter(
-            user=request.user,
-            role="owner",
-            is_active=True,
-        )
-        .select_related("app")
-        .order_by("app__name")
-    )
-
-    if es_platform_manager:
-        apps_gobernadas = (
-            AppModule.objects
-            .filter(is_active=True)
-            .order_by("name")
-        )
-    else:
-        apps_gobernadas = [
-            rol.app
-            for rol in roles_owner
-            if rol.app and rol.app.is_active
-        ]
-
-    apps_gobernadas_ids = [
-        app.id
-        for app in apps_gobernadas
-    ]
-
-    roles_en_alcance = (
-        UserAppRole.objects
-        .filter(
-            app_id__in=apps_gobernadas_ids,
-            is_active=True,
-        )
-        .select_related(
-            "user",
-            "app",
-        )
-    )
-
-    total_apps_gobernadas = len(apps_gobernadas_ids)
-    total_usuarios_con_acceso = (
-        roles_en_alcance
-        .values("user_id")
-        .distinct()
-        .count()
-        if apps_gobernadas_ids
-        else 0
-    )
-
-    total_owners = (
-        roles_en_alcance
-        .filter(role="owner")
-        .values("user_id", "app_id")
-        .distinct()
-        .count()
-        if apps_gobernadas_ids
-        else 0
-    )
-
-    total_roles_suspendidos = (
-        UserAppRole.objects
-        .filter(
-            app_id__in=apps_gobernadas_ids,
-            is_active=False,
-        )
-        .count()
-        if apps_gobernadas_ids
-        else 0
-    )
-
-    apps_sin_owner = []
-
-    if es_platform_manager:
-        for app in apps_gobernadas:
-            tiene_owner = UserAppRole.objects.filter(
-                app=app,
-                role="owner",
-                is_active=True,
-            ).exists()
-
-            if not tiene_owner:
-                apps_sin_owner.append(app)
-
-    resumen_apps = []
-
-    for app in apps_gobernadas:
-        roles_app = roles_en_alcance.filter(app=app)
-
-        resumen_apps.append({
-            "app": app,
-            "total_usuarios": roles_app.values("user_id").distinct().count(),
-            "total_owners": roles_app.filter(role="owner").values("user_id").distinct().count(),
-            "total_operadores": roles_app.exclude(role="owner").values("user_id").distinct().count(),
-            "matrix_url": reverse("security:dynamic_matrix") + f"?app_slug={app.slug}",
-        })
-
     context = {
         "modulo_actual": AppIdentifier.SECURITY,
         "show_module_sidebar": True,
         "current_security_view": "security:control_panel",
-
         "es_platform_manager": es_platform_manager,
-        "roles_owner": roles_owner,
-        "apps_gobernadas": apps_gobernadas,
-        "resumen_apps": resumen_apps,
-
-        "total_apps_gobernadas": total_apps_gobernadas,
-        "total_usuarios_con_acceso": total_usuarios_con_acceso,
-        "total_owners": total_owners,
-        "total_roles_suspendidos": total_roles_suspendidos,
-        "apps_sin_owner": apps_sin_owner,
-        "total_apps_sin_owner": len(apps_sin_owner),
+        **ApplicationGovernanceSelectors.overview(request.user),
     }
 
     if is_htmx and target_htmx == "workbench":
@@ -180,6 +75,45 @@ def security_control_panel_view(request):
         context,
     )
     
+
+@login_required
+@axentra_module_gate(AppIdentifier.SECURITY, required_fine_permission="has_access_module")
+def security_applications_view(request):
+    """Catálogo paginado limitado al alcance del administrador autenticado."""
+    query = request.GET.get("q", "").strip()[:100]
+    owner = request.GET.get("owner", "")
+    if owner not in ("with", "without"):
+        owner = ""
+    ordering = request.GET.get("sort", "name")
+    if ordering not in ("name", "-name", "-total_usuarios"):
+        ordering = "name"
+    apps = ApplicationGovernanceSelectors.with_counts(
+        ApplicationGovernanceSelectors.scope(request.user)
+    )
+    if query:
+        apps = apps.filter(Q(name__icontains=query) | Q(slug__icontains=query))
+    if owner == "without":
+        apps = apps.filter(total_owners=0)
+    elif owner == "with":
+        apps = apps.filter(total_owners__gt=0)
+    page = Paginator(apps.order_by(ordering, "pk"), 20).get_page(request.GET.get("page"))
+    context = {
+        "modulo_actual": AppIdentifier.SECURITY,
+        "show_module_sidebar": True,
+        "current_security_view": "security:applications",
+        "page_obj": page, "q": query, "owner_filter": owner, "sort": ordering,
+        "filter_query": urlencode({"q": query, "owner": owner, "sort": ordering}),
+    }
+    target = request.headers.get("HX-Target", "")
+    htmx = request.headers.get("HX-Request", "").lower() == "true"
+    if htmx and target == "page-content":
+        template = "security/content/applications_content.html"
+    elif htmx and target == "workbench":
+        template = "security/workbench/applications_workbench.html"
+    else:
+        template = "security/pages/applications.html"
+    return render(request, template, context)
+
 
 @login_required
 @axentra_module_gate(AppIdentifier.SECURITY, required_fine_permission="can_view_analytics")

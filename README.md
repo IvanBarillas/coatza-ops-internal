@@ -95,7 +95,7 @@ uv run python tools/tailwind.py build
 DJANGO_ENV=build uv run python manage.py collectstatic --noinput
 
 # Con .env.prod preparado:
-podman-compose -f docker-compose.prod.yml up --build -d
+podman-compose --env-file .env.prod -p axentra-municipio -f docker-compose.prod.yml up --build -d
 ```
 
 La advertencia de `.env.build` ausente es esperada: el build usa valores por
@@ -115,3 +115,35 @@ necesitan apuntar al mismo commit.
 
 Consultar [AGENTS.md](AGENTS.md) antes de modificar el proyecto y actualizar este
 README cuando cambien comandos de instalación, compilación o despliegue.
+
+## Fortalecimiento del Core por fases
+
+La hoja de ruta y criterios de aceptación están en
+[docs/roadmap/core-hardening.md](docs/roadmap/core-hardening.md).
+La fase 1 limita el resumen de Seguridad a cinco aplicaciones y añade
+**Aplicaciones y accesos** al sidebar, con búsqueda, filtro por owner y páginas
+de 20 resultados dentro del alcance del usuario. Las métricas cuentan membresías
+vigentes de usuarios activos y excluyen bajas lógicas; no certifican permisos
+finos ni la salud de cada módulo. El Hub conserva la activación de aplicaciones.
+
+## Instalaciones municipales independientes
+
+Cada ayuntamiento tiene su propia instalación y base de datos. También se separan
+secretos, media, logs, caché y respaldos. Consultar
+[la guía de instalaciones](docs/deployment/municipal-installations.md).
+
+En un host con varios ayuntamientos, usar proyectos Compose distintos (`-p`),
+puertos distintos (`AXENTRA_HTTP_PORT`) y dominios HTTPS propios. Usar
+`--env-file .env.prod` para interpolar los puertos; la publicación predeterminada
+es `127.0.0.1:8000`, destinada a un proxy en el host. Producción lee
+`CSRF_TRUSTED_ORIGINS` del entorno de cada institución.
+
+## Alcance de datos institucionales
+
+Regla: cada dependencia accede a sus datos; otras dependencias requieren una
+autorización explícita, sin herencia jerárquica. El contrato inicial está en
+`apps.shared.module_sdk.data_access` y se documenta en
+[docs/apps/data-access.md](docs/apps/data-access.md).
+El SDK requiere adopción explícita en consumidores y no cambia automáticamente
+el alcance administrativo de los paneles existentes. La migración 0010 crea
+las autorizaciones; aplicarla antes de utilizar este contrato.

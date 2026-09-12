@@ -131,7 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [
 LOGIN_REDIRECT_URL = 'index_hub'
 
 # Destino en caso de que un usuario intente entrar a una ruta protegida sin sesión
-LOGIN_URL = 'login'
+LOGIN_URL = 'accounts:login'
 
 # Destino tras cerrar sesión en el sistema
 LOGOUT_REDIRECT_URL = '/'

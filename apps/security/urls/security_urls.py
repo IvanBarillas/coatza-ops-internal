@@ -11,6 +11,7 @@ from apps.security.views.security_views import (
     inyectar_funcionario_view,
     matrix_capabilities_view,
     security_control_panel_view,
+    security_applications_view,
     security_dashboard_view,
     security_global_matrix_forensic_view,
     tenant_config_view,
@@ -21,6 +22,7 @@ from apps.security.views.security_views import (
 # El namespace 'security' se amarra en el archivo raíz principal del proyecto
 urls_security = [
     # 🏁 PILAR 1: Panel Administrativo / Cockpit Security
+    path("applications/", security_applications_view, name="applications"),
     path("control/", security_control_panel_view, name="control_panel"),
 
     # 📊 PILAR 2: Consola Analítica Forense / Packet Stream

@@ -27,6 +27,7 @@ class SecurityPermissions:
 
     SIDEBAR_MENU = [
         ["layout-dashboard", "Panel Administrativo", "security:control_panel", 1, "has_access_module"],
+        ["layers", "Aplicaciones y accesos", "security:applications", 2, "has_access_module"],
         ["activity", "Auditoría Forense", "security:global_matrix_forensic", 3, "can_view_matrix"],
         ["bar-chart-3", "Dashboard Analítico", "security:dashboard", 4, "can_view_analytics"],
     ]

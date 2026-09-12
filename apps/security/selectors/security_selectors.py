@@ -19,9 +19,17 @@ class SecurityDashboardSelectors:
     @classmethod
     def obtener_metricas_firewall(cls) -> dict:
         return {
-            "total_apps": len(AppIdentifier.get_choices()),
-            "llaves_activas_db": UserAppRole.objects.filter(is_active=True).count(),
-            "cuentas_riesgo": User.objects.filter(is_active=False, roles__is_active=True).distinct().count(),
+            "total_apps": AppModule.objects.filter(is_active=True, is_deleted=False).count(),
+            "llaves_activas_db": UserAppRole.objects.filter(
+                is_active=True, is_deleted=False,
+                user__is_active=True, user__is_deleted=False,
+                app__is_active=True, app__is_deleted=False,
+            ).count(),
+            "cuentas_riesgo": User.objects.filter(
+                Q(is_active=False) | Q(is_deleted=True),
+                roles__is_active=True, roles__is_deleted=False,
+                roles__app__is_active=True, roles__app__is_deleted=False,
+            ).distinct().count(),
         }
 
     @classmethod

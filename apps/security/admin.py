@@ -858,3 +858,38 @@ class SecurityAuditLogAdmin(admin.ModelAdmin):
 
     target_email.short_description = "Funcionario Destino"
     
+
+
+# Excepciones de alcance: solo superusuarios vigentes; Django Admin registra cambios.
+from apps.security.models import DepartmentAccessGrant
+
+
+@admin.register(DepartmentAccessGrant)
+class DepartmentAccessGrantAdmin(admin.ModelAdmin):
+    list_display = ('membership', 'source_department', 'target_department', 'permission', 'is_active', 'expires_at')
+    list_filter = ('is_active', 'permission')
+    raw_id_fields = ('membership', 'source_department', 'target_department')
+    readonly_fields = ('granted_by', 'created_at', 'updated_at')
+
+    def _can_manage(self, request):
+        return request.user.is_active and not request.user.is_deleted and request.user.is_superuser
+
+    def has_module_permission(self, request):
+        return self._can_manage(request)
+
+    def has_view_permission(self, request, obj=None):
+        return self._can_manage(request)
+
+    def has_add_permission(self, request):
+        return self._can_manage(request)
+
+    def has_change_permission(self, request, obj=None):
+        return self._can_manage(request)
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # Revocar con is_active=False; conservar el registro.
+
+    def save_model(self, request, obj, form, change):
+        if not change:
+            obj.granted_by = request.user
+        super().save_model(request, obj, form, change)

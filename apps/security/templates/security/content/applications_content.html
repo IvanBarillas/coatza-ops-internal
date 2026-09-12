@@ -1,0 +1,55 @@
+{% url 'security:applications' as applications_url %}
+<section class="space-y-5 pb-16">
+    <header>
+        <h1 class="text-xl font-black text-gray-950">Aplicaciones y accesos</h1>
+        <p class="mt-2 text-sm text-gray-600">Aplicaciones activas bajo tu administración. Los conteos corresponden a membresías vigentes de usuarios activos, no a una evaluación de permisos finos.</p>
+    </header>
+    <form method="get" action="{{ applications_url }}" hx-get="{{ applications_url }}" hx-target="#page-content" hx-push-url="true" class="grid gap-3 md:grid-cols-4 bg-white rounded-xl border border-gray-200 p-4">
+        <label class="text-sm font-semibold">Buscar aplicación
+            <input type="search" name="q" value="{{ q }}" maxlength="100" placeholder="Nombre o identificador" class="mt-1 w-full rounded-lg border border-gray-300 p-2">
+        </label>
+        <label class="text-sm font-semibold">Responsable
+            <select name="owner" class="mt-1 w-full rounded-lg border border-gray-300 p-2">
+                <option value="">Todas</option>
+                <option value="with" {% if owner_filter == 'with' %}selected{% endif %}>Con owner vigente</option>
+                <option value="without" {% if owner_filter == 'without' %}selected{% endif %}>Sin owner vigente</option>
+            </select>
+        </label>
+        <label class="text-sm font-semibold">Orden
+            <select name="sort" class="mt-1 w-full rounded-lg border border-gray-300 p-2">
+                <option value="name" {% if sort == 'name' %}selected{% endif %}>Nombre A–Z</option>
+                <option value="-name" {% if sort == '-name' %}selected{% endif %}>Nombre Z–A</option>
+                <option value="-total_usuarios" {% if sort == '-total_usuarios' %}selected{% endif %}>Más usuarios</option>
+            </select>
+        </label>
+        <div class="flex items-end gap-3">
+            <button class="rounded-lg bg-brand-primary text-white px-4 py-2" type="submit">Filtrar</button>
+            <a href="{{ applications_url }}" hx-get="{{ applications_url }}" hx-target="#page-content" hx-push-url="true" class="text-sm underline py-2">Limpiar</a>
+        </div>
+    </form>
+    <p class="text-sm text-gray-600" role="status">{{ page_obj.paginator.count }} aplicaciones encontradas</p>
+    <div class="divide-y divide-gray-200 rounded-xl border border-gray-200 bg-white">
+        {% for app in page_obj %}
+            <article class="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div class="min-w-0">
+                    <h2 class="font-bold text-gray-950 break-words">{{ app.name }}</h2>
+                    <p class="text-xs text-gray-500 break-all">{{ app.slug }}</p>
+                    <p class="mt-2 text-sm text-gray-600">{{ app.total_usuarios }} usuarios · {{ app.total_owners }} owners · {{ app.total_operadores }} operadores</p>
+                    {% if not app.total_owners %}<p class="text-sm text-amber-700">Sin owner vigente</p>{% endif %}
+                </div>
+                <a href="{% url 'security:dynamic_matrix' %}?app_slug={{ app.slug|urlencode }}" hx-get="{% url 'security:dynamic_matrix' %}?app_slug={{ app.slug|urlencode }}" hx-target="#page-content" hx-push-url="true" class="shrink-0 rounded-lg bg-brand-primary text-white px-4 py-2 text-sm">Administrar permisos</a>
+            </article>
+        {% empty %}
+            <p class="p-6 text-sm text-gray-600">No hay aplicaciones en tu alcance que coincidan con estos filtros.</p>
+        {% endfor %}
+    </div>
+    <nav aria-label="Paginación de aplicaciones" class="flex flex-wrap justify-between items-center gap-3 text-sm">
+        {% if page_obj.has_previous %}
+            <a href="{{ applications_url }}?{{ filter_query }}&amp;page={{ page_obj.previous_page_number }}" hx-get="{{ applications_url }}?{{ filter_query }}&amp;page={{ page_obj.previous_page_number }}" hx-target="#page-content" hx-push-url="true" class="underline">Anterior</a>
+        {% endif %}
+        <span>Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span>
+        {% if page_obj.has_next %}
+            <a href="{{ applications_url }}?{{ filter_query }}&amp;page={{ page_obj.next_page_number }}" hx-get="{{ applications_url }}?{{ filter_query }}&amp;page={{ page_obj.next_page_number }}" hx-target="#page-content" hx-push-url="true" class="underline">Siguiente</a>
+        {% endif %}
+    </nav>
+</section>

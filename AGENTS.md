@@ -4,7 +4,9 @@
 
 Axentra OS es un monolito modular para plataformas municipales. Comparte Django,
 base de datos, autenticación, sesión, permisos, auditoría y shell visual. Los
-procesos especializados pertenecen a satélites opcionales. Leer
+procesos especializados pertenecen a satélites opcionales. Cada ayuntamiento tiene
+su propia instalación y base de datos; no introducir multi-tenancy compartido.
+Archivos, secretos, caché y respaldos también deben estar separados por instancia. Leer
 `docs/apps/000_core_architecture.md` antes de cambiar contratos del Core; es la
 norma arquitectónica y contiene los detalles de permisos, navegación y módulos.
 
@@ -96,3 +98,21 @@ No publicar ni fusionar cambios sin autorización del usuario.
 Actualizar README si cambian instalación, configuración, build o despliegue;
 actualizar este contexto y la arquitectura cuando cambien sus contratos. Explicar
 qué cambió, qué pruebas pasaron y qué verificaciones quedaron pendientes.
+
+## Hoja de ruta activa
+
+Consultar `docs/roadmap/core-hardening.md` para fases, decisiones pendientes y
+criterios de aceptación. En Seguridad, `application_selectors.py` centraliza el
+alcance y conteos de gobierno; el catálogo `security:applications` pagina en el
+servidor y el panel muestra hasta cinco apps. No reintroducir consultas por fila
+ni interpretar membresías vigentes como autorización efectiva sobre datos.
+
+## Alcance de datos institucionales
+
+Regla: cada dependencia accede a sus datos; otras dependencias requieren una
+autorización explícita, sin herencia jerárquica. El contrato inicial está en
+`apps.shared.module_sdk.data_access` y se documenta en
+[docs/apps/data-access.md](docs/apps/data-access.md).
+El SDK requiere adopción explícita en consumidores y no cambia automáticamente
+el alcance administrativo de los paneles existentes. La migración 0010 crea
+las autorizaciones; aplicarla antes de utilizar este contrato.

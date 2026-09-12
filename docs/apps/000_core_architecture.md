@@ -28,6 +28,19 @@ La ausencia de un satélite nunca debe producir un `ImportError`,
 
 ---
 
+## 1.1. Límite institucional
+
+Cada ayuntamiento opera una instalación independiente con su propia base de datos.
+TenantConfig configura la identidad de esa única institución; no selecciona un
+tenant dentro de una base compartida. El código puede ser común y desplegarse en
+múltiples instalaciones, con sus propios secretos, volúmenes de media, logs,
+caché y respaldos. No reutilizar credenciales de acceso a bases de otros municipios.
+
+La jerarquía interna de dependencias y los permisos sobre datos se resuelven dentro
+de esa instalación. La separación entre municipios es responsabilidad del despliegue,
+no de un filtro por municipality_id en cada consulta. Consultar
+`docs/deployment/municipal-installations.md` para el contrato operativo.
+
 ## 2. Dominios del Core
 
 Los componentes lógicos protegidos del núcleo son:
@@ -654,3 +667,23 @@ procesos municipales sin duplicar ni acoplar las capacidades de plataforma.
 
 AXENTRA MÉXICO © 2026  
 Arquitectura del Core de Axentra OS
+
+## Gobierno de aplicaciones en Seguridad
+
+El panel administrativo muestra un resumen de hasta cinco apps activas. El catálogo
+`security:applications` permite buscar, filtrar por owner y paginar 20 registros
+por página, siempre dentro del alcance del administrador global o del owner con
+membresía vigente. Los conteos excluyen bajas lógicas y usuarios inactivos; miden
+membresías, no autorización fina efectiva. Las agregaciones se ejecutan en SQL,
+sin consultas por cada aplicación. Hub conserva activación y disponibilidad;
+la matriz conserva modificación de permisos. Ambos contratos HTMX siguen vigentes.
+
+## Alcance de datos institucionales
+
+Regla: cada dependencia accede a sus datos; otras dependencias requieren una
+autorización explícita, sin herencia jerárquica. El contrato inicial está en
+`apps.shared.module_sdk.data_access` y se documenta en
+[docs/apps/data-access.md](data-access.md).
+El SDK requiere adopción explícita en consumidores y no cambia automáticamente
+el alcance administrativo de los paneles existentes. La migración 0010 crea
+las autorizaciones; aplicarla antes de utilizar este contrato.

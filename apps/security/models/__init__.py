@@ -18,6 +18,7 @@ from .infrastructure import (
 )
 
 from .audit import SecurityAuditLog
+from .data_access import DepartmentAccessGrant
 
 
 __all__ = [
@@ -33,4 +34,5 @@ __all__ = [
     "TenantConfig",
     "OfficialParameter",
     "SecurityAuditLog",
+    "DepartmentAccessGrant",
 ]

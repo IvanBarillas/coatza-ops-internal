@@ -23,7 +23,7 @@ services:
     environment:
       DJANGO_ENV: prod
     ports:
-      - "8000:8000"
+      - "${AXENTRA_BIND_ADDRESS:-127.0.0.1}:${AXENTRA_HTTP_PORT:-8000}:8000"
     volumes:
       - media_data:/app/media
       - logs_data:/app/logs

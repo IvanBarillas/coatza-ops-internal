@@ -1,0 +1,13 @@
+{% extends "shell/workbench.html" %}
+
+{% block title %}
+Aplicaciones y accesos | {{ tenant.app_name }}
+{% endblock %}
+
+{% block module_sidebar %}
+    {% include "security/contextual/security_sidebar.html" %}
+{% endblock %}
+
+{% block page_content %}
+    {% include "security/content/applications_content.html" %}
+{% endblock %}

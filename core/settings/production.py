@@ -31,7 +31,11 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
-CSRF_TRUSTED_ORIGINS = ['https://apps.axentra.com.mx']
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in config("CSRF_TRUSTED_ORIGINS", default="").split(",")
+    if origin.strip()
+]
 
 # LOGS DE PRODUCCIÓN (Estructurados, persistidos en archivos para auditorías)
 LOG_DIR = BASE_DIR / "logs"
