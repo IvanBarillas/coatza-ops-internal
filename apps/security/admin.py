@@ -911,7 +911,14 @@ from apps.security.models import DepartmentAccessGrant
 class DepartmentAccessGrantAdmin(admin.ModelAdmin):
     list_display = ('membership', 'source_department', 'target_department', 'permission', 'is_active', 'expires_at')
     list_filter = ('is_active', 'permission')
-    raw_id_fields = ('membership', 'source_department', 'target_department')
+    search_fields = (
+        'membership__user__email', 'membership__user__first_name', 'membership__user__last_name',
+        'source_department__nombre', 'target_department__nombre', 'permission',
+    )
+    # Dependencia y UserAppRole ya se administran por autocomplete en su propio
+    # ModelAdmin (buscan por nombre/correo); aqui se reutiliza el mismo widget
+    # en vez de raw_id_fields, que solo mostraba el UUID en un input de texto.
+    autocomplete_fields = ('membership', 'source_department', 'target_department')
     readonly_fields = ('granted_by', 'created_at', 'updated_at')
     actions = ['otorgar_a_dependencias_hijas']
 
