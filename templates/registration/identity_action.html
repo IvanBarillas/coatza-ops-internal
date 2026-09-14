@@ -76,6 +76,12 @@
                     Tu correo ya está verificado. No es necesario hacer nada más.
                 </p>
             {% elif not invalid %}
+                {% if pending_email %}
+                    <p class="relative z-10 text-sm text-gray-500 text-center normal-case leading-relaxed mb-4">
+                        Vas a cambiar tu correo de acceso a
+                        <strong class="text-gray-950">{{ pending_email }}</strong>.
+                    </p>
+                {% endif %}
                 <form method="post" class="space-y-4 relative z-10">
                     {% csrf_token %}
                     {% if password_required %}

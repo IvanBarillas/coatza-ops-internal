@@ -151,10 +151,13 @@ las autorizaciones; aplicarla antes de utilizar este contrato.
 ## Identidad — OP#38 / Fase 3 OP#37
 
 El acceso exige reemplazar contraseñas provisionales, completar TOTP en cuentas
-administrativas y verificar el correo. **Mi cuenta** concentra estas opciones.
-Consultar [el procedimiento de identidad](docs/apps/identity-security.md) antes de
-desplegar: se necesitan `uv sync --frozen`, migraciones django-otp/0011 y SMTP
-configurado. Las sesiones anteriores deberán iniciar sesión nuevamente.
+administrativas y verificar el correo. **Mi cuenta** concentra estas opciones,
+incluyendo cambiar el correo de acceso (`accounts:email_change`, con confirmación
+del correo nuevo y aviso al anterior). Consultar
+[el procedimiento de identidad](docs/apps/identity-security.md) antes de
+desplegar: se necesitan `uv sync --frozen`, migraciones django-otp/0011,
+`0015_user_pending_email_...` y SMTP configurado. Las sesiones anteriores deberán
+iniciar sesión nuevamente.
 
 El panel **Mi cuenta → Sesiones y dispositivos** requiere también la migración
 `0012_account_sessions`. Permite revocación individual y de todas las otras sesiones

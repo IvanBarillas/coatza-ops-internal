@@ -22,11 +22,31 @@ correo. Los formularios usan POST con CSRF; pantallas con secretos no se cachean
 El enlace firmado dura 30 minutos, exige sesión de la misma cuenta y POST de
 confirmación. Se vincula a UUID, correo actual y nonce de un solo uso. Cambiar el
 correo revoca su verificación. El reenvío está limitado a uno por minuto usando BD
-con bloqueo, también entre workers. El envío SMTP es síncrono por ahora; moverlo a
-la cola confiable corresponde a fase 6. Nunca se incluyen contraseñas en correos.
-El bootstrap ya no marca verificación de correo sin comprobarla. No se cambian
-retroactivamente banderas históricas: revisar usuarios previamente marcados por
-procedimientos antiguos antes de considerarlos verificados.
+con bloqueo, también entre workers. El envío pasa por la cola de Django-Q2
+(`apps.shared.notifications.enqueue_email`, broker ORM sin Redis) desde la fase de
+adelanto de la decisión de fase 6 — ya no es síncrono en el request. Nunca se
+incluyen contraseñas en correos. El bootstrap ya no marca verificación de correo
+sin comprobarla. No se cambian retroactivamente banderas históricas: revisar
+usuarios previamente marcados por procedimientos antiguos antes de considerarlos
+verificados.
+
+### Cambio de correo de acceso
+
+`User.save()` es la única fuente de verdad: cualquier ruta que cambie `email`
+(autoservicio, edición administrativa de RRHH en `editar_funcionario`, Django
+Admin) dispara automáticamente `is_email_verified=False`, avisa por correo a la
+dirección anterior y rota `session_version` (revoca otras sesiones) — no hace
+falta ni es correcto duplicar esa lógica en cada vista o servicio.
+
+Autoservicio (`accounts:email_change` → `accounts:email_change_confirm`) no toca
+`email` de inmediato: guarda el destino en `pending_email`/`pending_email_nonce`,
+manda el enlace de confirmación al correo nuevo y un aviso al correo actual, y
+solo aplica el cambio cuando se consume el enlace (POST, mismo patrón de
+verificación de correo). Al confirmar, además del reset automático del `save()`,
+la vista restaura `is_email_verified=True` en un segundo `save()` — ahí sí se
+probó la propiedad del correo nuevo. Requiere contraseña actual; no depende de
+SudoMiddleware (esa cobertura es para `accounts:funcionario_*` y módulos
+administrativos, no para autoservicio de la propia cuenta).
 
 ## TOTP y recuperación
 

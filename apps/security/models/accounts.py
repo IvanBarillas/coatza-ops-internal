@@ -33,6 +33,12 @@ class User(AbstractUser):
     session_version = models.UUIDField(default=uuid.uuid4, editable=False)
     email_verification_nonce = models.UUIDField(default=uuid.uuid4, editable=False)
     email_verification_sent_at = models.DateTimeField(null=True, blank=True, editable=False)
+    # Autoservicio de cambio de correo: el correo real (campo `email`) no se
+    # toca hasta que se confirma la propiedad del nuevo, vía el enlace enviado
+    # a `pending_email`. Ver apps.security.views.identity_views.email_change_view.
+    pending_email = models.EmailField(blank=True, default='', editable=False)
+    pending_email_nonce = models.UUIDField(default=uuid.uuid4, editable=False)
+    pending_email_requested_at = models.DateTimeField(null=True, blank=True, editable=False)
     username = None
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=150)
@@ -64,12 +70,29 @@ class User(AbstractUser):
             previous = type(self).objects.filter(pk=self.pk).values(*watched).first()
             extra = set()
             if previous:
-                if (update_fields is None or 'email' in update_fields) and previous['email'] != self.email:
+                email_changed = (update_fields is None or 'email' in update_fields) and previous['email'] != self.email
+                if email_changed:
                     self.is_email_verified = False
                     self.email_verification_nonce = uuid.uuid4()
                     self.email_verification_sent_at = None
                     extra.update({'is_email_verified', 'email_verification_nonce', 'email_verification_sent_at'})
-                if any(previous[field] != getattr(self, field) for field in ('is_active', 'is_deleted', 'is_manager', 'is_staff', 'is_superuser') if update_fields is None or field in update_fields):
+                # Invariante universal: sea cual sea la ruta que cambie el correo
+                # (autoservicio confirmado, edición administrativa, Django Admin,
+                # cualquier futura), la dirección anterior se entera. No bloquea
+                # el cambio — es aviso, no candado; el flujo de autoservicio ya
+                # exige confirmar el nuevo correo antes de llegar aquí.
+                if email_changed and previous['email']:
+                    from apps.shared.notifications.services import enqueue_email
+                    enqueue_email(
+                        subject='Tu correo de acceso cambio - Axentra OS',
+                        body=(
+                            f'El correo de acceso de esta cuenta cambio de {previous["email"]} '
+                            f'a {self.email}.\nSi no lo autorizaste, cambia tu contrasena de '
+                            'inmediato y contacta al administrador de tu institucion.'
+                        ),
+                        to=previous['email'],
+                    )
+                if any(previous[field] != getattr(self, field) for field in ('email', 'is_active', 'is_deleted', 'is_manager', 'is_staff', 'is_superuser') if update_fields is None or field in update_fields):
                     self.session_version = uuid.uuid4()
                     extra.add('session_version')
             if update_fields is not None:

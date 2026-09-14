@@ -26,7 +26,7 @@ class IdentityPasswordChangeView(PasswordChangeView):
 # Acciones personales: middleware exige cambio inicial y MFA antes de ejecutarlas.
 import uuid
 from django.contrib import messages
-from django.contrib.auth import get_user_model
+from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core import signing
 from django.shortcuts import redirect, render
@@ -86,6 +86,97 @@ def email_confirm_view(request, token):
             messages.success(request, 'Correo confirmado.')
             return redirect('index_hub')
     return render(request, 'registration/identity_action.html', {'title': 'Confirmar correo', 'error': '' if valid else 'El enlace no es válido para esta cuenta o ya venció.', 'invalid': not valid}, status=200 if valid else 400)
+
+
+@login_required
+@never_cache
+@require_http_methods(['GET', 'POST'])
+def email_change_view(request):
+    """Solicita cambiar el correo de acceso. No lo cambia todavía.
+
+    Guarda el destino en pending_email y manda el enlace de confirmación ahí
+    — el correo real (User.email) solo se toca en email_change_confirm_view,
+    cuando se prueba que el solicitante controla esa bandeja. También avisa
+    al correo actual: si la sesión está comprometida, su dueño real se
+    entera de la solicitud antes de que se consume el enlace.
+    """
+    error = ''
+    if request.method == 'POST':
+        with transaction.atomic():
+            user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+            nuevo_correo = (request.POST.get('new_email') or '').strip().lower()
+            if authenticate(request, username=user.email, password=request.POST.get('password', '')) is None:
+                error = 'Contraseña incorrecta.'
+            elif user.pending_email_requested_at and (timezone.now() - user.pending_email_requested_at).total_seconds() < 60:
+                error = 'Espera un minuto antes de solicitar otro cambio.'
+            elif not nuevo_correo or nuevo_correo == user.email:
+                error = 'Ingresa un correo distinto al actual.'
+            elif get_user_model().objects.filter(email=nuevo_correo).exclude(pk=user.pk).exists():
+                error = 'Ese correo ya está en uso por otra cuenta.'
+            else:
+                user.pending_email = nuevo_correo
+                user.pending_email_nonce = uuid.uuid4()
+                user.pending_email_requested_at = timezone.now()
+                user.save(update_fields=['pending_email', 'pending_email_nonce', 'pending_email_requested_at'])
+                token = signing.dumps({'user': str(user.pk), 'new_email': nuevo_correo, 'nonce': str(user.pending_email_nonce)}, salt='axentra.change-email')
+                url = request.build_absolute_uri(reverse('accounts:email_change_confirm', args=[token]))
+                enqueue_email(
+                    subject='Confirma tu nuevo correo - Axentra OS',
+                    body=f'Confirma tu nuevo correo de acceso desde tu sesion:\n{url}\nEl enlace vence en 30 minutos.\nSi no solicitaste este cambio, ignora este mensaje.',
+                    to=nuevo_correo,
+                )
+                enqueue_email(
+                    subject='Solicitud de cambio de correo - Axentra OS',
+                    body=(
+                        f'Alguien con acceso a esta cuenta ({user.email}) solicito cambiar '
+                        f'el correo de acceso a {nuevo_correo}.\nSi no fuiste tu, cambia tu '
+                        'contrasena de inmediato y contacta al administrador de tu institucion.'
+                    ),
+                    to=user.email,
+                )
+                messages.success(request, 'Enviamos un enlace de confirmación a tu nuevo correo.')
+    return render(request, 'registration/email_change.html', {'title': 'Cambiar correo', 'error': error, 'pending_email': request.user.pending_email})
+
+
+@login_required
+@never_cache
+@require_http_methods(['GET', 'POST'])
+def email_change_confirm_view(request, token):
+    valid = False
+    with transaction.atomic():
+        user = get_user_model().objects.select_for_update().get(pk=request.user.pk)
+        try:
+            payload = signing.loads(token, salt='axentra.change-email', max_age=1800)
+            valid = bool(user.pending_email) and payload == {
+                'user': str(user.pk), 'new_email': user.pending_email, 'nonce': str(user.pending_email_nonce),
+            }
+        except signing.BadSignature:
+            pass
+        if valid and request.method == 'POST':
+            nuevo_correo = user.pending_email
+            if get_user_model().objects.filter(email=nuevo_correo).exclude(pk=user.pk).exists():
+                valid = False
+            else:
+                user.email = nuevo_correo
+                user.pending_email = ''
+                user.pending_email_nonce = uuid.uuid4()
+                user.pending_email_requested_at = None
+                # El save() del modelo pone is_email_verified=False y avisa al
+                # correo anterior de forma automática (ver User.save). Aquí sí
+                # se probó la propiedad del nuevo correo — se restaura aparte,
+                # en un segundo save() que ya no toca 'email' y por lo tanto no
+                # vuelve a disparar ese reset.
+                user.save()
+                user.is_email_verified = True
+                user.save(update_fields=['is_email_verified'])
+                messages.success(request, 'Tu correo de acceso se actualizó.')
+                return redirect('accounts:account_security')
+    return render(request, 'registration/identity_action.html', {
+        'title': 'Confirmar nuevo correo',
+        'error': '' if valid else 'El enlace no es válido para esta cuenta o ya venció.',
+        'invalid': not valid,
+        'pending_email': request.user.pending_email,
+    }, status=200 if valid else 400)
 
 
 @login_required

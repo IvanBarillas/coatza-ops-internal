@@ -3,7 +3,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 from django.contrib.auth import get_user_model
-from django.core import mail
+from django.core import mail, signing
 from django.test import Client, TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
@@ -188,6 +188,11 @@ class IdentityLifecycleTests(TestCase):
             self.assertEqual(self.client.post(path).status_code, 400)
         self.user.email = 'changed@example.test'
         self.user.save()
+        # El cambio de correo revoca la sesión actual (bump de session_version,
+        # igual que is_active/is_manager); volver a autenticar para aislar la
+        # aserción real de esta prueba: el token viejo queda invalido porque
+        # su 'email' firmado ya no coincide, no porque la sesión haya muerto.
+        self.client.force_login(self.user)
         self.assertEqual(self.client.post(path).status_code, 400)
 
     def test_resend_is_limited_in_database(self):
@@ -215,3 +220,85 @@ class IdentityLifecycleTests(TestCase):
             form = form_class(data={'email': 'new@example.test', 'first_name': 'Nuevo', 'password': '123'})
             self.assertFalse(form.is_valid())
             self.assertIn('password', form.errors)
+
+    # --- Cambio de correo de acceso (autoservicio) -------------------------
+
+    def request_email_change(self, new_email, password=None):
+        with self.captureOnCommitCallbacks(execute=True):
+            return self.client.post(reverse('accounts:email_change'), {
+                'new_email': new_email, 'password': password if password is not None else self.password,
+            })
+
+    def test_email_change_requires_correct_password(self):
+        self.request_email_change('nuevo@example.test', password='incorrecta')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pending_email, '')
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_change_rejects_email_already_taken(self):
+        get_user_model().objects.create_user(email='tomado@example.test')
+        self.request_email_change('tomado@example.test')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pending_email, '')
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_email_change_request_notifies_both_addresses_without_changing_email_yet(self):
+        original_email = self.user.email
+        self.request_email_change('nuevo@example.test')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pending_email, 'nuevo@example.test')
+        self.assertEqual(self.user.email, original_email)
+        recipients = [m.to[0] for m in mail.outbox]
+        self.assertIn('nuevo@example.test', recipients)
+        self.assertIn(original_email, recipients)
+
+    def test_email_change_is_rate_limited(self):
+        self.request_email_change('nuevo@example.test')
+        self.request_email_change('otro@example.test')
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.pending_email, 'nuevo@example.test')
+
+    def change_email_confirm_path(self):
+        self.request_email_change('nuevo@example.test')
+        self.user.refresh_from_db()
+        token = signing.dumps(
+            {'user': str(self.user.pk), 'new_email': 'nuevo@example.test', 'nonce': str(self.user.pending_email_nonce)},
+            salt='axentra.change-email',
+        )
+        return reverse('accounts:email_change_confirm', args=[token])
+
+    def test_email_change_confirm_applies_change_and_marks_verified(self):
+        path = self.change_email_confirm_path()
+        self.assertEqual(self.client.get(path).status_code, 200)
+        mail.outbox.clear()
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(path)
+        self.assertEqual(response.status_code, 302)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'nuevo@example.test')
+        self.assertEqual(self.user.pending_email, '')
+        self.assertTrue(self.user.is_email_verified)
+        # Aviso automático de User.save() al correo anterior.
+        self.assertTrue(any(m.to == ['identity@example.test'] for m in mail.outbox))
+
+    def test_email_change_confirm_rejects_tampered_token(self):
+        self.request_email_change('nuevo@example.test')
+        self.user.refresh_from_db()
+        token = signing.dumps(
+            {'user': str(self.user.pk), 'new_email': 'otro-correo@example.test', 'nonce': str(self.user.pending_email_nonce)},
+            salt='axentra.change-email',
+        )
+        path = reverse('accounts:email_change_confirm', args=[token])
+        self.assertEqual(self.client.post(path).status_code, 400)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.email, 'identity@example.test')
+
+    def test_email_change_confirm_revokes_other_sessions(self):
+        other = Client()
+        other.force_login(self.user)
+        path = self.change_email_confirm_path()
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(path)
+        response = other.get(reverse('accounts:account_security'))
+        self.assertEqual(response.status_code, 302)
+        self.assertNotIn('_auth_user_id', other.session)

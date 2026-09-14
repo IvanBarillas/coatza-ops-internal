@@ -4,7 +4,7 @@ from django.contrib.auth import views as auth_views
 from django.views.generic import TemplateView
 from apps.security.views.mfa_views import mfa_setup_view, mfa_verify_view, mfa_replace_view
 from apps.security.forms.identity_forms import ActiveIdentityAuthenticationForm
-from apps.security.views.identity_views import IdentityPasswordChangeView, email_verification_view, email_confirm_view, account_security_view
+from apps.security.views.identity_views import IdentityPasswordChangeView, email_verification_view, email_confirm_view, email_change_view, email_change_confirm_view, account_security_view
 
 from apps.security.views.accounts_views import (
     accounts_analytics_view, funcionario_list_view, funcionario_detail_view,
@@ -23,6 +23,8 @@ urls_accounts = [
     path('account/security/', account_security_view, name='account_security'),
     path('email/verify/', email_verification_view, name='email_verify'),
     path('email/confirm/<str:token>/', email_confirm_view, name='email_confirm'),
+    path('email/change/', email_change_view, name='email_change'),
+    path('email/change/confirm/<str:token>/', email_change_confirm_view, name='email_change_confirm'),
     path('mfa/replace/', mfa_replace_view, name='mfa_replace'),
     path('mfa/setup/', mfa_setup_view, name='mfa_setup'),
     path('mfa/verify/', mfa_verify_view, name='mfa_verify'),

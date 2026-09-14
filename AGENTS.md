@@ -69,6 +69,11 @@ estáticos compilados y Argon2/axes forman parte de autenticación y protección
   a mano. Tests que dependan del correo enviado necesitan
   `self.captureOnCommitCallbacks(execute=True)`, si no `on_commit` nunca
   dispara (TestCase revierte su transacción).
+- Cambiar `User.email`: no reimplementar el reset de verificación, el aviso
+  al correo anterior ni la revocación de sesión — `User.save()` ya lo hace
+  para cualquier ruta (autoservicio, `editar_funcionario`, Django Admin). Ver
+  docs/apps/identity-security.md#cambio-de-correo-de-acceso antes de tocar
+  ese `save()` o de construir un flujo nuevo que asigne `email` directo.
 
 ## Frontend y validación
 
