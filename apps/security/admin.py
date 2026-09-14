@@ -1,6 +1,6 @@
 # apps/security/admin.py
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 
 from apps.security.forms import CustomUserCreationForm, CustomUserChangeForm
@@ -913,6 +913,7 @@ class DepartmentAccessGrantAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'permission')
     raw_id_fields = ('membership', 'source_department', 'target_department')
     readonly_fields = ('granted_by', 'created_at', 'updated_at')
+    actions = ['otorgar_a_dependencias_hijas']
 
     def _can_manage(self, request):
         return request.user.is_active and not request.user.is_deleted and request.user.is_superuser
@@ -948,6 +949,88 @@ class DepartmentAccessGrantAdmin(admin.ModelAdmin):
             str(obj.pk), app_name='security',
             payload={'before': before, 'after': snapshot(obj, fields)},
         )
+
+    def otorgar_a_dependencias_hijas(self, request, queryset):
+        """Replica cada autorización seleccionada hacia las dependencias hijas
+        directas de su `source_department` (jerarquía tomada de
+        `Dependencia.parent`, hoy solo usada para pintar el organigrama).
+
+        No hay herencia automática por diseño (ver docs/apps/data-access.md):
+        esta acción no crea magia nueva, solo evita capturar a mano una
+        autorización por cada hija. Cada autorización resultante queda como
+        un registro `DepartmentAccessGrant` propio, auditado en la bitácora
+        forense, revocable de forma individual con `is_active=False` y sin
+        efecto retroactivo si luego cambia el organigrama.
+        """
+        from django.core.exceptions import ValidationError as DjangoValidationError
+
+        from apps.security.models import Dependencia
+        from apps.security.services.audit_snapshots import snapshot
+        from apps.security.utils.forensic_auditor import ForensicAuditor
+
+        fields = ('membership_id', 'source_department_id', 'target_department_id',
+                  'permission', 'reason', 'expires_at', 'is_active', 'is_deleted')
+        creadas = 0
+        ya_existian = 0
+        sin_hijas = 0
+        con_error = 0
+
+        for autorizacion in queryset:
+            hijas = Dependencia.objects.filter(
+                parent_id=autorizacion.source_department_id,
+                is_active=True, is_deleted=False,
+            ).exclude(pk=autorizacion.target_department_id)
+            if not hijas.exists():
+                sin_hijas += 1
+                continue
+            for hija in hijas:
+                ya_existe = DepartmentAccessGrant.objects.filter(
+                    membership_id=autorizacion.membership_id,
+                    source_department_id=autorizacion.source_department_id,
+                    target_department=hija,
+                    permission=autorizacion.permission,
+                ).exists()
+                if ya_existe:
+                    ya_existian += 1
+                    continue
+                nueva = DepartmentAccessGrant(
+                    membership_id=autorizacion.membership_id,
+                    source_department_id=autorizacion.source_department_id,
+                    target_department=hija,
+                    permission=autorizacion.permission,
+                    reason=f'{autorizacion.reason} (replicado a dependencia hija desde autorización {autorizacion.pk}).',
+                    expires_at=autorizacion.expires_at,
+                    granted_by=request.user,
+                )
+                try:
+                    nueva.full_clean()
+                except DjangoValidationError as exc:
+                    con_error += 1
+                    self.message_user(
+                        request, f'{hija}: {exc.message_dict}', level=messages.WARNING,
+                    )
+                    continue
+                nueva.save()
+                creadas += 1
+                ForensicAuditor.registrar_evento(
+                    request, 'ASSIGN', 'DEPARTMENT_ACCESS',
+                    'Autorización explícita entre dependencias (replicada a dependencia hija)',
+                    str(nueva.pk), app_name='security',
+                    payload={'before': None, 'after': snapshot(nueva, fields)},
+                )
+
+        partes = [f'{creadas} autorización(es) nueva(s) creada(s)']
+        if ya_existian:
+            partes.append(f'{ya_existian} ya existían')
+        if sin_hijas:
+            partes.append(f'{sin_hijas} dependencia(s) de origen sin hijas registradas')
+        if con_error:
+            partes.append(f'{con_error} con error de validación')
+        self.message_user(request, '; '.join(partes) + '.')
+
+    otorgar_a_dependencias_hijas.short_description = (
+        'Otorgar acceso a las dependencias hijas (replica cada autorización seleccionada)'
+    )
 
 # Las claves OTP se gestionan exclusivamente con prueba de contraseña y segundo
 # factor en las vistas propias; no exponer secretos/códigos mediante Admin.
