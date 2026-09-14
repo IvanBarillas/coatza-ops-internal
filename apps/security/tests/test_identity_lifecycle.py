@@ -159,7 +159,13 @@ class IdentityLifecycleTests(TestCase):
         self.assertFalse(site.is_registered(StaticDevice))
 
     def send_verification(self):
-        self.client.post(reverse('accounts:email_verify'))
+        # El correo se encola con transaction.on_commit (ver
+        # apps.shared.notifications); TestCase envuelve cada prueba en una
+        # transacción que se revierte al terminar, así que esos callbacks
+        # nunca se disparan solos — hay que forzarlos para poder inspeccionar
+        # el correo generado.
+        with self.captureOnCommitCallbacks(execute=True):
+            self.client.post(reverse('accounts:email_verify'))
         return re.search(r'http://testserver([^\s]+)', mail.outbox[-1].body).group(1)
 
     def test_email_link_requires_post_and_is_single_use(self):

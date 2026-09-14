@@ -24,37 +24,18 @@ class IdentityPasswordChangeView(PasswordChangeView):
 
 
 # Acciones personales: middleware exige cambio inicial y MFA antes de ejecutarlas.
-import email.policy
 import uuid
-from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth import get_user_model
 from django.contrib.auth.decorators import login_required
 from django.core import signing
-from django.core.mail import EmailMessage
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.cache import never_cache
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
 
-# Python's email.policy.default envuelve cualquier línea del cuerpo que pase
-# de 78 caracteres (RFC 2822 §2.1.1, recomendación de visualización, no un
-# límite real) insertando saltos "=\n" vía quoted-printable — justo en medio
-# de la URL firmada de este correo, que supera ese largo. Esto ocurre incluso
-# en el backend SMTP real, no solo en desarrollo (Django usa email.policy.SMTP
-# ahí, con el mismo max_line_length=78); un cliente de correo real reconstruye
-# el enlace sin problema al copiarlo, pero leer el .eml crudo (backend
-# filebased/console de desarrollo) lo deja roto. 998 es el límite duro real
-# de RFC 5322 §2.1.1, así que subir a ese valor sigue siendo válido para
-# cualquier transporte SMTP.
-_WIDE_LINE_POLICY = email.policy.default.clone(max_line_length=998)
-
-
-class _SingleLineEmailMessage(EmailMessage):
-    """EmailMessage que no envuelve líneas largas del cuerpo (ver _WIDE_LINE_POLICY)."""
-    def message(self, *, policy=None):
-        return super().message(policy=policy or _WIDE_LINE_POLICY)
+from apps.shared.notifications.services import enqueue_email
 
 
 @login_required
@@ -73,22 +54,16 @@ def email_verification_view(request):
                 user.save(update_fields=['email_verification_nonce', 'email_verification_sent_at'])
                 token = signing.dumps({'user': str(user.pk), 'email': user.email, 'nonce': str(user.email_verification_nonce)}, salt='axentra.verify-email')
                 url = request.build_absolute_uri(reverse('accounts:email_confirm', args=[token]))
-                try:
-                    mensaje = _SingleLineEmailMessage(
-                        'Confirma tu correo - Axentra OS',
-                        f'Confirma tu correo desde tu sesion:\n{url}\nEl enlace vence en 30 minutos.',
-                        settings.DEFAULT_FROM_EMAIL,
-                        [user.email],
-                    )
-                    # us-ascii: el cuerpo es puro ASCII a propósito; con utf-8 Python
-                    # cambia a base64 (ilegible en crudo) en vez de 7bit al ampliar
-                    # max_line_length, porque asume que puede haber bytes no ASCII.
-                    mensaje.encoding = 'us-ascii'
-                    mensaje.send(fail_silently=False)
-                except Exception:
-                    error = 'No se pudo enviar el correo. Reintenta más tarde.'
-                if not error:
-                    messages.success(request, 'Enviamos un enlace de confirmación a tu correo.')
+                # Se encola con transaction.on_commit (dentro de enqueue_email): si algo
+                # de este bloque atómico se revierte después, el correo nunca se envía.
+                # El envío real (y sus reintentos) los resuelve el worker de Django-Q2,
+                # no este request — ver apps.shared.notifications.
+                enqueue_email(
+                    subject='Confirma tu correo - Axentra OS',
+                    body=f'Confirma tu correo desde tu sesion:\n{url}\nEl enlace vence en 30 minutos.',
+                    to=user.email,
+                )
+                messages.success(request, 'Enviamos un enlace de confirmación a tu correo.')
     return render(request, 'registration/identity_action.html', {'title': 'Verificar correo', 'error': error, 'verified': request.user.is_email_verified})
 
 

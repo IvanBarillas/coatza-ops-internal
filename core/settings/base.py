@@ -43,6 +43,7 @@ THIRD_PARTY_APPS = [
     'django_otp',
     'django_otp.plugins.otp_totp',
     'django_otp.plugins.otp_static',
+    'django_q',
 
 ]
 
@@ -192,6 +193,26 @@ else:
             "LOCATION": "axentra-core-locmem",
         }
     }
+
+# =========================================================================
+# COLA DE TAREAS ASÍNCRONAS (Django-Q2, broker ORM — sin Redis/RabbitMQ)
+# =========================================================================
+# El broker 'orm' usa las tablas propias de django_q en la misma base de
+# datos que ya está corriendo (SQLite en dev, Postgres en prod); no suma un
+# servicio de infraestructura nuevo, igual que la decisión de LocMemCache
+# sobre Redis para el caché. 'sync' se sobreescribe por entorno: en
+# desarrollo corre en el mismo proceso por defecto (sin exigir un segundo
+# `manage.py qcluster` corriendo), en producción siempre es asíncrono real.
+Q_CLUSTER = {
+    'name': 'axentra_core',
+    'orm': 'default',
+    'workers': config('Q_CLUSTER_WORKERS', default=2, cast=int),
+    'timeout': 30,
+    'retry': 90,
+    'max_attempts': 3,
+    'catch_up': False,
+    'ack_failures': True,
+}
 
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True

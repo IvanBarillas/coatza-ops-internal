@@ -22,6 +22,12 @@ DATABASES['default']['CONN_HEALTH_CHECKS'] = True
 # CORREO LOCAL (Archivos)
 EMAIL_BACKEND = 'django.core.mail.backends.filebased.EmailBackend'
 EMAIL_FILE_PATH = BASE_DIR / 'sent_emails'
+EMAIL_TIMEOUT = 10
+
+# Por defecto la tarea corre en el mismo proceso (sin exigir un segundo
+# `manage.py qcluster` para desarrollo local). Pon Q_CLUSTER_SYNC=False en
+# el .env para probar el flujo asíncrono real contra el broker ORM.
+Q_CLUSTER['sync'] = config('Q_CLUSTER_SYNC', default=True, cast=bool)
 
 #CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:8000').split(',')
 

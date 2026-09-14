@@ -179,3 +179,25 @@ comprueba BD/caché para el monitor institucional. `tools/continuity.py` ofrece
 backup/verify/restore de BD y media en destinos nuevos. Leer antes de operar la
 [guía de auditoría, respaldo y simulacro](docs/deployment/audit-continuity.md): exige
 mantenimiento para consistencia BD/media y no sustituye un ensayo PostgreSQL real.
+
+## Correo asíncrono y cola de tareas
+
+El envío de correo pasa por `apps.shared.notifications.enqueue_email()` (broker ORM
+de Django-Q2, sin Redis/RabbitMQ; usa la misma base de datos ya configurada). No
+construir ni mandar `EmailMessage` directo desde una vista: encolar ahí evita
+bloquear el request y comparte reintentos con cualquier satélite futuro. `migrate`
+aplica las migraciones propias de `django_q` junto con las del proyecto, sin un
+número de migración a memorizar.
+
+En desarrollo, `Q_CLUSTER_SYNC=True` (default) ejecuta la tarea en el mismo proceso
+al hacer commit — no hace falta un segundo proceso. Para probar el flujo asíncrono
+real, poner `Q_CLUSTER_SYNC=False` en `.env.dev` y correr en otra terminal:
+
+```bash
+uv run python manage.py qcluster
+```
+
+En producción siempre es asíncrono (no configurable); `docker-compose.prod.yml`
+define el servicio `worker` con la misma imagen que `web`, corriendo `qcluster`.
+`EMAIL_TIMEOUT` (solo producción, default 10s) evita que un SMTP colgado bloquee
+el worker indefinidamente.

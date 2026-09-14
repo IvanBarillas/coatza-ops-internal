@@ -33,6 +33,26 @@ services:
     networks:
       - axentra_prod
 
+  worker:
+    # Misma imagen que 'web'; solo cambia el comando. Procesa la cola de
+    # Django-Q2 (broker ORM sobre la misma Postgres, ver Q_CLUSTER en
+    # core/settings/base.py) — sin Redis/RabbitMQ ni imagen aparte.
+    build:
+      context: .
+    command: ["uv", "run", "python", "manage.py", "qcluster"]
+    restart: unless-stopped
+    env_file:
+      - .env.prod
+    environment:
+      DJANGO_ENV: prod
+    volumes:
+      - logs_data:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - axentra_prod
+
 volumes:
   postgres_prod_data:
   media_data:

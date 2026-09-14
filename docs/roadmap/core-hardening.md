@@ -94,7 +94,19 @@ de titulares, múltiples sedes y ciclos rechazados. Migración compatible del pe
 - Documentos públicos/privados, versiones, límites y tratamiento de cargas.
 - Notificaciones y tareas persistentes con reintentos y prevención de duplicados.
 
-Decisiones: almacenamiento, canales de envío y cola de trabajo. Secretos fuera de
+Cola de trabajo decidida y adelantada desde el Core (no se esperó a Fase 6):
+Django-Q2 con broker ORM (sin Redis/RabbitMQ, misma base de datos ya en uso;
+ver Q_CLUSTER en core/settings/base.py). Envío de correo saliente centralizado
+en apps.shared.notifications — un solo punto compartible por Core y satélites,
+en vez de que cada módulo (Helpdesk incluido) monte su propio envío. El
+worker corre aparte (`manage.py qcluster`, servicio 'worker' en
+docker-compose.prod.yml); Helpdesk y demás satélites siguen siendo procesos
+desacoplados que consumen este servicio, no se incorporan al Core.
+
+Decisiones pendientes: almacenamiento, canales de envío adicionales
+(SMS/push) y recepción de correo entrante (webhook de proveedor vs. IMAP) —
+ninguna resuelta aquí, se definen cuando exista un satélite consumidor real
+(p. ej. Helpdesk). Secretos fuera de
 BD/configuración visual sin un mecanismo de protección definido.
 Aceptación: permisos de archivos y reintentos probados; sin dependencias obligatorias
 entre satélites; consumidores de calendarios definen sus reglas de cómputo.

@@ -32,6 +32,10 @@ estáticos compilados y Argon2/axes forman parte de autenticación y protección
   `permissions.py` define roles, llaves y navegación.
 - `apps/shared/context_processors.py`, `templatetags/`: contexto institucional,
   navegación y componentes compartidos.
+- `apps/shared/notifications/`: punto único para encolar correo (`services.py`,
+  `tasks.py`); broker ORM de Django-Q2 (`Q_CLUSTER` en `core/settings/base.py`),
+  sin Redis/RabbitMQ. Cualquier app, Core o satélite, encola aquí — no construir
+  `EmailMessage` fuera de este módulo.
 - `apps/shared/workflows/`, `apps/security/workflows/`: guías y diagramas de flujo.
 - `templates/shell/base.html`: shell persistente. `templates/navigation/`,
   `partials/`, `components/`: navegación y UI transversal. Login, portada y errores
@@ -59,6 +63,12 @@ estáticos compilados y Argon2/axes forman parte de autenticación y protección
   distinto por tenant ni introducir compiladores o CDNs en el navegador.
 - No ejecutar migraciones ni aprovisionar usuarios desde el build. Revisar efectos
   de comandos: `check_axentra_modules` sincroniza datos incluso sin `--persist`.
+- Correo: siempre vía `apps.shared.notifications.enqueue_email()`, nunca
+  `EmailMessage`/`send_mail` directo en una vista o servicio. Encolar con
+  `transaction.on_commit` (ya lo hace `enqueue_email`) — no llamar la tarea
+  a mano. Tests que dependan del correo enviado necesitan
+  `self.captureOnCommitCallbacks(execute=True)`, si no `on_commit` nunca
+  dispara (TestCase revierte su transacción).
 
 ## Frontend y validación
 
@@ -149,3 +159,16 @@ HTTP necesitan atomicidad propia. Correlación generada por el servidor; no conf
 X-Forwarded-For. Nunca enviar secretos ni cuerpos POST a payloads/descripciones.
 No afirmar inmutabilidad frente a SQL: las restricciones son de aplicación.
 Ver docs/deployment/audit-continuity.md; no respaldar/restaurar la BD real en pruebas.
+
+## Correo asíncrono y cola de tareas
+
+Django-Q2 con broker ORM (`Q_CLUSTER` en `core/settings/base.py`); sin Redis ni
+RabbitMQ, misma base de datos del proyecto. `apps/shared/notifications/` es el
+único punto de envío de correo del Core; Helpdesk y otros satélites futuros lo
+consumen, no montan su propia cola. `Q_CLUSTER['sync']` se define por entorno:
+`Q_CLUSTER_SYNC` en desarrollo (`True` por defecto, corre en el mismo proceso),
+siempre `False` (asíncrono real) en producción — no exponer esa variable ahí.
+`docker-compose.prod.yml` corre el worker (`manage.py qcluster`) como servicio
+`worker` aparte, misma imagen que `web`. Ver docs/roadmap/core-hardening.md
+(Fase 6) para el resto de decisiones pendientes (canales adicionales, correo
+entrante) — no resolverlas sin un satélite consumidor real.

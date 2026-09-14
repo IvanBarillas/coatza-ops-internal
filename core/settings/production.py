@@ -23,6 +23,17 @@ EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
 EMAIL_HOST_USER = config('EMAIL_HOST_USER')
 EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD')
 EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+# Sin esto Django no acota la espera por un SMTP colgado: el valor por
+# defecto es None (sin límite), y un socket que nunca responde bloquea
+# indefinidamente el worker de la cola (o, antes de esta migración, el
+# propio request). El worker de Django-Q2 ya reintenta solo, así que un
+# timeout corto aquí es preferible a esperar de más.
+EMAIL_TIMEOUT = config('EMAIL_TIMEOUT', default=10, cast=int)
+
+# La cola siempre es asíncrona real en producción: el broker ORM (ver
+# Q_CLUSTER en base.py) la ejecuta un proceso `manage.py qcluster` aparte,
+# nunca el propio request.
+Q_CLUSTER['sync'] = False
 
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
