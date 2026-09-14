@@ -3,6 +3,8 @@ from io import StringIO
 from django.contrib.auth import get_user_model
 from django.core.management import call_command
 from django.test import TestCase, override_settings
+from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
+from django_otp.plugins.otp_totp.models import TOTPDevice
 
 from apps.security.models import AppModule, UserAppRole
 from apps.shared.module_sdk.registry import module_registry
@@ -45,3 +47,37 @@ class BootstrapAxentraOwnerTests(TestCase):
             UserAppRole.objects.filter(user=owner).count(),
             AppModule.objects.filter(is_deleted=False).count(),
         )
+
+    def test_reset_mfa_removes_devices_and_invalidates_sessions(self):
+        call_command("bootstrap_axentra_owner", stdout=StringIO())
+        owner = get_user_model().objects.get(email="owner@municipio.test")
+        previous_session_version = owner.session_version
+
+        totp = TOTPDevice.objects.create(user=owner, name="Axentra", confirmed=True)
+        recovery = StaticDevice.objects.create(user=owner, name="Axentra recovery", confirmed=True)
+        StaticToken.objects.create(device=recovery, token="unicocodigo")
+
+        out = StringIO()
+        call_command("bootstrap_axentra_owner", "--reset-mfa", stdout=out)
+
+        self.assertFalse(TOTPDevice.objects.filter(pk=totp.pk).exists())
+        self.assertFalse(StaticDevice.objects.filter(pk=recovery.pk).exists())
+        self.assertFalse(StaticToken.objects.filter(device=recovery).exists())
+
+        owner.refresh_from_db()
+        self.assertNotEqual(owner.session_version, previous_session_version)
+        self.assertIn("MFA restablecido", out.getvalue())
+
+    def test_reset_mfa_without_devices_reports_nothing_to_remove(self):
+        call_command("bootstrap_axentra_owner", stdout=StringIO())
+
+        out = StringIO()
+        call_command("bootstrap_axentra_owner", "--reset-mfa", stdout=out)
+
+        self.assertIn("no tenía MFA configurado", out.getvalue())
+
+    def test_reset_mfa_on_fresh_owner_is_a_noop(self):
+        out = StringIO()
+        call_command("bootstrap_axentra_owner", "--reset-mfa", stdout=out)
+
+        self.assertIn("--reset-mfa ignorado", out.getvalue())
