@@ -1,13 +1,131 @@
-{% extends "registration/identity_base.html" %}
-{% block content %}
-<h1 class="text-xl font-bold">{{ title }}</h1>
-{% if error %}<p class="text-sm text-red-700" role="alert">{{ error }}</p>{% endif %}
-{% for message in messages %}<p class="text-sm">{{ message }}</p>{% endfor %}
-{% if verified %}<p>Tu correo ya está verificado.</p>{% elif not invalid %}
-<form method="post" class="space-y-4">{% csrf_token %}
-    {% if password_required %}<p class="text-sm">Se cerrarán las otras sesiones; esta permanecerá abierta.</p><label class="block text-sm">Contraseña actual<input type="password" name="password" required autocomplete="current-password" class="mt-2 w-full rounded-lg border border-gray-300 p-3"></label>{% endif %}
-    <button type="submit" class="rounded-lg bg-brand-primary text-white p-3">Continuar</button>
-</form>
-{% endif %}
-<a href="{% url 'index_hub' %}" class="text-sm underline">Volver al inicio</a>
-{% endblock %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin">
+    <title>{{ title|default:"Mi cuenta" }} | {{ tenant.app_name|default:"Axentra OS" }}</title>
+
+    <!-- CSS compilado localmente -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    <!-- Lucide Icons -->
+    <script src="{% static 'js/lucide.min.js' %}"></script>
+
+    <style>
+        :root {
+            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
+            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
+            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.35s ease-out both; }
+    </style>
+</head>
+
+<body class="h-full antialiased bg-gray-50 text-gray-950">
+
+    <div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10 w-full select-none animate-fade-in relative overflow-hidden">
+
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-brand-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <section class="w-full max-w-md bg-white p-8 rounded-[32px] shadow-xl border border-gray-200/80 z-10 relative overflow-hidden">
+
+            <div class="absolute top-0 right-0 w-28 h-28 bg-brand-primary/5 rounded-bl-full pointer-events-none"></div>
+
+            <div class="relative z-10 text-center mb-6">
+                <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-xl shadow-sm
+                    {% if verified %}bg-emerald-500 text-white{% elif invalid %}bg-red-50 border border-red-200 text-red-600{% else %}bg-brand-primary text-white{% endif %}">
+                    {% if verified %}
+                        <i data-lucide="mail-check" class="h-6 w-6"></i>
+                    {% elif invalid %}
+                        <i data-lucide="mail-x" class="h-6 w-6"></i>
+                    {% else %}
+                        <i data-lucide="mail" class="h-6 w-6"></i>
+                    {% endif %}
+                </div>
+                <h1 class="text-xl font-bold text-gray-950 tracking-tight">{{ title }}</h1>
+            </div>
+
+            {% if error %}
+                <div class="relative z-10 mb-5 bg-red-50/60 border border-red-200/80 p-3.5 rounded-2xl">
+                    <p role="alert" class="text-xs font-bold text-red-700 leading-relaxed flex items-start gap-2 font-mono uppercase">
+                        <i data-lucide="shield-alert" class="w-4 h-4 text-red-600 shrink-0 mt-0.5"></i>
+                        <span>{{ error }}</span>
+                    </p>
+                </div>
+            {% endif %}
+
+            {% for message in messages %}
+                <div class="relative z-10 mb-5 bg-emerald-50/60 border border-emerald-200/80 p-3.5 rounded-2xl">
+                    <p class="text-xs font-bold text-emerald-700 leading-relaxed flex items-start gap-2 font-mono uppercase">
+                        <i data-lucide="circle-check" class="w-4 h-4 text-emerald-600 shrink-0 mt-0.5"></i>
+                        <span>{{ message }}</span>
+                    </p>
+                </div>
+            {% endfor %}
+
+            {% if verified %}
+                <p class="relative z-10 text-sm text-gray-500 text-center normal-case leading-relaxed">
+                    Tu correo ya está verificado. No es necesario hacer nada más.
+                </p>
+            {% elif not invalid %}
+                <form method="post" class="space-y-4 relative z-10">
+                    {% csrf_token %}
+                    {% if password_required %}
+                        <p class="text-xs text-gray-400 font-bold normal-case leading-relaxed text-center">
+                            Se cerrarán las otras sesiones; esta permanecerá abierta.
+                        </p>
+                        <div class="space-y-1.5">
+                            <label class="block text-xs font-black text-gray-400 tracking-wider px-1 uppercase">Contraseña actual</label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                                    <i data-lucide="lock" class="w-4 h-4"></i>
+                                </span>
+                                <input
+                                    type="password" name="password" required autocomplete="current-password"
+                                    class="w-full pl-10 pr-4 py-2.5 bg-gray-50/60 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-2xs"
+                                >
+                            </div>
+                        </div>
+                    {% endif %}
+
+                    <button
+                        type="submit"
+                        class="w-full bg-brand-primary hover:brightness-110 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 text-xs uppercase tracking-wider mt-2 cursor-pointer transition transform active:scale-95 font-mono"
+                    >
+                        <i data-lucide="check" class="w-3.5 h-3.5 text-white/70"></i>
+                        Continuar
+                    </button>
+                </form>
+            {% endif %}
+
+            <div class="mt-5 pt-4 border-t border-gray-100 text-center relative z-10">
+                <a
+                    href="{% url 'index_hub' %}"
+                    class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-brand-accent transition font-mono"
+                >
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    Volver al inicio
+                </a>
+            </div>
+
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof lucide !== "undefined") {
+                lucide.createIcons();
+            }
+        });
+    </script>
+
+</body>
+</html>

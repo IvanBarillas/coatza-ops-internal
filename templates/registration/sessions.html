@@ -1,23 +1,178 @@
-{% extends "registration/identity_base.html" %}
-{% block content %}
-<h1 class="text-xl font-bold">Mis sesiones</h1>
-<p class="text-sm">La IP corresponde a la conexión al servidor y puede ser la del proxy institucional. El dispositivo es información declarada por el navegador.</p>
-{% if error %}<p role="alert" class="text-red-700">{{ error }}</p>{% endif %}
-<form method="post" class="space-y-4">{% csrf_token %}
-<label class="block">Contraseña actual para revocar sesiones
-<input type="password" name="password" autocomplete="current-password" required class="block w-full border rounded-lg p-2"></label>
-<button name="action" value="others" class="border rounded-lg p-2">Cerrar todas las otras sesiones</button>
-<ul class="space-y-4">
-{% for session in sessions %}
-<li class="border rounded-lg p-3 space-y-2 break-words">
-<p class="font-bold">{% if session.pk == current_session %}Esta sesión{% else %}Otra sesión{% endif %}</p>
-<p class="text-sm break-all">{{ session.user_agent|default:"Dispositivo no identificado" }}</p>
-<p class="text-sm">IP: {{ session.ip_address|default:"No disponible" }}</p>
-<p class="text-sm">Inicio: {{ session.created_at|date:"d/m/Y H:i" }}<br>Última actividad: {{ session.last_seen_at|date:"d/m/Y H:i" }}</p>
-<button name="session" value="{{ session.pk }}" class="underline">{% if session.pk == current_session %}Cerrar esta sesión{% else %}Revocar sesión{% endif %}</button>
-</li>{% empty %}<li>No hay sesiones activas.</li>{% endfor %}
-</ul></form>
-<p class="text-sm">Página {{ sessions.number }} de {{ sessions.paginator.num_pages }}</p>
-<nav class="flex gap-4">{% if sessions.has_previous %}<a class="underline" href="?page={{ sessions.previous_page_number }}">Anterior</a>{% endif %}{% if sessions.has_next %}<a class="underline" href="?page={{ sessions.next_page_number }}">Siguiente</a>{% endif %}</nav>
-<a class="underline" href="{% url 'accounts:account_security' %}">Volver a mi cuenta</a>
-{% endblock %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin">
+    <title>Mis sesiones | {{ tenant.app_name|default:"Axentra OS" }}</title>
+
+    <!-- CSS compilado localmente -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    <!-- Lucide Icons -->
+    <script src="{% static 'js/lucide.min.js' %}"></script>
+
+    <style>
+        :root {
+            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
+            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
+            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.35s ease-out both; }
+    </style>
+</head>
+
+<body class="h-full antialiased bg-gray-50 text-gray-950">
+
+    <div class="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10 sm:py-14 w-full select-none animate-fade-in relative overflow-hidden">
+
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-brand-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-full max-w-2xl space-y-6 z-10">
+
+            <!-- ===================================================== -->
+            <!-- HEADER                                               -->
+            <!-- ===================================================== -->
+            <section class="rounded-2xl border border-gray-200/80 bg-white px-5 py-5 md:px-6 md:py-6 shadow-sm">
+                <div class="flex items-start gap-4 min-w-0">
+                    <div class="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-white shadow-sm">
+                        <i data-lucide="monitor-smartphone" class="h-5 w-5"></i>
+                    </div>
+                    <div class="min-w-0 flex-1">
+                        <span class="inline-flex items-center rounded-md border border-brand-accent/20 bg-brand-accent/10 px-2 py-0.5 text-xs font-black uppercase tracking-[0.18em] text-brand-accent font-mono">
+                            Mi cuenta
+                        </span>
+                        <h1 class="mt-2 text-xl md:text-2xl font-black text-gray-950 uppercase tracking-tight leading-none font-mono">
+                            Sesiones y dispositivos
+                        </h1>
+                        <p class="mt-2 text-xs font-bold text-gray-400 leading-relaxed font-mono normal-case">
+                            La IP corresponde a la conexión al servidor y puede ser la del proxy institucional. El dispositivo es información declarada por el navegador.
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            {% if error %}
+                <div class="bg-red-50/60 border border-red-200/80 p-3.5 rounded-2xl">
+                    <p role="alert" class="text-xs font-bold text-red-700 leading-relaxed flex items-start gap-2 font-mono uppercase">
+                        <i data-lucide="shield-alert" class="w-4 h-4 text-red-600 shrink-0 mt-0.5"></i>
+                        <span>{{ error }}</span>
+                    </p>
+                </div>
+            {% endif %}
+
+            <form method="post">
+                {% csrf_token %}
+
+                <!-- ================================================= -->
+                <!-- CERRAR TODAS LAS OTRAS                            -->
+                <!-- ================================================= -->
+                <section class="rounded-2xl border border-dashed border-gray-200 bg-gray-50/50 p-4 md:p-5 mb-6 space-y-3">
+                    <label class="block text-xs font-black text-gray-400 tracking-wider px-1 uppercase">
+                        Contraseña actual para revocar sesiones
+                    </label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                                <i data-lucide="lock" class="w-4 h-4"></i>
+                            </span>
+                            <input
+                                type="password" name="password" autocomplete="current-password" required
+                                class="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-2xs"
+                            >
+                        </div>
+                        <button
+                            type="submit" name="action" value="others"
+                            class="inline-flex items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-rose-700 transition hover:bg-rose-100 active:scale-95 shrink-0"
+                        >
+                            <i data-lucide="log-out" class="h-4 w-4"></i>
+                            Cerrar todas las otras
+                        </button>
+                    </div>
+                </section>
+
+                <!-- ================================================= -->
+                <!-- LISTA DE SESIONES                                 -->
+                <!-- ================================================= -->
+                <section class="rounded-2xl md:rounded-[32px] border border-gray-200/80 bg-white shadow-sm overflow-hidden">
+                    <div class="p-3 md:p-4 space-y-2">
+                        {% for session in sessions %}
+                            <div class="flex items-start gap-4 rounded-xl p-3 md:p-4 {% if session.pk == current_session %}bg-brand-accent/5 border border-brand-accent/20{% else %}border border-transparent{% endif %}">
+                                <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl {% if session.pk == current_session %}bg-brand-accent/15 text-brand-accent{% else %}bg-gray-100 text-gray-500{% endif %}">
+                                    <i data-lucide="{% if session.pk == current_session %}monitor-check{% else %}monitor{% endif %}" class="h-5 w-5"></i>
+                                </div>
+                                <div class="min-w-0 flex-1">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        {% if session.pk == current_session %}
+                                            <span class="inline-flex items-center gap-1 rounded-full bg-brand-accent/15 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-brand-accent font-mono">
+                                                <span class="h-1.5 w-1.5 rounded-full bg-brand-accent"></span>Esta sesión
+                                            </span>
+                                        {% else %}
+                                            <span class="text-xs font-black uppercase tracking-wider text-gray-400 font-mono">Otra sesión</span>
+                                        {% endif %}
+                                    </div>
+                                    <p class="mt-1 text-xs text-gray-600 font-semibold break-all normal-case">{{ session.user_agent|default:"Dispositivo no identificado" }}</p>
+                                    <p class="mt-1 text-xs text-gray-400 font-bold font-mono uppercase tracking-wide">IP: {{ session.ip_address|default:"No disponible" }}</p>
+                                    <p class="mt-0.5 text-xs text-gray-400 font-bold font-mono uppercase tracking-wide">
+                                        Inicio: {{ session.created_at|date:"d/m/Y H:i" }} &bull; Última actividad: {{ session.last_seen_at|date:"d/m/Y H:i" }}
+                                    </p>
+                                </div>
+                                <button
+                                    type="submit" name="session" value="{{ session.pk }}"
+                                    class="shrink-0 inline-flex items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-2.5 py-1.5 text-xs font-black uppercase tracking-wider text-rose-700 transition hover:bg-rose-100 active:scale-95"
+                                >
+                                    <i data-lucide="x" class="h-3.5 w-3.5"></i>
+                                    <span class="hidden sm:inline">{% if session.pk == current_session %}Cerrar{% else %}Revocar{% endif %}</span>
+                                </button>
+                            </div>
+                        {% empty %}
+                            <div class="p-10 text-center">
+                                <i data-lucide="monitor-x" class="mx-auto h-8 w-8 text-gray-300"></i>
+                                <p class="mt-3 font-black text-gray-700 text-sm">No hay sesiones activas</p>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            </form>
+
+            <!-- ===================================================== -->
+            <!-- PAGINACIÓN                                           -->
+            <!-- ===================================================== -->
+            {% if sessions.paginator.num_pages > 1 %}
+                <nav class="flex items-center justify-between rounded-xl border border-gray-200 bg-white p-3 text-xs font-bold font-mono text-gray-500" aria-label="Paginación">
+                    <span>Página {{ sessions.number }} de {{ sessions.paginator.num_pages }}</span>
+                    <div class="flex gap-2">
+                        {% if sessions.has_previous %}<a href="?page={{ sessions.previous_page_number }}" class="rounded-lg border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition">Anterior</a>{% endif %}
+                        {% if sessions.has_next %}<a href="?page={{ sessions.next_page_number }}" class="rounded-lg border border-gray-200 px-3 py-1.5 hover:bg-gray-50 transition">Siguiente</a>{% endif %}
+                    </div>
+                </nav>
+            {% endif %}
+
+            <a
+                href="{% url 'accounts:account_security' %}"
+                class="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-950 font-mono"
+            >
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-gray-400"></i>
+                Volver a mi cuenta
+            </a>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof lucide !== "undefined") {
+                lucide.createIcons();
+            }
+        });
+    </script>
+
+</body>
+</html>

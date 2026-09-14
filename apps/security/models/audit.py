@@ -20,6 +20,8 @@ class SecurityAuditLog(models.Model):
         RESET  = "RESET",  "🔒 RESTABLECIMIENTO / LOCKDOWN"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    correlation_id = models.UUIDField(null=True, blank=True, db_index=True, editable=False)
+    system_actor = models.CharField(max_length=100, blank=True, editable=False)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
     app_namespace = models.CharField("Ecosistema / App", max_length=50, default="core", db_index=True)
     action_type = models.CharField("Tipo de Acción (Verbo)", max_length=20, choices=ActionTypes.choices, default=ActionTypes.UPDATE, db_index=True)
@@ -28,7 +30,7 @@ class SecurityAuditLog(models.Model):
     action_name = models.CharField("Descripción de la Acción", max_length=150, db_index=True)
     search_target = models.CharField("Criterio / Llave de Búsqueda Dinámica", max_length=255, null=True, blank=True, db_index=True)
     target_scope = models.CharField("Ámbito / Descripción del Destino", max_length=255)
-    operator_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='logs', verbose_name="Operador")
+    operator_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, null=True, blank=True, related_name='logs', verbose_name="Operador")
     target_user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='auditorias_recibidas')
     ip_address = models.GenericIPAddressField("Dirección IP", default="127.0.0.1", db_index=True)
     user_agent = models.TextField("Navegador / Dispositivo", null=True, blank=True)
@@ -40,6 +42,24 @@ class SecurityAuditLog(models.Model):
         verbose_name_plural = "Logs de Auditoría"
         ordering = ['-created_at']
 
+    def save(self, *args, **kwargs):
+        from django.core.exceptions import ValidationError
+        from apps.security.services.audit_context import current_audit, mark_audit_failure, redact_payload
+        if not self._state.adding:
+            raise ValidationError('Los eventos de auditoría no se editan; registrar un evento correctivo.')
+        context = current_audit.get()
+        if self.correlation_id is None and context:
+            self.correlation_id = context['id']
+        if self.operator_user_id is None and not self.system_actor.strip():
+            mark_audit_failure()
+            raise ValidationError('Un evento requiere usuario o actor de sistema identificado.')
+        self.payload_json = redact_payload(self.payload_json)
+        try:
+            return super().save(*args, **kwargs)
+        except Exception:
+            mark_audit_failure()
+            raise
+
     def __str__(self):
-        return f"[{self.app_namespace.upper()}] [{self.action_type}] - {self.operator_user.email}"
+        return f"[{self.app_namespace.upper()}] [{self.action_type}] - {self.operator_user.email if self.operator_user_id else self.system_actor}"
     

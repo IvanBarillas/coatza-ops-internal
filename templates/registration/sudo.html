@@ -1,13 +1,126 @@
-{% extends "registration/identity_base.html" %}
-{% block content %}
-<h1 class="text-xl font-bold">Confirmar identidad</h1>
-<p>Esta operación requiere verificar tu identidad otra vez. La confirmación dura cinco minutos.</p>
-<p class="text-sm">Después volverás a la pantalla anterior para repetir la operación. Los cambios pendientes todavía no se han enviado.</p>
-{% if error %}<p role="alert" class="text-red-700">{{ error }}</p>{% endif %}
-<form method="post" class="space-y-4">{% csrf_token %}
-<label class="block">Contraseña actual<input class="block w-full border rounded-lg p-2" type="password" name="password" autocomplete="current-password" required></label>
-{% if needs_token %}<label class="block">Código nuevo del autenticador<input class="block w-full border rounded-lg p-2" name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required></label>{% endif %}
-<button class="border rounded-lg p-2">Confirmar identidad</button>
-</form>
-<a class="underline" href="{% url 'accounts:account_security' %}">Volver a mi cuenta</a>
-{% endblock %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin">
+    <title>{{ title|default:"Confirmar identidad" }} | {{ tenant.app_name|default:"Axentra OS" }}</title>
+
+    <!-- CSS compilado localmente -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    <!-- Lucide Icons -->
+    <script src="{% static 'js/lucide.min.js' %}"></script>
+
+    <style>
+        :root {
+            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
+            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
+            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+        }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.35s ease-out both; }
+    </style>
+</head>
+
+<body class="h-full antialiased bg-gray-50 text-gray-950">
+
+    <div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-10 w-full select-none animate-fade-in relative overflow-hidden">
+
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-brand-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <section class="w-full max-w-md bg-white p-8 rounded-[32px] shadow-xl border border-gray-200/80 z-10 relative overflow-hidden">
+
+            <div class="absolute top-0 right-0 w-28 h-28 bg-brand-primary/5 rounded-bl-full pointer-events-none"></div>
+
+            <div class="relative z-10 text-center mb-6">
+                <div class="w-14 h-14 mx-auto mb-4 flex items-center justify-center rounded-xl bg-brand-primary text-white shadow-sm">
+                    <i data-lucide="fingerprint" class="h-6 w-6"></i>
+                </div>
+                <h1 class="text-xl font-bold text-gray-950 tracking-tight">Confirmar identidad</h1>
+                <p class="mt-2 text-xs text-gray-400 font-bold uppercase tracking-wider font-mono leading-relaxed">
+                    Esta operación requiere reautenticarte. La confirmación dura cinco minutos.
+                </p>
+                <p class="mt-1 text-xs text-gray-400 font-medium normal-case leading-relaxed">
+                    Después volverás a la pantalla anterior; los cambios pendientes todavía no se han enviado.
+                </p>
+            </div>
+
+            {% if error %}
+                <div class="relative z-10 mb-5 bg-red-50/60 border border-red-200/80 p-3.5 rounded-2xl">
+                    <p role="alert" class="text-xs font-bold text-red-700 leading-relaxed flex items-start gap-2 font-mono uppercase">
+                        <i data-lucide="shield-alert" class="w-4 h-4 text-red-600 shrink-0 mt-0.5"></i>
+                        <span>{{ error }}</span>
+                    </p>
+                </div>
+            {% endif %}
+
+            <form method="post" class="space-y-4 relative z-10">
+                {% csrf_token %}
+
+                <div class="space-y-1.5">
+                    <label class="block text-xs font-black text-gray-400 tracking-wider px-1 uppercase">Contraseña actual</label>
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                            <i data-lucide="lock" class="w-4 h-4"></i>
+                        </span>
+                        <input
+                            type="password" name="password" required autocomplete="current-password"
+                            class="w-full pl-10 pr-4 py-2.5 bg-gray-50/60 border border-gray-200 rounded-xl text-sm text-gray-800 outline-none focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-2xs"
+                        >
+                    </div>
+                </div>
+
+                {% if needs_token %}
+                    <div class="space-y-1.5">
+                        <label class="block text-xs font-black text-gray-400 tracking-wider px-1 uppercase">Código del autenticador</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-gray-400 pointer-events-none">
+                                <i data-lucide="smartphone-nfc" class="w-4 h-4"></i>
+                            </span>
+                            <input
+                                name="token" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" required
+                                class="w-full pl-10 pr-4 py-2.5 bg-gray-50/60 border border-gray-200 rounded-xl text-sm font-mono tracking-widest text-gray-800 outline-none focus:bg-white focus:border-brand-primary focus:ring-4 focus:ring-brand-primary/10 transition-all shadow-2xs"
+                            >
+                        </div>
+                    </div>
+                {% endif %}
+
+                <button
+                    type="submit"
+                    class="w-full bg-brand-primary hover:brightness-110 text-white font-bold py-3.5 px-4 rounded-xl shadow-md flex justify-center items-center gap-2 text-xs uppercase tracking-wider mt-6 cursor-pointer transition transform active:scale-95 font-mono"
+                >
+                    <i data-lucide="shield-check" class="w-3.5 h-3.5 text-white/70"></i>
+                    Confirmar identidad
+                </button>
+            </form>
+
+            <div class="mt-5 pt-4 border-t border-gray-100 text-center relative z-10">
+                <a
+                    href="{% url 'accounts:account_security' %}"
+                    class="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-gray-400 hover:text-brand-accent transition font-mono"
+                >
+                    <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+                    Volver a mi cuenta
+                </a>
+            </div>
+
+        </section>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof lucide !== "undefined") {
+                lucide.createIcons();
+            }
+        });
+    </script>
+
+</body>
+</html>

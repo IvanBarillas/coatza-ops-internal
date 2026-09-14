@@ -13,11 +13,11 @@ class ForensicAuditor:
         el Verbo (action_type) del Sujeto/Componente (module_component).
         """
         try:
-            x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-            ip = x_forwarded_for.split(',')[0].strip() if x_forwarded_for else request.META.get('REMOTE_ADDR', '127.0.0.1')
-            user_agent = request.META.get('HTTP_USER_AGENT', 'Desconocido/API')
+            from apps.security.middleware.sessions import client_ip
+            ip = client_ip(request) or '127.0.0.1'
+            user_agent = request.META.get('HTTP_USER_AGENT', 'Desconocido/API')[:500]
 
-            if not app_name and request.resolver_match:
+            if not app_name and getattr(request, 'resolver_match', None):
                 app_name = request.resolver_match.app_name
 
             # Creación física indexada en Postgres
@@ -35,6 +35,8 @@ class ForensicAuditor:
                 user_agent=user_agent,
                 payload_json=payload or {}
             )
-        except Exception as e:
-            logger.error(f"⚠️ [CRITICAL FORENSIC FAIL]: {str(e)}")
-            return None
+        except Exception:
+            from apps.security.services.audit_context import AuditWriteError, mark_audit_failure
+            mark_audit_failure()
+            logger.error('AUDIT_WRITE_FAILED: no se pudo persistir la evidencia.')
+            raise AuditWriteError('No se pudo persistir la evidencia de auditoría.') from None

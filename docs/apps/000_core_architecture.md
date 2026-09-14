@@ -702,3 +702,14 @@ La identidad estable es User.id (UUID), nunca el correo ni el área. UserProfile
 representa adscripción laboral opcional; una futura identidad ciudadana debe tener
 su propio perfil/relación y no recibir un expediente laboral ficticio. Su producto
 de registro, representación y trámites ciudadanos no se implementa en OP#38–40.
+
+## Atomicidad de auditoría — fase 4
+
+Las escrituras HTTP en BD default se agrupan con su evidencia y sesión. Si falla
+la persistencia de auditoría, la operación revierte con 503 incluso si un consumidor
+captura la excepción. Servicios fuera de HTTP deben agrupar explícitamente cambio
+y evidencia con transaction.atomic. No cubre archivos, correos ni otras bases.
+La correlación se genera en servidor; trabajos automáticos identifican system_actor.
+Snapshots usan listas explícitas de campos. Las restricciones de edición del registro
+no prueban inmutabilidad frente al operador SQL. Contrato y recuperación en
+[la guía operativa](../deployment/audit-continuity.md).

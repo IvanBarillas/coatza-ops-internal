@@ -1,13 +1,194 @@
-{% extends "registration/identity_base.html" %}
-{% block content %}
-<h1 class="text-xl font-bold">Seguridad de mi cuenta</h1>
-<p class="text-sm break-all">{{ user.email }}</p>
-<nav class="flex flex-col gap-4 text-sm">
-    <a class="underline" href="{% url 'accounts:sudo' %}">Confirmar identidad para administrar</a>
-    <a class="underline" href="{% url 'accounts:sessions' %}">Sesiones y dispositivos</a>
-    <a class="underline" href="{% url 'accounts:password_change' %}">Cambiar contraseña</a>
-    <a class="underline" href="{% url 'accounts:mfa_replace' %}">Configurar o reemplazar autenticador</a>
-    <a class="underline" href="{% url 'accounts:email_verify' %}">Correo: {% if user.is_email_verified %}verificado{% else %}pendiente de verificar{% endif %}</a>
-    <a class="underline" href="{% url 'index_hub' %}">Volver al inicio</a>
-</nav>
-{% endblock %}
+{% load static %}
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="same-origin">
+    <title>{{ title|default:"Seguridad de mi cuenta" }} | {{ tenant.app_name|default:"Axentra OS" }}</title>
+
+    <!-- CSS compilado localmente -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    <!-- Lucide Icons -->
+    <script src="{% static 'js/lucide.min.js' %}"></script>
+
+    {# Variables CSS por institución; las utilidades se compilan en el build. #}
+    <style>
+        :root {
+            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
+            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
+            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+        }
+
+        [x-cloak] { display: none !important; }
+
+        @keyframes fade-in {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in { animation: fade-in 0.35s ease-out both; }
+    </style>
+</head>
+
+<body class="h-full antialiased bg-gray-50 text-gray-950">
+
+    <div class="min-h-screen bg-gray-50 flex flex-col items-center px-4 py-10 sm:py-14 w-full select-none animate-fade-in relative overflow-hidden">
+
+        <div class="absolute -top-40 -right-40 w-96 h-96 bg-brand-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-40 -left-40 w-96 h-96 bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <div class="w-full max-w-2xl space-y-6 z-10">
+
+            <!-- ===================================================== -->
+            <!-- HEADER                                               -->
+            <!-- ===================================================== -->
+            <section class="rounded-2xl border border-gray-200/80 bg-white px-5 py-5 md:px-6 md:py-6 shadow-sm">
+                <div class="flex items-start gap-4 min-w-0">
+                    <div class="hidden sm:flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-brand-primary text-white shadow-sm">
+                        <i data-lucide="shield-check" class="h-5 w-5"></i>
+                    </div>
+
+                    <div class="min-w-0 flex-1">
+                        <div class="flex flex-wrap items-center gap-2">
+                            <span class="inline-flex items-center rounded-md border border-brand-accent/20 bg-brand-accent/10 px-2 py-0.5 text-xs font-black uppercase tracking-[0.18em] text-brand-accent font-mono">
+                                Mi cuenta
+                            </span>
+                        </div>
+
+                        <h1 class="mt-2 text-xl md:text-2xl font-black text-gray-950 uppercase tracking-tight leading-none font-mono">
+                            Seguridad de mi cuenta
+                        </h1>
+
+                        <p class="mt-2 text-xs font-bold text-gray-400 leading-relaxed font-mono break-all">
+                            {{ user.email }}
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===================================================== -->
+            <!-- ACCIONES DE SEGURIDAD                                -->
+            <!-- ===================================================== -->
+            <section class="rounded-2xl md:rounded-[32px] border border-gray-200/80 bg-white shadow-sm overflow-hidden">
+
+                <header class="px-5 py-4 md:px-6 md:py-5 border-b border-gray-100">
+                    <div class="text-xs font-black uppercase tracking-[0.22em] text-slate-600 font-mono">
+                        Control de acceso
+                    </div>
+                    <h2 class="mt-1 text-sm md:text-base font-black uppercase tracking-tight text-gray-950 font-mono">
+                        Identidad, sesiones y credenciales
+                    </h2>
+                </header>
+
+                <div class="p-3 md:p-4 space-y-2">
+
+                    <a href="{% url 'accounts:sudo' %}" class="group flex items-center gap-4 rounded-xl p-3 md:p-4 transition hover:bg-gray-50">
+                        <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
+                            <i data-lucide="fingerprint" class="h-5 w-5"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-black text-gray-950 text-xs md:text-sm tracking-tight normal-case">Confirmar identidad para administrar</p>
+                            <p class="mt-0.5 text-xs text-gray-400 font-bold normal-case leading-relaxed">Reautentícate para desbloquear cinco minutos de operaciones sensibles.</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="h-4 w-4 text-gray-300 shrink-0 transition group-hover:text-gray-500 group-hover:translate-x-0.5"></i>
+                    </a>
+
+                    <a href="{% url 'accounts:sessions' %}" class="group flex items-center gap-4 rounded-xl p-3 md:p-4 transition hover:bg-gray-50">
+                        <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
+                            <i data-lucide="monitor-smartphone" class="h-5 w-5"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-black text-gray-950 text-xs md:text-sm tracking-tight normal-case">Sesiones y dispositivos</p>
+                            <p class="mt-0.5 text-xs text-gray-400 font-bold normal-case leading-relaxed">Revisa dónde ha iniciado sesión tu cuenta y revoca accesos activos.</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="h-4 w-4 text-gray-300 shrink-0 transition group-hover:text-gray-500 group-hover:translate-x-0.5"></i>
+                    </a>
+
+                    <a href="{% url 'accounts:password_change' %}" class="group flex items-center gap-4 rounded-xl p-3 md:p-4 transition hover:bg-gray-50">
+                        <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
+                            <i data-lucide="key-round" class="h-5 w-5"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <p class="font-black text-gray-950 text-xs md:text-sm tracking-tight normal-case">Cambiar contraseña</p>
+                            <p class="mt-0.5 text-xs text-gray-400 font-bold normal-case leading-relaxed">Las demás sesiones abiertas pierden validez al cambiarla.</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="h-4 w-4 text-gray-300 shrink-0 transition group-hover:text-gray-500 group-hover:translate-x-0.5"></i>
+                    </a>
+
+                    <a href="{% url 'accounts:mfa_replace' %}" class="group flex items-center gap-4 rounded-xl p-3 md:p-4 transition hover:bg-gray-50">
+                        <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
+                            <i data-lucide="smartphone-nfc" class="h-5 w-5"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="font-black text-gray-950 text-xs md:text-sm tracking-tight normal-case">Autenticador (segundo factor)</p>
+                                {% if has_totp %}
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-emerald-700 font-mono">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Activo
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-amber-700 font-mono">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>No configurado
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-0.5 text-xs text-gray-400 font-bold normal-case leading-relaxed">{% if has_totp %}Configura o reemplaza tu app autenticadora.{% else %}Actívalo para proteger tu cuenta con un código de un solo uso.{% endif %}</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="h-4 w-4 text-gray-300 shrink-0 transition group-hover:text-gray-500 group-hover:translate-x-0.5"></i>
+                    </a>
+
+                    <a href="{% url 'accounts:email_verify' %}" class="group flex items-center gap-4 rounded-xl p-3 md:p-4 transition hover:bg-gray-50">
+                        <div class="hidden sm:flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-accent/10 text-brand-accent">
+                            <i data-lucide="mail-check" class="h-5 w-5"></i>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="flex flex-wrap items-center gap-2">
+                                <p class="font-black text-gray-950 text-xs md:text-sm tracking-tight normal-case">Correo institucional</p>
+                                {% if user.is_email_verified %}
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-emerald-700 font-mono">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>Verificado
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-xs font-black uppercase tracking-wider text-amber-700 font-mono">
+                                        <span class="h-1.5 w-1.5 rounded-full bg-amber-500"></span>Pendiente
+                                    </span>
+                                {% endif %}
+                            </div>
+                            <p class="mt-0.5 text-xs text-gray-400 font-bold normal-case leading-relaxed">{% if user.is_email_verified %}Reenvía la confirmación si cambiaste de correo.{% else %}Confirma tu correo para desbloquear todas las funciones.{% endif %}</p>
+                        </div>
+                        <i data-lucide="chevron-right" class="h-4 w-4 text-gray-300 shrink-0 transition group-hover:text-gray-500 group-hover:translate-x-0.5"></i>
+                    </a>
+
+                </div>
+            </section>
+
+            <a
+                href="{% url 'index_hub' %}"
+                class="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs font-black uppercase tracking-widest text-gray-500 shadow-sm transition hover:bg-gray-50 hover:text-gray-950 font-mono"
+            >
+                <i data-lucide="arrow-left" class="w-3.5 h-3.5 text-gray-400"></i>
+                Volver al inicio
+            </a>
+
+            <footer class="text-center text-xs font-bold text-gray-400 font-mono uppercase tracking-widest flex flex-col gap-1 items-center pt-2">
+                <span>{{ tenant.app_name|default:"Axentra OS" }} Subsystem &bull; Seguridad Perimetral de Accesos Activada</span>
+                <span class="text-emerald-600 flex items-center gap-1">
+                    <span class="w-1 h-1 bg-emerald-500 rounded-full animate-pulse"></span>
+                    Centinela de intentos activo via Axes Engine
+                </span>
+            </footer>
+
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof lucide !== "undefined") {
+                lucide.createIcons();
+            }
+        });
+    </script>
+
+</body>
+</html>

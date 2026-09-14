@@ -10,7 +10,7 @@ iniciar la siguiente. No fusionar ni publicar una fase sin autorización.
 | 1 | Panel y catálogo de aplicaciones escalables | Implementada y validada localmente |
 | 2 | Aislamiento municipal y autorización sobre datos | Contrato inicial implementado; adopción por consumidores pendiente |
 | 3 | Identidad, sesiones y privilegios administrativos | OP#38–40 implementadas localmente; validación operativa pendiente |
-| 4 | Auditoría y continuidad operativa | Pendiente |
+| 4 | Auditoría y continuidad operativa | Implementación inicial y ensayo SQLite; validación PostgreSQL/operativa pendiente |
 | 5 | Organigrama e historial de adscripciones | Pendiente |
 | 6 | Configuración institucional y servicios compartidos | Pendiente |
 | 7 | Validación con satélites municipales reales | Pendiente |
@@ -178,7 +178,7 @@ La fase 1 no modifica bypass administrativo ni introduce aislamiento multi-tenan
 - OP#40: `feature/OP-40-privilegios-sudo-reauth`, separación de autoridad y SUDO.
 
 Trabajar con ramas apiladas en ese orden por dependencias; todos los commits citan
-subtarea y OP#37. No hay push ni PR publicado; mantener cuerpos locales con
+subtarea y OP#37. Las tres ramas se publicaron con autorización; no hay PR publicado. Mantener cuerpos locales con
 `Closes OP#38`, `Closes OP#39` y `Closes OP#40` y evidencia de suite acumulada.
 
 ### OP#39 — sesiones implementadas
@@ -198,9 +198,31 @@ sesiones. UserAdmin restringe edición de cuentas al superusuario para evitar el
 
 Suite acumulada: **120 pruebas pasan** (64 iniciales + 56 nuevas). Evidencia de las
 subtareas en `docs/reviews/OP-38.md`, `OP-39.md` y `OP-40.md`, con sintaxis de cierre.
-Las tres ramas permanecen locales y apiladas; no hay push ni PR publicado.
+Las tres ramas están publicadas y apiladas; no hay PR publicado.
 
 Pendiente operativo de fase 3: aplicar migraciones 0011–0013 y django-otp al entorno
 destino, revisar roles históricos, probar SMTP real y ensayar recuperación con la
 institución. El contrato de futura identidad ciudadana usa UUID y perfil separado
 del laboral; no se construye un registro ciudadano en estas tres subtareas.
+
+
+### Fase 4 — implementación inicial
+
+Rama feature/core-hardening-phase-4 sobre OP#40 por dependencia, sin merge ni push.
+IDs de seguimiento de fase 4 todavía no confirmados; no reutilizar OP#37 para ella.
+
+- Auditor deja de silenciar errores y no confía directamente en X-Forwarded-For.
+- Correlación por petición, actor de sistema, redacción estructurada y eventos sin edición por save/Admin.
+- Transacción HTTP revierte cambio si falla evidencia; fallo simulado cubierto.
+- Antes/después en grants y disponibilidad de módulos; normalización completa de eventos heredados pendiente.
+- Monitoreo BD/caché mediante comando con JSON y salida no cero ante fallos.
+- Backup/verify/restore para SQLite/PostgreSQL y media, destinos nuevos, SHA256.
+- Simulacro aislado SQLite con expediente/archivo restaurados y pruebas negativas.
+
+No se aplicó 0014 a la BD real. Cierre operativo pendiente: PostgreSQL real, copia
+externa protegida, alertas conectadas, retención institucional, RPO/RTO y ensayo
+integral medido. Límites y procedimiento en docs/deployment/audit-continuity.md.
+
+Evidencia local de fase 4: **136 pruebas pasan** (120 previas + 11 auditoría/monitoreo
++ 5 continuidad). Django check, migraciones sin cambios pendientes, Tailwind y
+collectstatic pasan. No se ejecutaron herramientas PostgreSQL contra un servidor.

@@ -169,3 +169,13 @@ Las operaciones administrativas exigen **SUDO** (contraseña y TOTP, cinco minut
 Aplicar `0013_technical_authority` y revisar membresías existentes antes de desplegar.
 Los cambios en flags administrativos invalidan sesiones anteriores. Consultar
 [autoridad administrativa y recuperación](docs/apps/administrative-authority.md).
+
+## Auditoría y continuidad — fase 4
+
+Aplicar `0014_audit_correlation_system_actor`. Las mutaciones HTTP revierten si falla
+la escritura de su evidencia y las respuestas incluyen `X-Request-ID`. El auditor
+ya no acepta X-Forwarded-For directamente. `manage.py check_operational_health`
+comprueba BD/caché para el monitor institucional. `tools/continuity.py` ofrece
+backup/verify/restore de BD y media en destinos nuevos. Leer antes de operar la
+[guía de auditoría, respaldo y simulacro](docs/deployment/audit-continuity.md): exige
+mantenimiento para consistencia BD/media y no sustituye un ensayo PostgreSQL real.

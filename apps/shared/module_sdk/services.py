@@ -310,6 +310,8 @@ def set_module_enabled(*, code, enabled, actor, request=None):
         user_agent=(request.META.get("HTTP_USER_AGENT", "") if request else ""),
         payload_json={
             "module": manifest.code,
+            "before": {"is_active": previous_state},
+            "after": {"is_active": bool(enabled)},
             "previous_enabled": previous_state,
             "enabled": bool(enabled),
             "version": manifest.version,

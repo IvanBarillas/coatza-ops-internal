@@ -589,6 +589,7 @@ class UserAppRoleAdmin(AxentraBaseAdminMixin, admin.ModelAdmin):
         "user",
         "app",
         "role",
+        "roles_disponibles_por_modulo",
         "permissions_list",
         "is_active",
         "is_deleted",
@@ -597,7 +598,7 @@ class UserAppRoleAdmin(AxentraBaseAdminMixin, admin.ModelAdmin):
         "updated_at",
     )
 
-    readonly_fields = AxentraBaseAdminMixin.readonly_fields
+    readonly_fields = AxentraBaseAdminMixin.readonly_fields + ("roles_disponibles_por_modulo",)
 
     def user_email(self, obj):
         return obj.user.email if obj.user else "Sin usuario"
@@ -608,6 +609,38 @@ class UserAppRoleAdmin(AxentraBaseAdminMixin, admin.ModelAdmin):
         return obj.app.name if obj.app else "Sin módulo"
 
     app_name.short_description = "Módulo"
+
+    def roles_disponibles_por_modulo(self, obj):
+        """Chuleta de referencia: qué valores de 'role' son válidos por módulo.
+
+        El campo 'role' es texto libre (cada app declara su propio vocabulario
+        en permissions.py), así que sin esto no hay forma de saber qué escribir
+        sin ir a leer el código fuente.
+        """
+        from django.utils.html import format_html_join
+        from django.utils.safestring import mark_safe
+        from apps.security.services.permission_loader import get_app_permissions
+
+        filas = []
+        for slug in ["security", "configuration", "accounts", "organigrama"]:
+            roles = list(get_app_permissions(slug).get("roles", {}).keys())
+            filas.append((slug, ", ".join(roles) or "(sin roles declarados)"))
+        return format_html_join(mark_safe("<br>"), "<strong>{}</strong>: {}", filas)
+
+    roles_disponibles_por_modulo.short_description = "Roles válidos por módulo"
+
+    def save_model(self, request, obj, form, change):
+        """Si se deja 'permissions_list' vacío, lo deriva del rol + módulo.
+
+        permissions_list es, por diseño del modelo, un snapshot de los
+        permisos finos que ya declara el rol en el permissions.py de la app
+        (ver generate_default_permissions) — no hace falta escribirlo a mano
+        si el rol es válido para ese módulo.
+        """
+        if not obj.permissions_list:
+            from apps.security.services.permission_loader import generate_default_permissions
+            obj.permissions_list = generate_default_permissions(obj.role, obj.app.slug)
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(Municipality)
@@ -793,7 +826,7 @@ class TenantConfigAdmin(AxentraBaseAdminMixin, admin.ModelAdmin):
 # =========================================================================
 @admin.register(SecurityAuditLog)
 class SecurityAuditLogAdmin(admin.ModelAdmin):
-    """Caja negra forense inmutable."""
+    """Consulta de evidencia; no garantiza inmutabilidad frente a acceso SQL."""
 
     list_display = (
         "created_at",
@@ -846,13 +879,14 @@ class SecurityAuditLogAdmin(admin.ModelAdmin):
         "payload_json",
     )
 
+    fields = (*fields, 'correlation_id', 'system_actor')
     readonly_fields = fields
 
     def has_add_permission(self, request):
         return False
 
     def has_change_permission(self, request, obj=None):
-        return True
+        return False
 
     def has_delete_permission(self, request, obj=None):
         return False
@@ -899,9 +933,21 @@ class DepartmentAccessGrantAdmin(admin.ModelAdmin):
         return False  # Revocar con is_active=False; conservar el registro.
 
     def save_model(self, request, obj, form, change):
+        from apps.security.services.audit_snapshots import snapshot
+        from apps.security.utils.forensic_auditor import ForensicAuditor
+        fields = ('membership_id', 'source_department_id', 'target_department_id',
+                  'permission', 'reason', 'expires_at', 'is_active', 'is_deleted')
+        previous = type(obj).objects.get(pk=obj.pk) if change else None
+        before = snapshot(previous, fields) if previous else None
         if not change:
             obj.granted_by = request.user
         super().save_model(request, obj, form, change)
+        ForensicAuditor.registrar_evento(
+            request, 'UPDATE' if change else 'ASSIGN', 'DEPARTMENT_ACCESS',
+            'Modificación de autorización explícita' if change else 'Autorización explícita entre dependencias',
+            str(obj.pk), app_name='security',
+            payload={'before': before, 'after': snapshot(obj, fields)},
+        )
 
 # Las claves OTP se gestionan exclusivamente con prueba de contraseña y segundo
 # factor en las vistas propias; no exponer secretos/códigos mediante Admin.

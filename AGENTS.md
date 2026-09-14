@@ -138,3 +138,14 @@ reautenticación de 300 s en mutaciones administrativas; satélites adoptan
 `sudo_required` además del gate. Leer `docs/apps/administrative-authority.md`.
 Roles owner/admin funcionales requieren MFA. Cambios en flags administrativos usan
 User.save() para invalidar sesiones; no sustituirlo por update/SQL directo.
+
+## Fase 4 — auditoría y continuidad
+
+Rama inicial apilada desde OP#40: feature/core-hardening-phase-4; IDs OP pendientes.
+AuditTransactionMiddleware va antes de SessionMiddleware: agrupa escrituras HTTP en
+la BD default y revierte fallos de auditoría, aunque la vista capture la excepción.
+No borrar contadores de intentos fallidos por respuestas 400/403. Servicios fuera de
+HTTP necesitan atomicidad propia. Correlación generada por el servidor; no confiar
+X-Forwarded-For. Nunca enviar secretos ni cuerpos POST a payloads/descripciones.
+No afirmar inmutabilidad frente a SQL: las restricciones son de aplicación.
+Ver docs/deployment/audit-continuity.md; no respaldar/restaurar la BD real en pruebas.

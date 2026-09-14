@@ -19,4 +19,8 @@ class IdentityPasswordChangeForm(PasswordChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs['class'] = 'w-full rounded-lg border border-gray-300 p-3'
+            field.widget.attrs['class'] = (
+                'w-full rounded-xl border border-gray-200 bg-gray-50/60 p-3 text-sm '
+                'outline-none transition-all focus:bg-white focus:border-brand-primary '
+                'focus:ring-4 focus:ring-brand-primary/10'
+            )

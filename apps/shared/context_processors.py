@@ -2,6 +2,7 @@
 
 import logging
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 
 from apps.security.models import TenantConfig, UserAppRole
@@ -207,11 +208,16 @@ def global_tenant_settings(request):
                 is_deleted=False,
             )
 
-        return {"tenant": config}
+        # Ruta ofuscada del panel de Django admin. Única fuente de verdad:
+        # settings.ADMIN_SECRET_PATH (leída de decouple en core/settings/base.py
+        # y consumida también por core/urls.py). Nunca hardcodear esta ruta en
+        # una plantilla — si ADMIN_SECRET_PATH cambia por variable de entorno,
+        # el enlace debe seguirla automáticamente.
+        return {"tenant": config, "admin_panel_path": settings.ADMIN_SECRET_PATH}
 
     except Exception as e:
         logger.error(f"Error en global_tenant_settings: {e}")
-        return {"tenant": None}
+        return {"tenant": None, "admin_panel_path": settings.ADMIN_SECRET_PATH}
 
 
 def user_module_permissions(request):

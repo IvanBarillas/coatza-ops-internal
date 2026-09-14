@@ -24,8 +24,8 @@
                 
                 <!-- Acceso al Panel de Control Django (Bypass Seguro de Staff) -->
                 {% if request.user.is_staff or request.user.is_superuser %}
-                    <a href="/axentra-core-secret-portal-manager-wsl/" 
-                       target="_blank" 
+                    <a href="/{{ admin_panel_path }}"
+                       target="_blank"
                        class="hidden sm:inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wider text-amber-800 font-mono border border-amber-200 bg-amber-50/50 px-3 py-1.5 rounded-xl hover:bg-amber-100/80 hover:text-amber-900 transition duration-150">
                         <i data-lucide="wrench" class="w-3.5 h-3.5 text-amber-600"></i> Panel Admin
                     </a>
