@@ -1,0 +1,38 @@
+name: CI
+
+# Antes de esto, cada `manage.py check`/`manage.py test` dependia de que
+# alguien se acordara de correrlo a mano antes de mergear. Este workflow
+# corre lo mismo automaticamente en cada push/PR a las ramas de integracion.
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  django-checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Instalar uv y Python
+        uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+
+      # uv.lock fija versiones exactas; --frozen falla si el lock quedo
+      # desactualizado respecto a pyproject.toml en vez de regenerarlo solo.
+      - name: Instalar dependencias (uv sync --frozen)
+        run: uv sync --frozen
+
+      # Sin variables de entorno especiales: core/settings/development.py ya
+      # trae valores por defecto seguros para SECRET_KEY, DATABASE_URL
+      # (cae a SQLite), correo (filebased) y Q_CLUSTER (sincrono). Es el
+      # mismo comportamiento que correr las pruebas en local sin un .env.
+      - name: manage.py check
+        run: uv run python manage.py check
+
+      - name: manage.py test
+        run: uv run python manage.py test
