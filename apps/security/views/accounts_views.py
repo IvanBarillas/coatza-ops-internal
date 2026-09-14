@@ -27,6 +27,40 @@ from apps.shared.utils.telemetry import AxentraRadar
 User = get_user_model()
 logger = logging.getLogger(__name__)
 
+_ETIQUETAS_CAMPO = {
+    'email': 'Correo electrónico', 'first_name': 'Nombre(s)', 'last_name': 'Apellidos',
+    'phone': 'Teléfono', 'area_id': 'Área', 'puesto': 'Puesto', 'telefono_oficina': 'Teléfono de oficina',
+}
+
+
+def _mensaje_legible(errores: dict) -> str:
+    """Traduce el dict de errores de FuncionarioService a un mensaje mostrable.
+
+    crear_funcionario/editar_funcionario devuelven una de varias formas según
+    dónde falló la validación (DTO Pydantic, validador de contraseña de
+    Django, error de negocio con clave propia) — sin esto, cualquier cosa
+    que no traiga 'server_error' se mostraba como un mensaje genérico que no
+    dice qué campo falló ni por qué.
+    """
+    if not errores:
+        return 'Error de consistencia interna'
+    if 'server_error' in errores:
+        return errores['server_error'][0]
+    if 'password' in errores:
+        return ' '.join(errores['password'])
+    if 'validation_errors' in errores:
+        partes = []
+        for error in errores['validation_errors']:
+            campo = str(error.get('loc', ['dato'])[0])
+            etiqueta = _ETIQUETAS_CAMPO.get(campo, campo)
+            partes.append(f"{etiqueta}: {error.get('msg', 'valor inválido')}.")
+        return ' '.join(partes) if partes else 'Revisa los datos capturados.'
+    # Forma residual: {'clave_de_negocio': ['mensaje', ...]}
+    primer_valor = next(iter(errores.values()), None)
+    if isinstance(primer_valor, list) and primer_valor:
+        return str(primer_valor[0])
+    return 'Error de consistencia interna'
+
 @login_required
 @axentra_module_gate(module_identifier=AppIdentifier.ACCOUNTS, required_fine_permission="can_view_analytics")
 def accounts_analytics_view(request):
@@ -320,10 +354,7 @@ def funcionario_create_view(request):
                 return redirect("accounts:funcionario_list")
 
             if errores:
-                form.add_error(
-                    None,
-                    errores.get("server_error", ["Error de consistencia interna"])[0],
-                )
+                form.add_error(None, _mensaje_legible(errores))
 
     else:
         form = StaffUserCreationForm()
@@ -461,10 +492,7 @@ def funcionario_editar_view(request, pk: uuid.UUID):
                 )
 
             if errores:
-                error_msg = errores.get(
-                    "server_error",
-                    ["Fallo del Servidor"],
-                )[0]
+                error_msg = _mensaje_legible(errores)
 
                 messages.error(
                     request,

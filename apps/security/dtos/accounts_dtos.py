@@ -46,7 +46,11 @@ class CrearFuncionarioInputDTO(BaseModel):
     phone: Optional[str] = Field("", max_length=20)
     
     area_id: uuid.UUID = Field(..., description="ID de la celda operativa intermedia obligatoria")
-    puesto: str = Field(..., min_length=3, max_length=100)
+    # Opcional: coincide con UserProfile.puesto (CharField blank=True). Las
+    # plantillas de listado ya muestran "Sin Puesto Registrado" cuando está
+    # vacío; exigirlo aquí era más estricto que el propio modelo y solo
+    # producía un error de validación confuso sin ganar nada a cambio.
+    puesto: str = Field("", max_length=100)
     telefono_oficina: Optional[str] = Field("", max_length=20)
 
 
@@ -58,5 +62,9 @@ class EditarFuncionarioInputDTO(BaseModel):
     phone: Optional[str] = Field("", max_length=20)
     
     area_id: uuid.UUID = Field(..., description="ID de la nueva celda operativa de destino")
-    puesto: str = Field(..., min_length=3, max_length=100)
+    # Opcional: coincide con UserProfile.puesto (CharField blank=True). Las
+    # plantillas de listado ya muestran "Sin Puesto Registrado" cuando está
+    # vacío; exigirlo aquí era más estricto que el propio modelo y solo
+    # producía un error de validación confuso sin ganar nada a cambio.
+    puesto: str = Field("", max_length=100)
     telefono_oficina: Optional[str] = Field("", max_length=20)
