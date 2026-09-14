@@ -34,5 +34,17 @@ jobs:
       - name: manage.py check
         run: uv run python manage.py check
 
+      # WhiteNoise sirve estaticos con CompressedManifestStaticFilesStorage
+      # (ver core/settings/base.py, STORAGES["staticfiles"]) incluso en
+      # development.py: cualquier {% static %} exige que exista el
+      # manifiesto generado por collectstatic, no solo el archivo crudo.
+      # En local ese manifiesto vive en staticfiles/ (ignorado por git, ver
+      # .gitignore); un checkout fresco como el de este runner no lo trae,
+      # asi que hay que generarlo aqui antes de correr pruebas que rendericen
+      # cualquier plantilla con un tag {% static %}. Mismo paso que el
+      # Dockerfile de produccion antes de collectstatic.
+      - name: Recolectar estaticos (manifiesto de WhiteNoise)
+        run: uv run python manage.py collectstatic --noinput
+
       - name: manage.py test
         run: uv run python manage.py test
