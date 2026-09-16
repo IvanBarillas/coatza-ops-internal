@@ -105,7 +105,10 @@ permiso (`can_configure_tenant`, ya cubre "datos legales") y misma protección
 de reautenticación (`SudoMiddleware`, automática por namespace `security`, sin
 decorador aparte) que el resto de Configuración. Vista: `security:privacidad_cookies`.
 
-**Lo que queda pendiente, fuera de este repo:** `axentra-mod-tramites` sigue
-teniendo su propio `ConfigMunicipal.aviso_privacidad`, ahora redundante. Migrar
-su portal público para leer del `TenantConfig` del Core en vez de mantener su
-propia copia es trabajo de ese repo, no de este — no se tocó desde aquí.
+**Resuelto también, fuera de este repo:** `axentra-mod-tramites` eliminó su
+`ConfigMunicipal.aviso_privacidad` (pedido explícito del cliente). No hizo
+falta migrar ningún portal público para leer del `TenantConfig` del Core —
+revisando ese repo, el campo no llegaba a renderizarse en ningún template
+(cero referencias fuera de model/form/dto/selector): estaba duplicado *y*
+muerto a la vez. Se quitó sin más, sin reemplazo. Trabajo hecho en ese repo,
+no en este.
