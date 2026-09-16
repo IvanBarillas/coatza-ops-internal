@@ -85,3 +85,27 @@ No se decidió: nombre final de la ruta/plantilla, si reemplaza o complementa
 `public/index.html` en el dominio principal, ni el contrato exacto del nuevo campo
 del manifiesto. Definir antes de tocar código, mismo criterio que el resto de este
 documento y de `docs/roadmap/core-hardening.md`.
+
+## 5. Resuelto: aviso de privacidad y política de cookies, centralizados en el Core
+
+Hallazgo relacionado, encontrado revisando `axentra-mod-tramites`: su modelo
+`ConfigMunicipal` tenía su propio campo `aviso_privacidad` (texto libre) — cada
+satélite instalado por separado duplicaría el mismo contenido legal si necesitara
+lo mismo. No es solo desorden: es un riesgo de cumplimiento real (alguien
+actualiza el aviso legal en un satélite y se le olvida en los demás).
+
+Ya implementado en este repo (`TenantConfig`,
+`apps/security/models/infrastructure.py`): dos campos nuevos,
+`aviso_privacidad` y `politica_cookies`, con su propia sección en Configuración
+— "Privacidad y Cookies", hermana de "Identidad Institucional" en el mismo
+sidebar (`configuration_sidebar.html`), no una cuarta pestaña dentro del
+formulario de identidad (que ya tiene tres: Identidad y Marca, Integraciones y
+Canales, Datos Legales y Fiscales — agregar una más lo sobrecargaba). Mismo
+permiso (`can_configure_tenant`, ya cubre "datos legales") y misma protección
+de reautenticación (`SudoMiddleware`, automática por namespace `security`, sin
+decorador aparte) que el resto de Configuración. Vista: `security:privacidad_cookies`.
+
+**Lo que queda pendiente, fuera de este repo:** `axentra-mod-tramites` sigue
+teniendo su propio `ConfigMunicipal.aviso_privacidad`, ahora redundante. Migrar
+su portal público para leer del `TenantConfig` del Core en vez de mantener su
+propia copia es trabajo de ese repo, no de este — no se tocó desde aquí.

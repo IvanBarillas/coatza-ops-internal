@@ -16,7 +16,7 @@ from apps.security.models.organigrama import AppDependencyCapability, AreaOperat
 from apps.shared.apps_config import AppIdentifier
 from apps.security.decorators import axentra_module_gate
 from apps.security.models import AppModule, UserAppRole, TenantConfig, SecurityAuditLog
-from apps.security.forms import TenantConfigForm
+from apps.security.forms import TenantConfigForm, PrivacidadCookiesForm
 from apps.security.selectors.application_selectors import ApplicationGovernanceSelectors
 from apps.security.selectors.permission_selectors import PermissionSelectors
 from apps.security.selectors.security_selectors import CapabilitySelectors, SecurityDashboardSelectors
@@ -1862,4 +1862,159 @@ def tenant_config_view(request):
         "security/pages/tenant_config.html",
         context,
     )
-    
+
+
+@login_required
+@axentra_module_gate(
+    AppIdentifier.CONFIGURATION,
+    required_fine_permission="can_view_configuration",
+)
+def privacidad_cookies_view(request):
+    """
+    Aviso de privacidad y política de cookies institucionales — fuente
+    única de verdad legal para toda la instalación (ver
+    docs/apps/public-municipal-portal.md: cada satélite instalado por
+    separado duplicaba su propio aviso de privacidad antes de esto).
+
+    Sección propia de Configuración, hermana de Identidad Institucional
+    en el mismo sidebar (configuration_sidebar.html) — no una cuarta
+    pestaña dentro de tenant_config_content.html, que ya tiene tres.
+    Mismo Singleton (TenantConfig), mismo permiso (can_configure_tenant:
+    ya cubre "datos legales"), mismo patrón de render de tres vías que
+    tenant_config_view.
+
+    Mutación (POST) protegida por SudoMiddleware automáticamente — esta
+    vista vive bajo el namespace 'security', ya incluido en su lista de
+    namespaces protegidos, sin decorador aparte.
+    """
+
+    is_htmx = str(request.headers.get("HX-Request", "")).strip().lower() == "true"
+    target_htmx = request.headers.get("HX-Target", "")
+
+    config_instancia = TenantConfig.objects.first()
+
+    if not config_instancia:
+        config_instancia = TenantConfig.objects.create(
+            app_name="Axentra OS",
+            entidad_nombre="H. Ayuntamiento Constitucional",
+            siglas="AXN",
+        )
+
+    can_edit_tenant = bool(
+        getattr(request, "axentra_is_root", False)
+        or "can_configure_tenant" in getattr(
+            request,
+            "axentra_permissions_list",
+            (),
+        )
+        or "configuration__can_configure_tenant" in getattr(
+            request,
+            "axentra_permissions_list",
+            (),
+        )
+    )
+
+    if request.method == "POST" and not can_edit_tenant:
+        messages.error(
+            request,
+            "No tiene autorización para modificar el aviso de privacidad y la política de cookies.",
+        )
+        return redirect("security:privacidad_cookies")
+
+    if request.method == "POST":
+        form = PrivacidadCookiesForm(
+            request.POST,
+            instance=config_instancia,
+        )
+
+        if form.is_valid():
+            config_actualizada = form.save()
+            config_actualizada.refresh_from_db()
+
+            ForensicAuditor.registrar_evento(
+                request=request,
+                action_type=SecurityAuditLog.ActionTypes.UPDATE,
+                module_component="CONFIGURACION_INSTITUCIONAL",
+                action_name="RECONFIGURACION_PRIVACIDAD_COOKIES",
+                target_scope=(
+                    "Modificación del aviso de privacidad o la política de cookies "
+                    "institucionales, visibles en todo el portal público."
+                ),
+                level=SecurityAuditLog.Levels.CRITICAL,
+                search_target=config_actualizada.siglas,
+                payload={
+                    "tenant_id": str(config_actualizada.id),
+                    "operador_id": str(request.user.id),
+                    "operador_email": request.user.email,
+                },
+            )
+
+            messages.success(
+                request,
+                "El aviso de privacidad y la política de cookies se actualizaron correctamente.",
+            )
+
+            if is_htmx:
+                form = PrivacidadCookiesForm(
+                    instance=config_actualizada,
+                )
+
+                context = {
+                    "form": form,
+                    "config": config_actualizada,
+                    "can_edit_tenant": can_edit_tenant,
+                    "modulo_actual": AppIdentifier.CONFIGURATION,
+                    "show_module_sidebar": True,
+                    "current_configuration_view": "security:privacidad_cookies",
+                }
+
+                response = render(
+                    request,
+                    "security/htmx/privacidad_cookies_with_messages.html",
+                    context,
+                )
+                response["HX-Push-Url"] = reverse("security:privacidad_cookies")
+
+                return response
+
+            return redirect("security:privacidad_cookies")
+
+        messages.error(
+            request,
+            "Revisa los campos del formulario antes de guardar.",
+        )
+
+    else:
+        form = PrivacidadCookiesForm(
+            instance=config_instancia,
+        )
+
+    context = {
+        "form": form,
+        "config": config_instancia,
+        "can_edit_tenant": can_edit_tenant,
+        "modulo_actual": AppIdentifier.CONFIGURATION,
+        "show_module_sidebar": True,
+        "current_configuration_view": "security:privacidad_cookies",
+    }
+
+    if is_htmx and target_htmx == "workbench":
+        return render(
+            request,
+            "security/workbench/privacidad_cookies_workbench.html",
+            context,
+        )
+
+    if is_htmx and target_htmx == "page-content":
+        return render(
+            request,
+            "security/content/privacidad_cookies_content.html",
+            context,
+        )
+
+    return render(
+        request,
+        "security/pages/privacidad_cookies.html",
+        context,
+    )
+
