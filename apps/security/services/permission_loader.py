@@ -1,9 +1,9 @@
 # apps/security/services/permission_loader.py
 import logging
 import sys
-from importlib import import_module
 from django.contrib.auth import get_user_model
 from apps.security.models import UserAppRole
+from apps.shared.manifest_registry import AxentraOSRegistry
 from apps.shared.utils.telemetry import AxentraRadar
 
 User = get_user_model()
@@ -11,53 +11,48 @@ logger = logging.getLogger(__name__)
 
 def get_app_permissions(app_slug):
     """
-    Busca en caliente el archivo permissions.py de forma inteligente:
-    - Si pertenece al Core unificado, lee 'apps.security.permissions'.
-    - Si es una App satélite independiente, lee su ruta nativa desacoplada.
-    🟢 REGISTRO DINÁMICO: Incorpora la extracción de ROLE_WEIGHTS soberanos.
+    Resuelve el manifiesto de permisos de una app vía AxentraOSRegistry
+    (apps/shared/manifest_registry.py) — el mismo descubrimiento genérico
+    por AppConfig que ya usa el resto del Core, en vez de asumir la ruta
+    de import de cada satélite a mano.
+
+    Hallazgo real corregido: la versión anterior de esta función asumía
+    `apps.<app_slug>.permissions` para cualquier app que no fuera un
+    submódulo del Core — cierto para satélites que viven DENTRO del
+    paquete `apps` (poco común hoy), pero falso para satélites externos
+    instalados como paquete top-level (`portal`, `situaciones_de_vida`;
+    su ruta real es `portal.permissions`, no `apps.portal.permissions`).
+    Efecto real: `generate_default_permissions()` (usada por
+    apps/security/admin.py al autocompletar `permissions_list` de un rol
+    nuevo) devolvía siempre lista vacía para esos satélites — había que
+    escribirla a mano. AxentraOSRegistry ya resuelve esto bien (lo usa
+    module_manifest/satellite_navigation): primero intenta
+    `apps.<slug>.permissions` (submódulos del Core), si no encuentra cae
+    a `apps.security.permissions`, y además escanea TODAS las apps
+    Django instaladas por `app_config.name + '.permissions'` buscando
+    una clase con `APP_CODE`+`PERMISSIONS` — así encuentra
+    `portal.permissions.TramitesPermissions` sin que nadie tenga que
+    declarar su ruta de antemano.
     """
     app_slug = str(app_slug).strip().lower()
-    
+
     # Escalafón base del sistema operativo para proteger la retrocompatibilidad
     default_weights = {'owner': 100, 'admin': 80, 'editor': 60, 'reviewer': 40, 'viewer': 20}
     fallback_config = {'permissions': {}, 'roles': {}, 'weights': default_weights}
-    
-    # 🏛️ CATÁLOGO DE SUBMÓDULOS DEL NÚCLEO CORE (UNIFICADOS EN DISCO)
-    CORE_SUBMODULES = ['security', 'configuration', 'accounts', 'organigrama']
-    
+
     try:
-        # 🟢 CONMUTADOR COMPUESTO DE INFRAESTRUCTURA:
-        if app_slug in CORE_SUBMODULES:
-            module_path = "apps.security.permissions"
-        else:
-            module_path = f"apps.{app_slug}.permissions"
-            
-        module = import_module(module_path)
-        
-        # Formateador CamelCase dinámico robusto (Ej: dynamic_forms -> DynamicForms)
-        slug_procesado = "".join([word.capitalize() for word in app_slug.split("_")])
-        clases_esperadas = [f"{slug_procesado}Permissions", "ModulePermissions"]
-        
-        for attr_name in clases_esperadas:
-            if hasattr(module, attr_name):
-                clase_permisos = getattr(module, attr_name)
-                return {
-                    'permissions': getattr(clase_permisos, 'PERMISSIONS', {}),
-                    'roles': getattr(clase_permisos, 'ROLE_MAPPING', {}),
-                    'weights': getattr(clase_permisos, 'ROLE_WEIGHTS', default_weights) # ◄── Extracción atómica
-                }
-                
-        # Fallback si el archivo no usa clases y tiene las constantes sueltas
+        clase_permisos = AxentraOSRegistry.get_manifest_by_slug(app_slug)
+        if clase_permisos is None:
+            logger.warning(f"⚠️ El módulo [{app_slug.upper()}] no cuenta con un manifiesto de permisos registrado (APP_CODE + PERMISSIONS en <app>.permissions).")
+            return fallback_config
+
         return {
-            'permissions': getattr(module, 'PERMISSIONS', {}),
-            'roles': getattr(module, 'ROLE_MAPPING', {}),
-            'weights': getattr(module, 'ROLE_WEIGHTS', default_weights)
+            'permissions': getattr(clase_permisos, 'PERMISSIONS', {}),
+            'roles': getattr(clase_permisos, 'ROLE_MAPPING', {}),
+            'weights': getattr(clase_permisos, 'ROLE_WEIGHTS', default_weights) # ◄── Extracción atómica
         }
-    except ModuleNotFoundError:
-        logger.warning(f"⚠️ El módulo [{app_slug.upper()}] no cuenta con un manifiesto permissions.py activo en '{module_path}'.")
-        return fallback_config
     except Exception as e:
-        logger.error(f"❌ Error de introspección en el manifiesto de '{app_slug}' bajo la ruta '{module_path}': {str(e)}")
+        logger.error(f"❌ Error de introspección en el manifiesto de '{app_slug}': {str(e)}")
         return fallback_config
 
 
