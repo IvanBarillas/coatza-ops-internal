@@ -63,8 +63,11 @@
             </div>
         </div>
 
+        {# Hallazgo real (docs/apps/public-municipal-portal.md sección 2): esta leyenda era el
+        único texto de esta página pública que no leía tenant.* — el <title> de arriba ya lo
+        hacía. Pedido explícito del cliente: consistente con ese patrón. #}
         <p class="text-center text-xs font-bold text-gray-400 mt-6 font-mono uppercase tracking-widest z-10">
-            Axentra OS · Control de acceso institucional
+            {{ tenant.app_name|default:"Axentra OS" }} · Control de acceso institucional
         </p>
     </div>
 
