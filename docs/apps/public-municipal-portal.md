@@ -15,32 +15,35 @@ leen estos campos vía `{{ tenant.* }}`. Cualquier instalación real solo necesi
 una fila de `TenantConfig` bien llenada para que el Core deje de mostrar "Axentra"
 en las superficies que ya son tenant-aware — esto no requiere código nuevo.
 
-## 2. Fugas reales encontradas: "Axentra" hardcodeado fuera del alcance de TenantConfig
+## 2. Resuelto en parte: "Axentra" hardcodeado fuera del alcance de TenantConfig
 
 `grep -rn "Axentra" templates/ apps/*/templates/` (excluyendo referencias internas
-de código: nombres de app, `axentra_ui`, `AxentraWorkflows`, comentarios) encuentra
-literales que **ningún valor de `TenantConfig` puede sobreescribir**, porque no usan
+de código: nombres de app, `axentra_ui`, `AxentraWorkflows`, comentarios) encontró
+literales que **ningún valor de `TenantConfig` podía sobreescribir**, porque no usaban
 `{{ tenant.* }}`:
 
 - `templates/errors/403.html:67` — "Axentra OS · Control de acceso institucional".
-  Página de error, visible a cualquier visitante (personal o no).
-- `templates/partials/footer.html:16` — "© 2026 Axentra Security". Este parcial se
-  incluye ampliamente; confirmar su alcance real (¿solo shell autenticado, o también
-  público?) antes de decidir el arreglo.
+  Página de error, visible a cualquier visitante (personal o no). **Corregido**:
+  ahora `{{ tenant.app_name|default:"Axentra OS" }}` — mismo patrón que ya usaba el
+  `<title>` de esa misma página. Sin tenant configurado se sigue viendo "Axentra OS".
+- `templates/partials/footer.html:16` — "© 2026 Axentra Security". Alcance real
+  confirmado (grep de cada `{% include %}`): solo el shell autenticado de personal
+  (`shell/workbench.html` y cada `*_workbench.html`), nunca el portal público.
+  **Corregido igual**: `{{ tenant.app_name|default:"Axentra OS" }}` — el resto del
+  mismo footer (app_name arriba, siglas y RFC) ya leía `tenant.*`, esta era la única
+  línea suelta.
 - `templates/launcher/_content.html:4` — "Axentra OS" como eyebrow del launcher de
-  aplicaciones (ver sección 4, launcher de personal — bajo login, menor prioridad
-  que las dos anteriores pero mismo defecto).
+  aplicaciones (ver sección 4, launcher de personal — bajo login). **Sin tocar**,
+  pedido explícito: menor prioridad, no se corrigió en esta pasada.
 - Menciones adicionales, todas dentro de vistas de personal ya protegidas por login
   (`apps/security/templates/organigrama/...`, `apps/security/templates/security/...`)
   — texto de ayuda/copy interno que menciona "Axentra OS"/"Axentra Security" en
-  contexto administrativo. Menor prioridad: el personal ya sabe qué sistema usa: el
-  riesgo real es de cara al público, no aquí.
+  contexto administrativo. **Sin tocar**, mismo criterio: el riesgo real era de cara
+  al público, ya resuelto arriba.
 
-Antes de corregir: decidir si `footer.html`/`errors/*.html` deben volverse
-tenant-aware (`{{ tenant.app_name|default:"GovStack" }}`, igual que
-`public/index.html`) o si alguna mención de "Axentra" es aceptable a propósito
-(p. ej. un pie de página que reconozca al proveedor sin ser el nombre principal
-visible). No asumido aquí — es decisión de producto, no un bug de sintaxis.
+Decisión de producto tomada: tenant-aware en ambos casos de cara al público, mismo
+patrón que ya usaba `public/index.html` y los propios `<title>` de esas páginas —
+no una atribución fija tipo "powered by Axentra".
 
 ## 3. Precisión de alcance: `/` (`public/index.html`) es la puerta de personal, no del ciudadano
 
