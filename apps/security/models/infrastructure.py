@@ -297,6 +297,28 @@ class TenantConfig(AxentraBaseModel):
         help_text="Controla si el botón flotante de WhatsApp aparece en la portada pública del Core.",
     )
 
+    # Hallazgo real (ver docs/apps/public-municipal-portal.md y la
+    # discusión que lo originó): cada satélite instalado por separado
+    # (ej. axentra-mod-tramites, ConfigMunicipal.aviso_privacidad) venía
+    # duplicando su propio texto legal — un riesgo de cumplimiento real,
+    # no solo desorden: alguien actualiza el aviso en un satélite y se
+    # le olvida en los demás. Vive aquí, en el tenant único de la
+    # instalación, para que exista una sola fuente de verdad legal que
+    # cualquier satélite pueda consultar.
+    aviso_privacidad = models.TextField(
+        "Aviso de Privacidad",
+        blank=True,
+        default="",
+        help_text="Texto legal del aviso de privacidad institucional, visible en el portal público.",
+    )
+
+    politica_cookies = models.TextField(
+        "Política de Cookies",
+        blank=True,
+        default="",
+        help_text="Texto legal de la política de cookies institucional, visible en el portal público.",
+    )
+
     class Meta:
         db_table = "axentra_core_tenant_config"
         verbose_name = "Configuración Institucional"

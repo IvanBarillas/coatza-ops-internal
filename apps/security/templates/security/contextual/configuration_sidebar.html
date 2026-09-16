@@ -18,6 +18,11 @@
             <i data-lucide="landmark" class="h-4 w-4 {% if current_configuration_view == 'security:tenant_config' %}text-white{% else %}text-white/50 group-hover:text-white/80{% endif %}"></i>
             <span>Identidad Institucional</span>
         </a>
+        {% url 'security:privacidad_cookies' as privacidad_cookies_url %}
+        <a href="{{ privacidad_cookies_url }}" hx-get="{{ privacidad_cookies_url }}" hx-target="#page-content" hx-swap="innerHTML" hx-push-url="true" class="group flex min-h-11 items-center gap-3 rounded-xl border-l-4 px-3 py-3 text-xs font-black uppercase tracking-widest transition-colors {% if current_configuration_view == 'security:privacidad_cookies' %}border-brand-accent bg-white/15 text-white{% else %}border-transparent text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
+            <i data-lucide="shield-check" class="h-4 w-4 {% if current_configuration_view == 'security:privacidad_cookies' %}text-white{% else %}text-white/50 group-hover:text-white/80{% endif %}"></i>
+            <span>Privacidad y Cookies</span>
+        </a>
     </nav>
 </aside>
 

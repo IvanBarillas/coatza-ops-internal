@@ -10,6 +10,7 @@ from apps.security.views.security_views import (
     guardar_llaves_json_view,
     inyectar_funcionario_view,
     matrix_capabilities_view,
+    privacidad_cookies_view,
     security_control_panel_view,
     security_applications_view,
     security_dashboard_view,
@@ -46,4 +47,5 @@ urls_security = [
 
     # ⚙️ PILAR 6: Configuración Corporativa Global / Tenant Config
     path("identidad/", tenant_config_view, name="tenant_config"),
+    path("identidad/privacidad-cookies/", privacidad_cookies_view, name="privacidad_cookies"),
 ]

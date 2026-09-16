@@ -179,3 +179,50 @@ class TenantConfigForm(AxentraFormStylerMixin, forms.ModelForm):
             )
 
         return solo_digitos
+
+
+class PrivacidadCookiesForm(AxentraFormStylerMixin, forms.ModelForm):
+    """Formulario aparte del mismo Singleton (TenantConfig) — sección
+    propia de Configuración en vez de una cuarta pestaña dentro de
+    Identidad Institucional (ya tiene tres: Identidad y Marca,
+    Integraciones y Canales, Datos Legales y Fiscales). Fuente única de
+    verdad legal para toda la instalación — ver docs/apps/
+    public-municipal-portal.md: cada satélite instalado por separado
+    duplicaba su propio aviso de privacidad antes de esto."""
+
+    class Meta:
+        model = TenantConfig
+
+        fields = [
+            "aviso_privacidad",
+            "politica_cookies",
+        ]
+
+        widgets = {
+            "aviso_privacidad": forms.Textarea(
+                attrs={
+                    "placeholder": "Texto completo del aviso de privacidad...",
+                    "rows": 10,
+                }
+            ),
+            "politica_cookies": forms.Textarea(
+                attrs={
+                    "placeholder": "Texto completo de la política de cookies...",
+                    "rows": 10,
+                }
+            ),
+        }
+
+        labels = {
+            "aviso_privacidad": "Aviso de privacidad",
+            "politica_cookies": "Política de cookies",
+        }
+
+        help_texts = {
+            "aviso_privacidad": "Fuente única para todo el portal público y cualquier satélite instalado — no se duplica por app.",
+            "politica_cookies": "Fuente única para todo el portal público y cualquier satélite instalado — no se duplica por app.",
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.aplicar_estilos_institucionales()
