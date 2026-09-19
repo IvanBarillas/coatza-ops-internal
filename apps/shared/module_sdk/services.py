@@ -173,6 +173,31 @@ def launcher_cards(user):
     return tuple(cards)
 
 
+def public_directory_cards():
+    """Tarjetas del directorio público (sin sesión) para el ciudadano.
+
+    Solo aparecen los módulos que declaran ``entry_url_publico`` y están
+    habilitados. No usa ``get_module_runtime_status``: su chequeo de salud
+    resuelve ``entry_url`` (ruta de personal) y daría falsos negativos aquí.
+    """
+    cards = []
+    for manifest in module_registry.discover():
+        if not manifest.entry_url_publico:
+            continue
+        module = AppModule.objects.filter(slug=manifest.code, is_deleted=False).first()
+        enabled = module.is_active if module else manifest.default_enabled
+        if not enabled:
+            continue
+        cards.append({
+            "code": manifest.code,
+            "name": manifest.name,
+            "description": manifest.description,
+            "icon": manifest.icon,
+            "url": manifest.entry_url_publico,
+        })
+    return tuple(cards)
+
+
 def module_center_cards(user):
     """Combina productos conocidos con los módulos realmente instalados."""
     installed_cards = {
@@ -325,6 +350,7 @@ __all__ = [
     "launcher_cards",
     "module_center_cards",
     "module_center_summary",
+    "public_directory_cards",
     "set_module_enabled",
     "sync_installed_modules",
     "user_can_open_module",

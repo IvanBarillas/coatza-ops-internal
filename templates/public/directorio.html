@@ -1,0 +1,188 @@
+{% load static %}
+{% load axentra_ui %}
+
+<!DOCTYPE html>
+<html lang="es" class="h-full bg-gray-50">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="description"
+        content="Directorio de servicios digitales de {{ tenant.app_name|default:'Axentra OS' }}"
+    >
+
+    <title>Servicios | {{ tenant.app_name|default:"Axentra OS" }}</title>
+
+    <!-- CSS compilado localmente -->
+    <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
+
+    <!-- Lucide Icons -->
+    <script src="{% static 'js/lucide.min.js' %}"></script>
+
+    {# Variables CSS por institución; las utilidades se compilan en el build. #}
+    <style>
+        :root {
+            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
+            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
+            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+        }
+    </style>
+
+    <style>
+        [x-cloak] {
+            display: none !important;
+        }
+
+        @keyframes fade-in {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fade-in 0.35s ease-out both;
+        }
+    </style>
+</head>
+
+<body class="h-full antialiased bg-gray-50 text-gray-950">
+
+    <div class="min-h-screen bg-gray-50 flex flex-col justify-between select-none animate-fade-in relative overflow-hidden font-sans">
+
+        <!-- ===================================================== -->
+        <!-- BACKGROUND BLOBS                                     -->
+        <!-- ===================================================== -->
+
+        <div class="absolute -top-40 -left-40 w-[600px] h-[600px] bg-brand-primary/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute top-1/2 left-1/3 w-[500px] h-[500px] bg-brand-accent/5 rounded-full blur-3xl pointer-events-none"></div>
+        <div class="absolute -bottom-20 -right-20 w-[600px] h-[600px] bg-brand-secondary/5 rounded-full blur-3xl pointer-events-none"></div>
+
+        <!-- ===================================================== -->
+        <!-- PUBLIC NAVBAR                                        -->
+        <!-- ===================================================== -->
+
+        <nav class="bg-white/80 backdrop-blur-md border-b border-gray-200/80 sticky top-0 z-50 w-full px-6 py-4">
+
+            <div class="max-w-7xl mx-auto flex justify-between items-center">
+
+                <div class="flex items-center gap-3">
+
+                    {% if tenant.logo_light %}
+                        <img
+                            src="{{ tenant.logo_light }}"
+                            alt="Escudo Oficial"
+                            class="w-8 h-8 object-contain"
+                        >
+                    {% else %}
+                        <div class="bg-brand-primary text-white rounded-xl shadow-xs flex items-center justify-center w-8 h-8 font-mono font-black text-xs shrink-0 tracking-tighter">
+                            AX
+                        </div>
+                    {% endif %}
+
+                    <div class="leading-none">
+                        <span class="text-base font-black text-gray-950 tracking-tight uppercase">
+                            {{ tenant.app_name|default:"Axentra" }}
+                        </span>
+                        <span class="text-brand-accent font-light font-mono text-sm ml-0.5">
+                            OS
+                        </span>
+                    </div>
+
+                </div>
+
+                <div class="hidden sm:flex items-center gap-2 font-mono text-xs font-bold text-gray-400 uppercase tracking-wider">
+                    <span class="w-1.5 h-1.5 bg-gray-300 rounded-full"></span>
+                    <span>Estación Pública de Conectividad</span>
+                </div>
+
+            </div>
+
+        </nav>
+
+        <!-- ===================================================== -->
+        <!-- DIRECTORIO DE SERVICIOS                              -->
+        <!-- ===================================================== -->
+
+        <main class="flex-1 w-full max-w-5xl mx-auto px-6 z-10 py-12 space-y-6">
+
+            <section class="space-y-4 text-center">
+                <h1 class="text-4xl sm:text-5xl font-black text-gray-950 tracking-tighter uppercase font-mono leading-none">
+                    Servicios
+                    <span class="text-brand-primary">Digitales</span>
+                </h1>
+                <p class="text-xs sm:text-sm text-gray-400 font-bold font-mono uppercase leading-relaxed max-w-xl mx-auto">
+                    // Elija el servicio que necesita de
+                    <span class="text-gray-700 font-bold">
+                        {{ tenant.entidad_nombre|default:tenant.app_name|default:"su institución" }}
+                    </span>.
+                </p>
+            </section>
+
+            {% if directorio_cards %}
+                <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {% for card in directorio_cards %}
+                        <a
+                            href="{{ card.url }}"
+                            class="group bg-white p-6 rounded-[24px] border border-gray-200/90 shadow-2xs hover:border-brand-primary transition flex flex-col gap-4"
+                        >
+                            <div class="h-10 w-10 rounded-xl bg-brand-primary text-white flex items-center justify-center">
+                                <i data-lucide="{{ card.icon|default:'blocks' }}" class="h-4 w-4"></i>
+                            </div>
+                            <div>
+                                <h2 class="text-base font-bold text-gray-950 font-mono uppercase tracking-tight">
+                                    {{ card.name }}
+                                </h2>
+                                <p class="text-xs text-gray-400 font-mono mt-2 leading-normal">
+                                    {{ card.description }}
+                                </p>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </section>
+            {% else %}
+                <section class="bg-white p-8 rounded-[32px] border border-gray-200/90 shadow-2xs text-center">
+                    <p class="text-xs text-gray-400 font-mono uppercase leading-normal">
+                        // Por ahora no hay servicios en línea disponibles.
+                    </p>
+                </section>
+            {% endif %}
+
+        </main>
+
+        <!-- ===================================================== -->
+        <!-- PUBLIC FOOTER                                        -->
+        <!-- ===================================================== -->
+
+        <footer class="w-full py-4 border-t border-gray-200/60 text-center text-xs font-black font-mono text-gray-400 uppercase tracking-[0.15em] bg-white z-10 shrink-0">
+            &copy; 2026 {{ tenant.app_name|default:"AXENTRA" }} &bull; ARCHITECTURE FRAMEWORK &bull; LICENCIA ACTIVA
+        </footer>
+
+        {% block whatsapp_widget %}
+            {% if tenant.enable_whatsapp_support and tenant.whatsapp_number and tenant.show_whatsapp_on_public_landing %}
+                {% include "components/whatsapp_flotante.html" %}
+            {% endif %}
+        {% endblock whatsapp_widget %}
+
+    </div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            if (typeof lucide !== "undefined") {
+                lucide.createIcons();
+            }
+        });
+    </script>
+
+</body>
+</html>

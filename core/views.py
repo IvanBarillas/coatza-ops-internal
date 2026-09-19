@@ -9,6 +9,7 @@ from apps.shared.module_sdk.launcher import build_launcher_context
 from apps.shared.module_sdk.services import (
     module_center_cards,
     module_center_summary,
+    public_directory_cards,
     set_module_enabled,
 )
 from apps.shared.utils.telemetry import AxentraRadar
@@ -86,3 +87,13 @@ def intro_portal_view(request):
     if request.user.is_authenticated:
         return redirect("index_hub")
     return render(request, "public/index.html")
+
+
+def directorio_publico_view(request):
+    """Directorio público (sin login) de servicios para el ciudadano.
+
+    Complementa ``intro_portal_view``, que es la puerta de personal.
+    """
+    return render(request, "public/directorio.html", {
+        "directorio_cards": public_directory_cards(),
+    })

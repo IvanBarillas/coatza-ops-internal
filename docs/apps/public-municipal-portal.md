@@ -69,49 +69,26 @@ después) cuando llegan al dominio principal de la institución (p. ej.
 enrutamiento por dominio — ver `docs/apps/000_core_architecture.md` sección de
 satélites).
 
-Dirección propuesta, no implementada, requiere definir contrato antes de construir:
+Implementado (contrato aprobado):
 
-- Extender `ModuleManifest` (`apps/shared/module_sdk/contracts.py`) con un campo
-  opcional de entrada pública (p. ej. `entry_url_publico`), distinto de `entry_url`
-  (que es la entrada de personal, dentro del Hub). Un satélite sin entrada pública
-  simplemente no aparece en este directorio — ciudadanía y trámites ya calificarían
-  con lo que ya declaran en sus propios `module_manifest.py` (o su equivalente,
-  dado que hoy viven fuera de este repo como paquetes instalables).
-- Plantilla nueva del Core, análoga a `launcher/_content.html` pero pública (sin
-  `@login_required`), listando solo los satélites que declaren esa entrada pública.
-  No le pertenece a ningún satélite individual — ninguno debe "saber" de los demás
-  — por eso vive en el Core, igual que el launcher de personal.
-- Esta pieza le pertenece al Core porque agrega across satélites; ningún satélite
-  debe implementarla por su cuenta.
+- `ModuleManifest` (`apps/shared/module_sdk/contracts.py`) tiene el campo opcional
+  `entry_url_publico: str = ""`, distinto de `entry_url` (entrada de personal en el Hub).
+  Es texto plano y **nunca** pasa por `reverse()`: puede vivir en otro dominio (mismo
+  criterio que `TRAMITES_PUBLIC_BASE_URL` en Situaciones de Vida). Vacío = el satélite
+  no aparece en el directorio.
+- `public_directory_cards()` (`apps/shared/module_sdk/services.py`) arma las tarjetas a
+  partir de `module_registry.discover()`. Un módulo está habilitado si su fila `AppModule`
+  está activa, o si no hay fila, según `default_enabled`. No reutiliza
+  `get_module_runtime_status()`: su chequeo de salud resuelve `entry_url` (ruta de
+  personal) y daría falsos negativos para una entrada pública.
+- `directorio_publico_view` (`core/views.py`), ruta `/directorio/` (name
+  `directorio_publico`), template `templates/public/directorio.html`. Sin login.
+  **Complementa** `public/index.html` (que sigue siendo la puerta de personal); no la
+  reemplaza.
+- Le pertenece al Core porque agrega across satélites; ningún satélite debe conocer a los
+  demás. Cada satélite solo declara su `entry_url_publico` en su `module_manifest.py`.
+- El dominio público (`digital.<municipio>...`) es infraestructura, fuera de este repo.
+- Pruebas: `apps/shared/tests/test_public_directory.py`.
 
-No se decidió: nombre final de la ruta/plantilla, si reemplaza o complementa
-`public/index.html` en el dominio principal, ni el contrato exacto del nuevo campo
-del manifiesto. Definir antes de tocar código, mismo criterio que el resto de este
-documento y de `docs/roadmap/core-hardening.md`.
-
-## 5. Resuelto: aviso de privacidad y política de cookies, centralizados en el Core
-
-Hallazgo relacionado, encontrado revisando `axentra-mod-tramites`: su modelo
-`ConfigMunicipal` tenía su propio campo `aviso_privacidad` (texto libre) — cada
-satélite instalado por separado duplicaría el mismo contenido legal si necesitara
-lo mismo. No es solo desorden: es un riesgo de cumplimiento real (alguien
-actualiza el aviso legal en un satélite y se le olvida en los demás).
-
-Ya implementado en este repo (`TenantConfig`,
-`apps/security/models/infrastructure.py`): dos campos nuevos,
-`aviso_privacidad` y `politica_cookies`, con su propia sección en Configuración
-— "Privacidad y Cookies", hermana de "Identidad Institucional" en el mismo
-sidebar (`configuration_sidebar.html`), no una cuarta pestaña dentro del
-formulario de identidad (que ya tiene tres: Identidad y Marca, Integraciones y
-Canales, Datos Legales y Fiscales — agregar una más lo sobrecargaba). Mismo
-permiso (`can_configure_tenant`, ya cubre "datos legales") y misma protección
-de reautenticación (`SudoMiddleware`, automática por namespace `security`, sin
-decorador aparte) que el resto de Configuración. Vista: `security:privacidad_cookies`.
-
-**Resuelto también, fuera de este repo:** `axentra-mod-tramites` eliminó su
-`ConfigMunicipal.aviso_privacidad` (pedido explícito del cliente). No hizo
-falta migrar ningún portal público para leer del `TenantConfig` del Core —
-revisando ese repo, el campo no llegaba a renderizarse en ningún template
-(cero referencias fuera de model/form/dto/selector): estaba duplicado *y*
-muerto a la vez. Se quitó sin más, sin reemplazo. Trabajo hecho en ese repo,
-no en este.
+Pendiente: `ciudadania` no tiene `module_manifest.py` (decisión previa: sin panel en el
+Hub), por lo que hoy no aparece en el directorio; ver decisión abierta aparte.
