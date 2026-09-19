@@ -4,7 +4,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from core.views import module_toggle_view
-from core.views import intro_portal_view, index_hub_view
+from core.views import directorio_publico_view, intro_portal_view, index_hub_view
 from apps.shared.module_sdk.routing import satellite_urlpatterns
 
 urlpatterns = [
@@ -13,6 +13,9 @@ urlpatterns = [
 
     # ──► 2. Compuerta Externa de Bienvenida (La raíz real de Axentra OS)
     path('', intro_portal_view, name='intro_portal'),
+
+    # ──► 2b. Directorio público de servicios para el ciudadano (sin login)
+    path('directorio/', directorio_publico_view, name='directorio_publico'),
 
     # ──► 3. Selector Autónomo de Aplicaciones (El Launcher)
     path('index/', index_hub_view, name='index_hub'),

@@ -20,6 +20,9 @@ class ModuleManifest:
     name: str
     description: str
     entry_url: str
+    # URL pública (texto plano) para el directorio del ciudadano. Nunca se
+    # resuelve con reverse(): puede vivir en otro dominio. Vacío = no aparece.
+    entry_url_publico: str = ""
     urlconf: str = ""
     url_prefix: str = ""
     version: str = "1.0.0"
@@ -37,6 +40,7 @@ class ModuleManifest:
         if code in self.dependencies:
             raise ValueError("Un módulo no puede depender de sí mismo.")
         object.__setattr__(self, "code", code)
+        object.__setattr__(self, "entry_url_publico", str(self.entry_url_publico).strip())
         object.__setattr__(
             self,
             "dependencies",
