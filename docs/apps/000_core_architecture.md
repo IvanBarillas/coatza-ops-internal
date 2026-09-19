@@ -184,7 +184,14 @@ Reglas:
 - `url_prefix` no colisiona con otras aplicaciones.
 - `dependencies` contiene requisitos obligatorios.
 - `optional_integrations` nunca impide arrancar el módulo.
+- `entry_url_publico` (opcional) es la entrada para el ciudadano en `/directorio/`:
+  texto plano, nunca `reverse()`. `descripcion_publica` (opcional) es el texto para
+  el ciudadano; vacío usa `description`. Ver `docs/apps/public-municipal-portal.md`.
 - Ningún manifiesto importa modelos de otro satélite.
+
+Un paquete **sin panel de personal** (p. ej. Ciudadanía) no lleva manifiesto: si quiere
+aparecer en el directorio público publica `<app>/public_entry.py` con
+`get_public_entry() -> PublicEntry | None`. No crea `AppModule` ni tarjeta en el Hub.
 
 El Core descubre el archivo. No se agrega un `include()` por cada satélite en
 `core/urls.py`.

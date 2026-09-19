@@ -39,6 +39,7 @@ class ModuleRegistry:
         self._items = OrderedDict()
         self._lock = RLock()
         self._discovered = False
+        self._public_providers = None
         for manifest in BUILTIN_MODULES:
             self.register(manifest)
 
@@ -88,6 +89,29 @@ class ModuleRegistry:
                 ))
             self._discovered = True
             return self.all()
+
+    def public_entry_providers(self):
+        """Funciones ``get_public_entry`` de las apps instaladas.
+
+        Se descubren en ``<app>.public_entry``, igual que ``module_manifest``
+        pero sin registrar módulo alguno: es solo para el directorio público.
+        """
+        with self._lock:
+            if self._public_providers is None:
+                providers = []
+                for app_config in apps.get_app_configs():
+                    module_path = f"{app_config.name}.public_entry"
+                    try:
+                        module = importlib.import_module(module_path)
+                    except ModuleNotFoundError as exc:
+                        if exc.name != module_path:
+                            logger.exception("Error importando %s", module_path)
+                        continue
+                    provider = getattr(module, "get_public_entry", None)
+                    if callable(provider):
+                        providers.append((app_config.name, provider))
+                self._public_providers = tuple(providers)
+            return self._public_providers
 
     def get(self, code):
         self.discover()

@@ -23,6 +23,9 @@ class ModuleManifest:
     # URL pública (texto plano) para el directorio del ciudadano. Nunca se
     # resuelve con reverse(): puede vivir en otro dominio. Vacío = no aparece.
     entry_url_publico: str = ""
+    # Texto para el ciudadano en el directorio público; vacío = usa description
+    # (que suele estar redactada para el personal).
+    descripcion_publica: str = ""
     urlconf: str = ""
     url_prefix: str = ""
     version: str = "1.0.0"
@@ -41,6 +44,7 @@ class ModuleManifest:
             raise ValueError("Un módulo no puede depender de sí mismo.")
         object.__setattr__(self, "code", code)
         object.__setattr__(self, "entry_url_publico", str(self.entry_url_publico).strip())
+        object.__setattr__(self, "descripcion_publica", str(self.descripcion_publica).strip())
         object.__setattr__(
             self,
             "dependencies",
@@ -51,6 +55,30 @@ class ModuleManifest:
             "optional_integrations",
             tuple(str(item).strip().lower() for item in self.optional_integrations),
         )
+
+
+@dataclass(frozen=True, slots=True)
+class PublicEntry:
+    """Entrada del directorio público de quien NO es un módulo del Hub.
+
+    Para paquetes sin panel de personal (p. ej. Ciudadanía): no genera
+    ``AppModule`` ni tarjeta en el Hub. ``url`` es texto plano, nunca pasa
+    por ``reverse()``. Se publica desde ``<app>.public_entry.get_public_entry``.
+    """
+
+    code: str
+    name: str
+    description: str
+    url: str
+    icon: str = "blocks"
+
+    def __post_init__(self):
+        code = str(self.code).strip().lower()
+        if not code or not code.replace("_", "").replace("-", "").isalnum():
+            raise ValueError("La entrada pública requiere un código técnico válido.")
+        object.__setattr__(self, "code", code)
+        object.__setattr__(self, "url", str(self.url).strip())
+        object.__setattr__(self, "description", str(self.description).strip())
 
 
 @dataclass(frozen=True, slots=True)
@@ -72,4 +100,5 @@ __all__ = [
     "ModuleKind",
     "ModuleManifest",
     "ModuleRuntimeStatus",
+    "PublicEntry",
 ]
