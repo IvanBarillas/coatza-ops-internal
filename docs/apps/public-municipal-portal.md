@@ -88,7 +88,14 @@ Implementado (contrato aprobado):
 - Le pertenece al Core porque agrega across satélites; ningún satélite debe conocer a los
   demás. Cada satélite solo declara su `entry_url_publico` en su `module_manifest.py`.
 - El dominio público (`digital.<municipio>...`) es infraestructura, fuera de este repo.
+- `descripcion_publica` (opcional, en el manifiesto): texto en lenguaje de ciudadano para
+  la tarjeta; si está vacío se usa `description`, que suele estar escrita para personal.
+- **Paquetes sin panel de personal** (Ciudadanía): no tienen `module_manifest.py` ni
+  `AppModule`. Publican `<app>/public_entry.py` con
+  `get_public_entry() -> PublicEntry | None` (`PublicEntry` en `apps.shared.module_sdk`).
+  El Core lo descubre en `module_registry.public_entry_providers()` y lo llama en cada
+  petición, así una setting (p. ej. `CIUDADANIA_HABILITADA`) lo apaga sin reiniciar.
+  `None` o `url` vacía = no aparece. Un proveedor que falla se registra en el log y no
+  tumba el directorio; si el `code` coincide con un módulo, gana el módulo. No hay
+  interruptor en el Hub para estas entradas: el de cada paquete es el suyo.
 - Pruebas: `apps/shared/tests/test_public_directory.py`.
-
-Pendiente: `ciudadania` no tiene `module_manifest.py` (decisión previa: sin panel en el
-Hub), por lo que hoy no aparece en el directorio; ver decisión abierta aparte.

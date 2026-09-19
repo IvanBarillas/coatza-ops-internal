@@ -6,6 +6,7 @@ from .contracts import (
     ModuleKind,
     ModuleManifest,
     ModuleRuntimeStatus,
+    PublicEntry,
 )
 from .registry import module_registry, register_module
 
@@ -14,6 +15,7 @@ __all__ = [
     "ModuleKind",
     "ModuleManifest",
     "ModuleRuntimeStatus",
+    "PublicEntry",
     "ModuleCatalogEntry",
     "available_module_catalog",
     "module_registry",

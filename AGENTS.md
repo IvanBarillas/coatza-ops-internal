@@ -108,7 +108,10 @@ Revisar estado y ramas antes de editar; preservar cambios del usuario. Trabajar 
 una rama `fix/...` o `feature/...` desde `develop`. `main` es estable y `develop`
 integración: deben recibir los mismos cambios al cerrar una entrega, no mediante
 reescritura forzada de historia. No mover ramas históricas solo para alinearlas.
-No publicar ni fusionar cambios sin autorización del usuario.
+El flujo del workspace (ver `../AGENTS.md`) incluye el merge a `develop` y `main` y el
+push de ambas: hacerlo sin pedir confirmación cada vez, tras pruebas y prueba en vivo.
+Sí requiere autorización explícita: force-push, reescribir historia, publicar ramas
+de trabajo ajenas al flujo o abrir PR.
 
 Actualizar README si cambian instalación, configuración, build o despliegue;
 actualizar este contexto y la arquitectura cuando cambien sus contratos. Explicar
@@ -137,7 +140,8 @@ las autorizaciones; aplicarla antes de utilizar este contrato.
 Épica OP#37: ramas `feature/OP-38-identidad-password-correo`,
 `feature/OP-39-sesiones-panel-revocacion`, `feature/OP-40-privilegios-sudo-reauth`.
 Commits citan la subtarea y OP#37; cuerpos de PR incluyen `Closes OP#38`/39/40 y
-resultados de pruebas. Trabajo local: no hacer push ni publicar PR sin nueva autorización.
+resultados de pruebas. Estas tres ramas (aún sin integrar) siguen locales: no hacer push
+de ellas ni publicar PR sin nueva autorización; el push de `main`/`develop` no las incluye.
 Ver `docs/apps/identity-security.md`: middleware de ciclo de identidad, MFA TOTP,
 verificación de correo y cambio inicial. No omitir esos controles en nuevas rutas.
 

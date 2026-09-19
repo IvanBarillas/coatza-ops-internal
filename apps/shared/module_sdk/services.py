@@ -1,4 +1,6 @@
 
+import logging
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
 from django.urls import NoReverseMatch, reverse
@@ -7,9 +9,11 @@ from django.utils import timezone
 from apps.security.models import AppModule, UserAppRole
 from apps.security.models.audit import SecurityAuditLog
 
-from .contracts import ModuleHealth, ModuleRuntimeStatus
+from .contracts import ModuleHealth, ModuleRuntimeStatus, PublicEntry
 from .catalog import available_module_catalog
 from .registry import module_registry
+
+logger = logging.getLogger(__name__)
 
 
 def sync_installed_modules():
@@ -176,11 +180,13 @@ def launcher_cards(user):
 def public_directory_cards():
     """Tarjetas del directorio público (sin sesión) para el ciudadano.
 
-    Solo aparecen los módulos que declaran ``entry_url_publico`` y están
-    habilitados. No usa ``get_module_runtime_status``: su chequeo de salud
-    resuelve ``entry_url`` (ruta de personal) y daría falsos negativos aquí.
+    Dos fuentes: módulos con ``entry_url_publico`` que estén habilitados, y
+    entradas publicadas por ``<app>.public_entry`` (paquetes sin panel en el
+    Hub, como Ciudadanía). No usa ``get_module_runtime_status``: su chequeo de
+    salud resuelve ``entry_url`` (ruta de personal) y daría falsos negativos.
     """
     cards = []
+    seen = set()
     for manifest in module_registry.discover():
         if not manifest.entry_url_publico:
             continue
@@ -188,12 +194,35 @@ def public_directory_cards():
         enabled = module.is_active if module else manifest.default_enabled
         if not enabled:
             continue
+        seen.add(manifest.code)
         cards.append({
             "code": manifest.code,
             "name": manifest.name,
-            "description": manifest.description,
+            "description": manifest.descripcion_publica or manifest.description,
             "icon": manifest.icon,
             "url": manifest.entry_url_publico,
+        })
+    for app_name, provider in module_registry.public_entry_providers():
+        # Un satélite roto no debe tumbar el directorio de los demás.
+        try:
+            entry = provider()
+        except Exception:
+            logger.exception("Falló %s.public_entry.get_public_entry", app_name)
+            continue
+        if entry is None:
+            continue
+        if not isinstance(entry, PublicEntry):
+            logger.error("%s.public_entry no devolvió PublicEntry", app_name)
+            continue
+        if not entry.url or entry.code in seen:
+            continue
+        seen.add(entry.code)
+        cards.append({
+            "code": entry.code,
+            "name": entry.name,
+            "description": entry.description,
+            "icon": entry.icon,
+            "url": entry.url,
         })
     return tuple(cards)
 
