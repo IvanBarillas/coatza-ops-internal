@@ -187,11 +187,20 @@ Reglas:
 - `entry_url_publico` (opcional) es la entrada para el ciudadano en `/directorio/`:
   texto plano, nunca `reverse()`. `descripcion_publica` (opcional) es el texto para
   el ciudadano; vacío usa `description`. Ver `docs/apps/public-municipal-portal.md`.
+- `api_urlconf`/`api_prefix` (opcionales): la API servicio-a-servicio del satélite (django-ninja, `X-API-Key`
+  = `INTERNAL_API_KEY`); el Core la monta junto al Hub en `satellite_urlpatterns()`. Varios satélites pueden
+  compartir `api/v1/` si sus rutas y el `urls_namespace` de cada API no chocan.
+- `public_urlconf`/`public_prefix` (opcionales): las vistas públicas (sin login) del satélite; el Core las monta bajo
+  el prefijo en `core.urls_publico`, el urlconf del dominio del ciudadano. Nunca comparten urlconf con el panel
+  (un mismo `app_name` público y de panel no puede convivir en un urlconf). Ver
+  [docs/deployment/satellites-real-installation.md](../deployment/satellites-real-installation.md).
 - Ningún manifiesto importa modelos de otro satélite.
 
 Un paquete **sin panel de personal** (p. ej. Ciudadanía) no lleva manifiesto: si quiere
 aparecer en el directorio público publica `<app>/public_entry.py` con
-`get_public_entry() -> PublicEntry | None`. No crea `AppModule` ni tarjeta en el Hub.
+`get_public_entry() -> PublicEntry | None`. No crea `AppModule` ni tarjeta en el Hub. Si además tiene vistas
+públicas, publica en el mismo archivo las constantes estáticas `PUBLIC_URLCONF` y `PUBLIC_PREFIX` (estáticas porque el
+urlconf se arma una vez al arrancar y `get_public_entry()` se evalúa por petición).
 
 El Core descubre el archivo. No se agrega un `include()` por cada satélite en
 `core/urls.py`.
@@ -557,7 +566,8 @@ redacción básica de campos sensibles.
 
 ## 17. Incorporación de un satélite
 
-1. Incorporar su paquete y AppConfig en el proyecto de despliegue.
+1. Incorporar su paquete y AppConfig en el proyecto de despliegue (en una instalación real, por entorno:
+   `AXENTRA_EXTRA_APPS`, sin editar `core/settings/base.py`).
 2. Publicar `module_manifest.py`.
 3. Publicar `permissions.py`.
 4. Exponer `urlconf` propio con namespace.

@@ -1,0 +1,25 @@
+# PostgreSQL 16 normal (los satélites no usan GIS), NUEVO y SEPARADO de hermes-tramites-db.
+# Contraseña por podman secret; solo en la red interna axentra-core-net (no publica puertos).
+[Unit]
+Description=Axentra Core - PostgreSQL (entorno semi real DEV)
+
+[Container]
+ContainerName=axentra-core-db
+Image=docker.io/library/postgres:16-alpine
+Network=axentra-core-net.network
+Volume=axentra-core-db.volume:/var/lib/postgresql/data
+Environment=POSTGRES_USER=axentra
+Environment=POSTGRES_DB=axentra
+Secret=axentra_core_db_password,type=env,target=POSTGRES_PASSWORD
+HealthCmd=pg_isready -U axentra -d axentra
+HealthInterval=10s
+HealthTimeout=5s
+HealthRetries=10
+HealthStartPeriod=20s
+
+[Service]
+Restart=always
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target
