@@ -1,0 +1,21 @@
+# Worker de Django-Q2 (correo asíncrono): misma imagen que la web, otro comando. Sin Traefik ni puertos.
+[Unit]
+Description=Axentra Core - worker de tareas (entorno semi real DEV)
+Requires=axentra-core-db.service
+After=axentra-core-db.service
+
+[Container]
+ContainerName=axentra-core-worker
+Image=localhost/axentra-core:dev
+Network=axentra-core-net.network
+EnvironmentFile=%h/.config/axentra-core/axentra-core.env
+Secret=axentra_core_secret_key,type=env,target=SECRET_KEY
+Secret=axentra_core_database_url,type=env,target=DATABASE_URL
+Volume=axentra-core-logs.volume:/app/logs
+Exec=python manage.py qcluster
+
+[Service]
+Restart=always
+
+[Install]
+WantedBy=default.target

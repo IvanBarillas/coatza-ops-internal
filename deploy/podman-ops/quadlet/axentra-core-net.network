@@ -1,0 +1,4 @@
+# Red propia web <-> BD del Core. Interna: la BD no sale a internet ni comparte red con nadie más.
+[Network]
+NetworkName=axentra-core-net
+Internal=true

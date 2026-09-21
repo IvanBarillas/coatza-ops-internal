@@ -117,6 +117,16 @@ Actualizar README si cambian instalación, configuración, build o despliegue;
 actualizar este contexto y la arquitectura cuando cambien sus contratos. Explicar
 qué cambió, qué pruebas pasaron y qué verificaciones quedaron pendientes.
 
+## Satélites en una instalación real
+
+Todo por entorno y opcional (el Core arranca sin satélites y sin estas variables): `AXENTRA_EXTRA_APPS` (apps a
+instalar), `AXENTRA_HOST_URLCONFS` (`host=urlconf`; `HostUrlconfMiddleware` va primero en `MIDDLEWARE`),
+`INTERNAL_API_KEY`, `<NOMBRE>_PUBLIC_BASE_URL` y `SECURE_REDIRECT_EXEMPT` (producción). El manifiesto suma
+`api_urlconf`/`api_prefix` y `public_urlconf`/`public_prefix`; `core/urls_publico.py` es la superficie del ciudadano
+(sin Hub, sin `/app/`, sin API). Un solo dominio ciudadano = una sola sesión: no repartir Trámites, Situaciones y
+Ciudadanía en dominios distintos. Comprobaciones `axentra.E001/E002/E003/W001/W002`. Despliegue con Podman/Quadlet:
+`deploy/podman-ops/` (RUNBOOK). Contrato: `docs/deployment/satellites-real-installation.md`.
+
 ## Hoja de ruta activa
 
 Consultar `docs/roadmap/core-hardening.md` para fases, decisiones pendientes y

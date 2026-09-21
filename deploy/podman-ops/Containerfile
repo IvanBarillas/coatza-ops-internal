@@ -1,0 +1,58 @@
+# Imagen del Core con los satélites (Trámites, Situaciones de Vida, Ciudadanía).
+# Se construye con deploy/podman-ops/build.sh, que arma los contextos con `git archive`
+# (solo archivos versionados: nunca .env, .venv ni bases locales) y pasa cada satélite como
+# contexto con nombre (`--build-context tramites=...`). No ejecuta migraciones ni crea usuarios.
+FROM python:3.13-slim
+
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_LINK_MODE=copy
+
+WORKDIR /app
+
+# Usuario sin privilegios (compatible con podman rootless).
+RUN groupadd --gid 1000 axentra \
+    && useradd --uid 1000 --gid axentra --create-home --shell /usr/sbin/nologin axentra
+
+# Dependencias del Core, exactamente las de uv.lock.
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-cache
+
+# Los satélites se instalan como paquetes (su `packages = [...]` decide qué se distribuye).
+# Sus dependencias propias (django-quill-editor, img2pdf, ...) se resuelven aquí y la lista
+# exacta queda en /app/requirements-imagen.txt. Sin el extra [redis]: el espejo sigue apagado.
+COPY --from=tramites . /satellites/tramites
+COPY --from=situaciones . /satellites/situaciones
+COPY --from=ciudadania . /satellites/ciudadania
+RUN uv pip install --python /app/.venv/bin/python --no-cache \
+        /satellites/tramites /satellites/situaciones /satellites/ciudadania \
+    && uv pip freeze --python /app/.venv/bin/python > /app/requirements-imagen.txt \
+    && rm -rf /satellites
+
+COPY . .
+
+# El Core (settings) incorpora los satélites por entorno: sin esta variable la imagen sería
+# solo el Core. Se puede sobrescribir en tiempo de ejecución.
+ENV PATH="/app/.venv/bin:$PATH" \
+    AXENTRA_EXTRA_APPS="django_quill,portal.apps.PortalConfig,situaciones_de_vida,ciudadania" \
+    DJANGO_ENV=prod \
+    DJANGO_SETTINGS_MODULE=core.settings.production
+
+# CSS del Core (CLI fijado y verificado) y estáticos de Core + satélites (WhiteNoise).
+# El CSS compilado de cada satélite va versionado en su repo.
+RUN python tools/tailwind.py install \
+    && python tools/tailwind.py build \
+    && rm -rf .tools
+RUN DJANGO_ENV=build DJANGO_SETTINGS_MODULE=core.settings.development python manage.py collectstatic --noinput
+
+COPY deploy/podman-ops/healthcheck.py /usr/local/bin/axentra-healthcheck
+
+RUN mkdir -p /app/staticfiles /app/media /app/logs /app/sent_emails \
+    && chown -R axentra:axentra /app
+
+USER axentra
+EXPOSE 8000
+
+CMD ["gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

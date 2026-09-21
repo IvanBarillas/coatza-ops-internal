@@ -1,0 +1,54 @@
+# Core + satélites (web). Sirve DOS dominios con la MISMA imagen:
+#   digital-dev.axentra.com.mx   -> Hub, directorio, dashboards (API interna solo por la red, no por Traefik)
+#   ciudadano-dev.axentra.com.mx -> superficie pública (core.urls_publico): directorio, /tramites/, /situaciones/, /ciudadano/
+# Hermes llama a la API por la red frontend: http://axentra-core:8000/api/v1/...
+[Unit]
+Description=Axentra Core + satélites - web (entorno semi real DEV)
+Requires=axentra-core-db.service
+After=axentra-core-db.service
+
+[Container]
+ContainerName=axentra-core
+Image=localhost/axentra-core:dev
+# frontend: Traefik y Hermes. axentra-core-net: la BD. Traefik debe usar frontend (2 redes).
+Network=frontend
+Network=axentra-core-net.network
+EnvironmentFile=%h/.config/axentra-core/axentra-core.env
+Secret=axentra_core_secret_key,type=env,target=SECRET_KEY
+Secret=axentra_core_database_url,type=env,target=DATABASE_URL
+Secret=axentra_core_internal_api_key,type=env,target=INTERNAL_API_KEY
+Volume=axentra-core-media.volume:/app/media
+Volume=axentra-core-logs.volume:/app/logs
+HealthCmd=python /usr/local/bin/axentra-healthcheck
+HealthInterval=30s
+HealthTimeout=5s
+HealthRetries=3
+HealthStartPeriod=40s
+
+# --- Traefik (mismo patrón que hermes-api) --------------------------------------------------
+Label=traefik.enable=true
+Label=traefik.docker.network=frontend
+Label=traefik.http.services.axentra-core.loadbalancer.server.port=8000
+
+# Personal (Hub, directorio, dashboards). /api/ NO se expone por Traefik: la API es de servicio a servicio.
+Label="traefik.http.routers.axentra-digital.rule=Host(`digital-dev.axentra.com.mx`) && !PathPrefix(`/api/`)"
+Label=traefik.http.routers.axentra-digital.entrypoints=websecure
+Label=traefik.http.routers.axentra-digital.middlewares=corporate-hardening@file
+Label=traefik.http.routers.axentra-digital.tls=true
+Label=traefik.http.routers.axentra-digital.tls.certresolver=cloudflare-dns
+Label=traefik.http.routers.axentra-digital.service=axentra-core
+
+# Ciudadano (público). El urlconf compuesto no contiene /api/ ni el panel.
+Label="traefik.http.routers.axentra-ciudadano.rule=Host(`ciudadano-dev.axentra.com.mx`)"
+Label=traefik.http.routers.axentra-ciudadano.entrypoints=websecure
+Label=traefik.http.routers.axentra-ciudadano.middlewares=corporate-hardening@file
+Label=traefik.http.routers.axentra-ciudadano.tls=true
+Label=traefik.http.routers.axentra-ciudadano.tls.certresolver=cloudflare-dns
+Label=traefik.http.routers.axentra-ciudadano.service=axentra-core
+
+[Service]
+Restart=always
+TimeoutStartSec=180
+
+[Install]
+WantedBy=default.target

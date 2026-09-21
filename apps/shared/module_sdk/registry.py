@@ -5,7 +5,7 @@ from threading import RLock
 
 from django.apps import apps
 
-from .contracts import ModuleKind, ModuleManifest
+from .contracts import ModuleKind, ModuleManifest, PublicSurface
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +40,7 @@ class ModuleRegistry:
         self._lock = RLock()
         self._discovered = False
         self._public_providers = None
+        self._public_entry_modules = None
         for manifest in BUILTIN_MODULES:
             self.register(manifest)
 
@@ -90,6 +91,21 @@ class ModuleRegistry:
             self._discovered = True
             return self.all()
 
+    def _load_public_entry_modules(self):
+        """Módulos ``<app>.public_entry`` de las apps instaladas (con caché)."""
+        with self._lock:
+            if self._public_entry_modules is None:
+                modules = []
+                for app_config in apps.get_app_configs():
+                    module_path = f"{app_config.name}.public_entry"
+                    try:
+                        modules.append((app_config.name, importlib.import_module(module_path)))
+                    except ModuleNotFoundError as exc:
+                        if exc.name != module_path:
+                            logger.exception("Error importando %s", module_path)
+                self._public_entry_modules = tuple(modules)
+            return self._public_entry_modules
+
     def public_entry_providers(self):
         """Funciones ``get_public_entry`` de las apps instaladas.
 
@@ -98,20 +114,32 @@ class ModuleRegistry:
         """
         with self._lock:
             if self._public_providers is None:
-                providers = []
-                for app_config in apps.get_app_configs():
-                    module_path = f"{app_config.name}.public_entry"
-                    try:
-                        module = importlib.import_module(module_path)
-                    except ModuleNotFoundError as exc:
-                        if exc.name != module_path:
-                            logger.exception("Error importando %s", module_path)
-                        continue
-                    provider = getattr(module, "get_public_entry", None)
-                    if callable(provider):
-                        providers.append((app_config.name, provider))
-                self._public_providers = tuple(providers)
+                self._public_providers = tuple(
+                    (name, provider)
+                    for name, module in self._load_public_entry_modules()
+                    if callable(provider := getattr(module, "get_public_entry", None))
+                )
             return self._public_providers
+
+    def public_surfaces(self):
+        """Vistas públicas que las apps instaladas montan en la superficie ciudadana.
+
+        Vienen del manifiesto (``public_urlconf``/``public_prefix``) o, en
+        paquetes sin panel, de las constantes ``PUBLIC_URLCONF``/``PUBLIC_PREFIX``
+        de ``<app>.public_entry``. Un manifiesto gana si el ``code`` coincide.
+        """
+        surfaces = OrderedDict()
+        for name, module in self._load_public_entry_modules():
+            urlconf = getattr(module, "PUBLIC_URLCONF", "")
+            if urlconf:
+                code = name.rsplit(".", 1)[-1]
+                surfaces[code] = PublicSurface(code, urlconf, getattr(module, "PUBLIC_PREFIX", ""))
+        for manifest in self.discover():
+            if manifest.public_urlconf:
+                surfaces[manifest.code] = PublicSurface(
+                    manifest.code, manifest.public_urlconf, manifest.public_prefix
+                )
+        return tuple(surfaces.values())
 
     def get(self, code):
         self.discover()

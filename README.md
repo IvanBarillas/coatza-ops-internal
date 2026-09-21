@@ -104,6 +104,15 @@ pasos operativos independientes; el build no modifica la base de datos.
 En desarrollo con contenedores, ejecutar `watch` en el host (el repositorio está
 montado en `/app`); consultar `docker-compose.dev.yml` para `.env.container`.
 
+## Núcleo + satélites en Podman (entorno semi real)
+
+`deploy/podman-ops/` trae el `Containerfile` que instala el Core con los satélites (Trámites, Situaciones de Vida, Ciudadanía),
+`build.sh` (usa `git archive`: solo archivos versionados), los units Quadlet (web, worker y PostgreSQL 16 propio, con Traefik y
+secretos por `podman secret`), el script de paridad contra la app original de Trámites y el `RUNBOOK.md` con los comandos exactos.
+El contrato de superficies (dos dominios, `AXENTRA_EXTRA_APPS`, `AXENTRA_HOST_URLCONFS`, `api_urlconf`, `public_urlconf`) está en
+`docs/deployment/satellites-real-installation.md`. El `Dockerfile`/`docker-compose.prod.yml` de arriba siguen siendo el despliegue
+del Core solo.
+
 ## Ramas y contexto para agentes
 
 `main` representa la versión estable y `develop` la integración. Crear ramas
