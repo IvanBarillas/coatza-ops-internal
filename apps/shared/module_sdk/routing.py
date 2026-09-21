@@ -20,4 +20,14 @@ def satellite_urlpatterns():
     return patterns
 
 
-__all__ = ["satellite_urlpatterns"]
+def public_urlpatterns():
+    """Vistas públicas de los satélites instalados, cada una bajo su prefijo.
+
+    Es lo que sirve ``core.urls_publico`` en el dominio del ciudadano; nunca se
+    mezcla con el urlconf de personal (los ``app_name`` públicos y de panel de un
+    mismo satélite pueden coincidir).
+    """
+    return [path(surface.prefix, include(surface.urlconf)) for surface in module_registry.public_surfaces()]
+
+
+__all__ = ["public_urlpatterns", "satellite_urlpatterns"]

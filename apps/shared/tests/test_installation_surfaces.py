@@ -185,3 +185,114 @@ class EnvironmentSettingsTests(SimpleTestCase):
             module="core.settings.production", SECURE_REDIRECT_EXEMPT="^api/v1/",
         )
         self.assertEqual(exempt.returncode, 0, exempt.stderr)
+
+
+# ── Superficie pública (segunda entrega) ─────────────────────────────────────
+import importlib
+from types import SimpleNamespace
+
+from django.urls import clear_url_caches
+
+from apps.shared.module_sdk import PublicSurface
+from apps.shared.module_sdk.registry import ModuleRegistry
+from apps.shared.module_sdk.routing import public_urlpatterns
+
+
+class PublicSurfaceContractTests(SimpleTestCase):
+    def test_manifest_public_surface_is_optional(self):
+        m = manifest()
+        self.assertEqual((m.public_urlconf, m.public_prefix), ("", ""))
+
+    def test_public_prefix_is_normalized_and_required(self):
+        self.assertEqual(manifest(public_urlconf="x.y", public_prefix="/tramites").public_prefix, "tramites/")
+        with self.assertRaises(ValueError):
+            manifest(public_urlconf="x.y")
+        with self.assertRaises(ValueError):
+            PublicSurface("x", "x.y", "/")
+
+
+class RegistryPublicSurfacesTests(SimpleTestCase):
+    def registry_with(self, manifests=(), modules=()):
+        registry = ModuleRegistry()
+        registry.discover = lambda force=False: tuple(manifests)
+        registry._public_entry_modules = tuple(modules)
+        return registry
+
+    def test_surface_from_a_manifest(self):
+        registry = self.registry_with(manifests=[manifest("tramites", public_urlconf="p.urls", public_prefix="tramites")])
+        self.assertEqual(registry.public_surfaces(), (PublicSurface("tramites", "p.urls", "tramites/"),))
+
+    def test_surface_from_a_package_without_panel_uses_static_constants(self):
+        module = SimpleNamespace(PUBLIC_URLCONF="ciudadania.urls", PUBLIC_PREFIX="ciudadano/")
+        registry = self.registry_with(modules=[("ciudadania", module)])
+        self.assertEqual(registry.public_surfaces(), (PublicSurface("ciudadania", "ciudadania.urls", "ciudadano/"),))
+
+    def test_public_entry_without_constants_mounts_nothing(self):
+        registry = self.registry_with(modules=[("ciudadania", SimpleNamespace(get_public_entry=lambda: None))])
+        self.assertEqual(registry.public_surfaces(), ())
+
+    def test_manifest_wins_over_a_package_with_the_same_code(self):
+        module = SimpleNamespace(PUBLIC_URLCONF="viejo.urls", PUBLIC_PREFIX="viejo/")
+        registry = self.registry_with(
+            manifests=[manifest("ciudadania", public_urlconf="nuevo.urls", public_prefix="nuevo")],
+            modules=[("ciudadania", module)],
+        )
+        self.assertEqual(registry.public_surfaces(), (PublicSurface("ciudadania", "nuevo.urls", "nuevo/"),))
+
+    def test_public_urlpatterns_use_each_prefix(self):
+        surfaces = (PublicSurface("a", "apps.shared.tests.urls_publico_fake", "a/"),)
+        with patch("apps.shared.module_sdk.routing.module_registry.public_surfaces", return_value=surfaces):
+            self.assertEqual([str(p.pattern) for p in public_urlpatterns()], ["a/"])
+
+
+class PublicHostIntegrationTests(TestCase):
+    """El dominio ciudadano sirve el directorio y las vistas públicas, y nada del personal."""
+
+    hosts = {"ciudadano.test": "core.urls_publico"}
+
+    def setUp(self):
+        import core.urls_publico
+
+        def recargar_urlconf():
+            importlib.reload(core.urls_publico)
+            clear_url_caches()
+
+        # LIFO: primero se deja de parchear y después se recarga el urlconf real.
+        self.addCleanup(recargar_urlconf)
+        surfaces = (PublicSurface("demo", "apps.shared.tests.urls_publico_fake", "demo/"),)
+        patcher = patch("apps.shared.module_sdk.routing.module_registry.public_surfaces", return_value=surfaces)
+        patcher.start()
+        self.addCleanup(patcher.stop)
+        recargar_urlconf()
+        override = override_settings(
+            AXENTRA_HOST_URLCONFS=self.hosts, ALLOWED_HOSTS=["ciudadano.test", "digital.test", "testserver"]
+        )
+        override.enable()
+        self.addCleanup(override.disable)
+
+    def get(self, path, host="ciudadano.test"):
+        return self.client.get(path, HTTP_HOST=host)
+
+    def test_satellite_public_views_are_served_under_their_prefix(self):
+        response = self.get("/demo/hola/")
+        self.assertEqual((response.status_code, response.content), (200, b"hola-publico"))
+
+    def test_root_and_directory_are_public(self):
+        self.assertEqual(self.get("/").status_code, 200)
+        self.assertEqual(self.get("/directorio/").status_code, 200)
+
+    def test_staff_surface_is_not_reachable_from_the_public_host(self):
+        for path in ("/index/", "/app/", "/api/v1/tramites/buscar"):
+            with self.subTest(path=path):
+                self.assertEqual(self.get(path).status_code, 404)
+
+    def test_public_views_are_not_served_from_the_staff_host(self):
+        self.assertEqual(self.get("/demo/hola/", host="digital.test").status_code, 404)
+
+
+class PublicPrefixCheckTests(SimpleTestCase):
+    @override_settings(AXENTRA_HOST_URLCONFS={}, INTERNAL_API_KEY="k")
+    def test_duplicated_public_prefix_is_an_error(self):
+        surfaces = (PublicSurface("a", "x.urls", "p/"), PublicSurface("b", "y.urls", "p/"))
+        with patch("apps.shared.module_sdk.registry.module_registry.public_surfaces", return_value=surfaces):
+            self.assertEqual([i.id for i in check_installation_surfaces(None)], ["axentra.E003"])

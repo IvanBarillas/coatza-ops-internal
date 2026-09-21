@@ -47,6 +47,14 @@ class ModuleManifest:
     # monta nada. Prefijo sin "/" inicial y con "/" final (se normaliza).
     api_urlconf: str = ""
     api_prefix: str = "api/v1/"
+    # Vistas públicas (sin login) del satélite, en la superficie ciudadana de la
+    # instalación: el Core las monta bajo ``public_prefix`` en el urlconf que
+    # sirve el dominio del ciudadano (``core.urls_publico``). Un solo dominio
+    # ciudadano = una sola cookie de sesión para todos los satélites públicos.
+    # Distinto de ``urlconf`` (panel de personal): pueden compartir app_name
+    # porque nunca se montan en el mismo urlconf.
+    public_urlconf: str = ""
+    public_prefix: str = ""
 
     def __post_init__(self):
         code = str(self.code).strip().lower()
@@ -59,6 +67,10 @@ class ModuleManifest:
         object.__setattr__(self, "api_prefix", _normalize_prefix(self.api_prefix))
         if self.api_urlconf and not self.api_prefix:
             raise ValueError("api_urlconf requiere un api_prefix no vacío.")
+        object.__setattr__(self, "public_urlconf", str(self.public_urlconf).strip())
+        object.__setattr__(self, "public_prefix", _normalize_prefix(self.public_prefix))
+        if self.public_urlconf and not self.public_prefix:
+            raise ValueError("public_urlconf requiere un public_prefix no vacío.")
         object.__setattr__(self, "entry_url_publico", str(self.entry_url_publico).strip())
         object.__setattr__(self, "descripcion_publica", str(self.descripcion_publica).strip())
         object.__setattr__(
@@ -98,6 +110,28 @@ class PublicEntry:
 
 
 @dataclass(frozen=True, slots=True)
+class PublicSurface:
+    """Vistas públicas de un paquete, montadas en la superficie ciudadana.
+
+    Un módulo con manifiesto la declara con ``public_urlconf``/``public_prefix``.
+    Un paquete sin panel (Ciudadanía) publica las constantes ``PUBLIC_URLCONF`` y
+    ``PUBLIC_PREFIX`` en ``<app>/public_entry.py``: son estáticas a propósito (el
+    urlconf se arma una vez al arrancar; ``get_public_entry()`` se evalúa por
+    petición y puede devolver ``None`` sin que las rutas deban desmontarse).
+    """
+
+    code: str
+    urlconf: str
+    prefix: str
+
+    def __post_init__(self):
+        object.__setattr__(self, "urlconf", str(self.urlconf).strip())
+        object.__setattr__(self, "prefix", _normalize_prefix(self.prefix))
+        if not self.urlconf or not self.prefix:
+            raise ValueError("La superficie pública requiere urlconf y prefijo no vacíos.")
+
+
+@dataclass(frozen=True, slots=True)
 class ModuleRuntimeStatus:
     manifest: ModuleManifest
     installed: bool
@@ -117,4 +151,5 @@ __all__ = [
     "ModuleManifest",
     "ModuleRuntimeStatus",
     "PublicEntry",
+    "PublicSurface",
 ]

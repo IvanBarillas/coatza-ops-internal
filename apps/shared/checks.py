@@ -31,9 +31,20 @@ def check_installation_surfaces(app_configs, **kwargs):
                 id="axentra.W001",
             ))
 
-    if not getattr(settings, "INTERNAL_API_KEY", ""):
-        from apps.shared.module_sdk.registry import module_registry
+    from apps.shared.module_sdk.registry import module_registry
 
+    seen = {}
+    for surface in module_registry.public_surfaces():
+        if surface.prefix in seen:
+            issues.append(Error(
+                f"Los paquetes {seen[surface.prefix]!r} y {surface.code!r} montan sus vistas públicas "
+                f"en el mismo prefijo {surface.prefix!r}.",
+                hint="Cambie public_prefix (o PUBLIC_PREFIX) de uno de ellos.",
+                id="axentra.E003",
+            ))
+        seen.setdefault(surface.prefix, surface.code)
+
+    if not getattr(settings, "INTERNAL_API_KEY", ""):
         with_api = [m.code for m in module_registry.discover() if m.api_urlconf]
         if with_api:
             issues.append(Warning(
