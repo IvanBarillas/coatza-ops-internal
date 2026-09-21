@@ -3,7 +3,10 @@
 from pathlib import Path
 from decouple import Config, RepositoryEmpty, RepositoryEnv
 import os
+import re
 import warnings
+
+from django.core.exceptions import ImproperlyConfigured
 
 # =========================================================
 # CARGA DE ENTORNO EN RAÍZ
@@ -25,6 +28,11 @@ if not ENV_FILE_EXISTS:
 
 repository = RepositoryEnv(str(ENV_FILE)) if ENV_FILE_EXISTS else RepositoryEmpty()
 config = Config(repository)
+
+def _csv_env(name):
+    """Lista separada por comas de una variable de entorno (vacía si no existe)."""
+    return [item.strip() for item in config(name, default='').split(',') if item.strip()]
+
 
 # =========================================================
 # APPLICATIONS (Estructura fija)
@@ -52,12 +60,24 @@ LOCAL_APPS = [
     'apps.security.apps.SecurityConfig',
 ]
 
-INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+# Satélites y sus dependencias propias que esta instalación incorpora, por
+# entorno (p. ej. ``django_quill,portal.apps.PortalConfig,ciudadania``), sin
+# editar este archivo. Vacío por defecto: el Core arranca sin satélites. Cada
+# entrada debe ser instalable en la imagen; una que no lo sea es un error de
+# configuración y Django falla al arrancar.
+AXENTRA_EXTRA_APPS = _csv_env('AXENTRA_EXTRA_APPS')
+
+INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS + [
+    app for app in AXENTRA_EXTRA_APPS
+    if app not in DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
+]
 
 # =========================================================
 # MIDDLEWARE (Estructura fija)
 # =========================================================
 MIDDLEWARE = [
+    # Primero: fija request.urlconf según el host (no-op sin AXENTRA_HOST_URLCONFS).
+    'apps.shared.middleware.host_urlconf.HostUrlconfMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'whitenoise.middleware.WhiteNoiseMiddleware',
     'apps.security.middleware.audit.AuditTransactionMiddleware',
@@ -225,6 +245,39 @@ SECURE_REFERRER_POLICY = 'same-origin'
 # =========================================================================
 # Lee del archivo .env correspondiente; si no existe, por defecto se apaga.
 AXENTRA_CORE_VERBOSE_RADAR = config('AXENTRA_CORE_VERBOSE_RADAR', default=False, cast=bool)
+
+# =========================================================================
+# SUPERFICIES DE LOS SATÉLITES EN UNA INSTALACIÓN REAL (todo por entorno)
+# =========================================================================
+# Host -> urlconf. ``AXENTRA_HOST_URLCONFS=ciudadano.example.mx=core.urls_publico``
+# (varios separados por coma). Ver apps/shared/middleware/host_urlconf.py.
+def _parse_host_urlconfs(raw):
+    mapping = {}
+    for item in [part.strip() for part in raw.split(',') if part.strip()]:
+        host, sep, urlconf = item.partition('=')
+        host, urlconf = host.strip().lower(), urlconf.strip()
+        if not sep or not host or not urlconf:
+            raise ImproperlyConfigured(
+                f"AXENTRA_HOST_URLCONFS: entrada inválida {item!r}; "
+                "el formato es host=paquete.urlconf[,host=paquete.urlconf]."
+            )
+        mapping[host] = urlconf
+    return mapping
+
+
+AXENTRA_HOST_URLCONFS = _parse_host_urlconfs(config('AXENTRA_HOST_URLCONFS', default=''))
+
+# Llave de la API servicio-a-servicio de los satélites (cabecera X-API-Key).
+# Vacía = la API no autentica a nadie; en producción se inyecta como secreto.
+INTERNAL_API_KEY = config('INTERNAL_API_KEY', default='')
+
+# URL base pública de cada satélite (``<NOMBRE>_PUBLIC_BASE_URL``): enlaces entre
+# dominios, nunca reverse(). El Core no conoce a los satélites: expone como
+# setting cualquier variable con ese sufijo. Sin ellas, la tarjeta del
+# directorio público no aparece.
+for _name in sorted(set(os.environ) | set(getattr(repository, 'data', {}))):
+    if re.fullmatch(r'[A-Z][A-Z0-9_]*_PUBLIC_BASE_URL', _name):
+        globals()[_name] = config(_name, default='')
 
 # =========================================================
 # APROVISIONAMIENTO DEL OPERADOR INICIAL

@@ -1,5 +1,6 @@
 # core/settings/production.py
 from .base import *
+from .base import _csv_env
 import dj_database_url
 
 # SEGURIDAD INMUTABLE DE PRODUCCIÓN (Obligatorio desde .env.prod)
@@ -42,6 +43,11 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+# Rutas que NO se redirigen a HTTPS (expresiones regulares sobre la ruta sin "/"
+# inicial). Vacío por defecto. Sirve para que un servicio del mismo host llame
+# a la API por http interno (p. ej. ``^api/v1/``) mientras el proxy sigue
+# redirigiendo todo lo externo.
+SECURE_REDIRECT_EXEMPT = _csv_env('SECURE_REDIRECT_EXEMPT')
 CSRF_TRUSTED_ORIGINS = [
     origin.strip()
     for origin in config("CSRF_TRUSTED_ORIGINS", default="").split(",")

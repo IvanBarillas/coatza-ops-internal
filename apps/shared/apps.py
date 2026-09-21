@@ -10,6 +10,7 @@ class SharedConfig(AppConfig):
 
     def ready(self):
         """Descubre automáticamente módulos ``workflows`` de las apps."""
+        from . import checks  # noqa: F401  (registra las comprobaciones de arranque)
 
         for app_config in apps.get_app_configs():
             module_name = f"{app_config.name}.workflows"

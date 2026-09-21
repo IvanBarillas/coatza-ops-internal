@@ -14,6 +14,12 @@ class ModuleHealth(StrEnum):
     DISABLED = "DISABLED"
 
 
+def _normalize_prefix(prefix):
+    """Prefijo de URL sin "/" inicial y con "/" final; vacío se queda vacío."""
+    prefix = str(prefix).strip().strip("/")
+    return f"{prefix}/" if prefix else ""
+
+
 @dataclass(frozen=True, slots=True)
 class ModuleManifest:
     code: str
@@ -35,6 +41,12 @@ class ModuleManifest:
     optional_integrations: tuple[str, ...] = field(default_factory=tuple)
     default_enabled: bool = False
     can_disable: bool = True
+    # API servicio-a-servicio (django-ninja, autenticada con INTERNAL_API_KEY)
+    # que el satélite publica en la raíz de la instalación, junto al Hub. El
+    # Core la monta en ``satellite_urlpatterns()``; sin ``api_urlconf`` no se
+    # monta nada. Prefijo sin "/" inicial y con "/" final (se normaliza).
+    api_urlconf: str = ""
+    api_prefix: str = "api/v1/"
 
     def __post_init__(self):
         code = str(self.code).strip().lower()
@@ -43,6 +55,10 @@ class ModuleManifest:
         if code in self.dependencies:
             raise ValueError("Un módulo no puede depender de sí mismo.")
         object.__setattr__(self, "code", code)
+        object.__setattr__(self, "api_urlconf", str(self.api_urlconf).strip())
+        object.__setattr__(self, "api_prefix", _normalize_prefix(self.api_prefix))
+        if self.api_urlconf and not self.api_prefix:
+            raise ValueError("api_urlconf requiere un api_prefix no vacío.")
         object.__setattr__(self, "entry_url_publico", str(self.entry_url_publico).strip())
         object.__setattr__(self, "descripcion_publica", str(self.descripcion_publica).strip())
         object.__setattr__(
