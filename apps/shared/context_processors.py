@@ -6,6 +6,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 
 from apps.security.models import TenantConfig, UserAppRole
+from apps.shared.branding import DEFAULT_BRAND_COLORS
 from apps.shared.manifest_registry import AxentraOSRegistry
 from apps.security.services.permission_loader import get_user_permissions_for_app
 from apps.shared.utils.telemetry import AxentraRadar
@@ -213,11 +214,19 @@ def global_tenant_settings(request):
         # y consumida también por core/urls.py). Nunca hardcodear esta ruta en
         # una plantilla — si ADMIN_SECRET_PATH cambia por variable de entorno,
         # el enlace debe seguirla automáticamente.
-        return {"tenant": config, "admin_panel_path": settings.ADMIN_SECRET_PATH}
+        return {
+            "tenant": config,
+            "admin_panel_path": settings.ADMIN_SECRET_PATH,
+            "brand_defaults": DEFAULT_BRAND_COLORS,
+        }
 
     except Exception as e:
         logger.error(f"Error en global_tenant_settings: {e}")
-        return {"tenant": None, "admin_panel_path": settings.ADMIN_SECRET_PATH}
+        return {
+            "tenant": None,
+            "admin_panel_path": settings.ADMIN_SECRET_PATH,
+            "brand_defaults": DEFAULT_BRAND_COLORS,
+        }
 
 
 def user_module_permissions(request):

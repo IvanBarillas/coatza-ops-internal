@@ -26,8 +26,8 @@
 }
 @theme {
   --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
-  --color-brand-primary: #6B1D2F;
-  --color-brand-secondary: #4A5568;
+  --color-brand-primary: #0B1A15;
+  --color-brand-secondary: #475467;
   --color-brand-accent: #059669;
 }
 [x-cloak] { display: none !important; }

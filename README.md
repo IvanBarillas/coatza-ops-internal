@@ -147,6 +147,9 @@ puertos distintos (`AXENTRA_HTTP_PORT`) y dominios HTTPS propios. Usar
 es `127.0.0.1:8000`, destinada a un proxy en el host. Producción lee
 `CSRF_TRUSTED_ORIGINS` del entorno de cada institución.
 
+Los colores institucionales por defecto son la paleta de marca de Axentra (`apps/shared/branding.py`); cada ayuntamiento define
+la suya en Entidad Institucional, con botones para deshacer cambios o restaurar la base.
+
 ## Alcance de datos institucionales
 
 Regla: cada dependencia accede a sus datos; otras dependencias requieren una

@@ -201,10 +201,46 @@
                         {% endif %}
                     </div>
 
-                    <div class="border border-dashed border-gray-200 rounded-xl md:rounded-2xl p-4 md:p-5 bg-gray-50/50 space-y-3">
-                        <label class="block font-black text-gray-400 text-xs tracking-wider px-1">
-                            Paleta institucional (branding dinámico)
-                        </label>
+                    <div class="border border-dashed border-gray-200 rounded-xl md:rounded-2xl p-4 md:p-5 bg-gray-50/50 space-y-3"
+                         x-data="{
+                             saved: {
+                                 id_primary_color: '{{ form.primary_color.value|default:brand_defaults.primary }}',
+                                 id_secondary_color: '{{ form.secondary_color.value|default:brand_defaults.secondary }}',
+                                 id_accent_color: '{{ form.accent_color.value|default:brand_defaults.accent }}'
+                             },
+                             axentra: {
+                                 id_primary_color: '{{ brand_defaults.primary }}',
+                                 id_secondary_color: '{{ brand_defaults.secondary }}',
+                                 id_accent_color: '{{ brand_defaults.accent }}'
+                             },
+                             apply(palette) {
+                                 for (const [id, value] of Object.entries(palette)) {
+                                     const input = document.getElementById(id);
+                                     if (!input) continue;
+                                     input.value = value;
+                                     input.dispatchEvent(new Event('input', { bubbles: true }));
+                                 }
+                             }
+                         }"
+                         @input="$el.querySelectorAll('[data-hex-for]').forEach(el => { const i = document.getElementById(el.dataset.hexFor); if (i) el.textContent = i.value.toUpperCase(); })">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <label class="block font-black text-gray-400 text-xs tracking-wider px-1">
+                                Paleta institucional (branding dinámico)
+                            </label>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <button type="button" @click="apply(saved)"
+                                        class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wide text-gray-500 transition hover:bg-gray-50 hover:text-gray-900 cursor-pointer">
+                                    Deshacer cambios
+                                </button>
+                                <button type="button" @click="apply(axentra)"
+                                        class="rounded-lg border border-brand-accent/30 bg-brand-accent/10 px-3 py-1.5 font-mono text-xs font-bold uppercase tracking-wide text-brand-accent transition hover:bg-brand-accent/20 cursor-pointer">
+                                    Restaurar Axentra
+                                </button>
+                            </div>
+                        </div>
+                        <p class="px-1 text-xs text-gray-500">
+                            "Restaurar Axentra" carga la paleta base de la plataforma; los cambios se aplican al pulsar Guardar.
+                        </p>
 
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div class="space-y-1.5">
@@ -216,8 +252,8 @@
                                     <div class="[&>input]:h-11 [&>input]:w-16 [&>input]:rounded-xl [&>input]:border [&>input]:border-gray-200 [&>input]:cursor-pointer [&>input]:p-1 [&>input]:bg-white [&>input]:shadow-sm [&>input]:outline-none [&>input]:focus:border-gray-950 [&>input]:focus:ring-1 [&>input]:focus:ring-gray-950 [&>input]:transition-all">
                                         {{ form.primary_color }}
                                     </div>
-                                    <span class="font-mono text-xs font-bold uppercase tracking-wide text-gray-500">
-                                        {{ form.primary_color.value|default:"#6B1D2F" }}
+                                    <span data-hex-for="id_primary_color" class="font-mono text-xs font-bold uppercase tracking-wide text-gray-500">
+                                        {{ form.primary_color.value|default:brand_defaults.primary }}
                                     </span>
                                 </div>
 
@@ -239,8 +275,8 @@
                                     <div class="[&>input]:h-11 [&>input]:w-16 [&>input]:rounded-xl [&>input]:border [&>input]:border-gray-200 [&>input]:cursor-pointer [&>input]:p-1 [&>input]:bg-white [&>input]:shadow-sm [&>input]:outline-none [&>input]:focus:border-gray-950 [&>input]:focus:ring-1 [&>input]:focus:ring-gray-950 [&>input]:transition-all">
                                         {{ form.secondary_color }}
                                     </div>
-                                    <span class="font-mono text-xs font-bold uppercase tracking-wide text-gray-500">
-                                        {{ form.secondary_color.value|default:"#4A5568" }}
+                                    <span data-hex-for="id_secondary_color" class="font-mono text-xs font-bold uppercase tracking-wide text-gray-500">
+                                        {{ form.secondary_color.value|default:brand_defaults.secondary }}
                                     </span>
                                 </div>
 
@@ -262,8 +298,8 @@
                                     <div class="[&>input]:h-11 [&>input]:w-16 [&>input]:rounded-xl [&>input]:border [&>input]:border-gray-200 [&>input]:cursor-pointer [&>input]:p-1 [&>input]:bg-white [&>input]:shadow-sm [&>input]:outline-none [&>input]:focus:border-gray-950 [&>input]:focus:ring-1 [&>input]:focus:ring-gray-950 [&>input]:transition-all">
                                         {{ form.accent_color }}
                                     </div>
-                                    <span class="font-mono text-xs font-bold uppercase tracking-wide text-gray-500">
-                                        {{ form.accent_color.value|default:"#059669" }}
+                                    <span data-hex-for="id_accent_color" class="font-mono text-xs font-bold uppercase tracking-wide text-gray-500">
+                                        {{ form.accent_color.value|default:brand_defaults.accent }}
                                     </span>
                                 </div>
 

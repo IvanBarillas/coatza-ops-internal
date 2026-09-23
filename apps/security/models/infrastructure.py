@@ -4,11 +4,12 @@ from django.conf import settings
 from django.core.validators import RegexValidator
 from django.db import models
 
+from apps.shared.branding import DEFAULT_BRAND_COLORS
 from apps.shared.models import AxentraBaseModel
 
 hex_color_validator = RegexValidator(
     regex=r"^#[0-9A-Fa-f]{6}$",
-    message="El color debe ser un valor hexadecimal válido, por ejemplo #6B1D2F.",
+    message="El color debe ser un valor hexadecimal válido, por ejemplo #0B1A15.",
 )
 
 
@@ -249,23 +250,23 @@ class TenantConfig(AxentraBaseModel):
     primary_color = models.CharField(
         "Color Primario (HEX)",
         max_length=7,
-        default="#6B1D2F",
+        default=DEFAULT_BRAND_COLORS["primary"],
         validators=[hex_color_validator],
-        help_text="Color primario de marca institucional en formato hexadecimal, ej. #6B1D2F.",
+        help_text="Color primario de marca institucional en formato hexadecimal, ej. #0B1A15.",
     )
 
     secondary_color = models.CharField(
         "Color Secundario (HEX)",
         max_length=7,
-        default="#4A5568",
+        default=DEFAULT_BRAND_COLORS["secondary"],
         validators=[hex_color_validator],
-        help_text="Color secundario de marca institucional en formato hexadecimal, ej. #4A5568.",
+        help_text="Color secundario de marca institucional en formato hexadecimal, ej. #475467.",
     )
 
     accent_color = models.CharField(
         "Color de Acento (HEX)",
         max_length=7,
-        default="#059669",
+        default=DEFAULT_BRAND_COLORS["accent"],
         validators=[hex_color_validator],
         help_text="Color de acento de marca institucional en formato hexadecimal, ej. #059669.",
     )
