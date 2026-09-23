@@ -43,6 +43,14 @@ SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_SSL_REDIRECT = config('SECURE_SSL_REDIRECT', default=True, cast=bool)
+# HSTS: el navegador recuerda forzar HTTPS entre visitas, incluso si alguien
+# teclea http:// o sigue un enlace viejo. Arranca bajo (1 hora) a propósito:
+# subir el valor (p. ej. 31536000 = 1 año) solo tras confirmar que todo el
+# tráfico de la institución ya sirve por HTTPS de forma estable — un valor
+# alto mal configurado deja el dominio inaccesible por HTTP durante ese lapso.
+SECURE_HSTS_SECONDS = config('SECURE_HSTS_SECONDS', default=3600, cast=int)
+SECURE_HSTS_INCLUDE_SUBDOMAINS = config('SECURE_HSTS_INCLUDE_SUBDOMAINS', default=False, cast=bool)
+SECURE_HSTS_PRELOAD = config('SECURE_HSTS_PRELOAD', default=False, cast=bool)
 # Rutas que NO se redirigen a HTTPS (expresiones regulares sobre la ruta sin "/"
 # inicial). Vacío por defecto. Sirve para que un servicio del mismo host llame
 # a la API por http interno (p. ej. ``^api/v1/``) mientras el proxy sigue
@@ -69,8 +77,13 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'class': 'logging.FileHandler',
+            # Rota por tamaño para que el log nunca crezca sin límite y llene
+            # el disco: 10 MB por archivo, conserva los 5 más recientes
+            # (~50 MB en total) antes de descartar los más viejos.
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': LOG_DIR / 'production_django.log',
+            'maxBytes': config('LOG_MAX_BYTES', default=10 * 1024 * 1024, cast=int),
+            'backupCount': config('LOG_BACKUP_COUNT', default=5, cast=int),
             'formatter': 'verbose',
         },
     },

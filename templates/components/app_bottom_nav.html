@@ -2,59 +2,87 @@
 {# APP BOTTOM NAVIGATION · Navegación táctil del shell autenticado #}
 {# Solo visible en md:hidden; el sidebar lateral cubre >= md.   #}
 {# No confundir con components/bottom_nav.html (portada pública). #}
+{# El estado activo lo mantiene static/js/axentra-bottom-nav.js: #}
+{# este nav vive fuera de #workbench y HTMX no lo vuelve a pintar. #}
 {# ========================================================== #}
 {% url 'index_hub' as hub_url %}
 {% url 'security:control_panel' as control_panel_url %}
+{% url 'accounts:account_security' as account_url %}
+
+{# Menú de módulos: en móvil el sidebar global no existe, así que este es el único acceso a ellos. #}
+{# Se despliega hacia arriba desde el botón "Módulos": 2.ª de 4 columnas (37.5vw) o de 3 sin Panel (50vw). #}
+{% if allowed_modules %}
+<div id="mobile-modules-sheet" class="fixed inset-0 z-40 md:hidden" hidden
+     style="--modules-x: {% if 'security' in allowed_modules %}37.5vw{% else %}50vw{% endif %};">
+    <button type="button" data-modules-close class="absolute inset-0 h-full w-full cursor-default bg-gray-950/25" aria-label="Cerrar módulos"></button>
+
+    <section class="animate-pop-up absolute left-3 bottom-[calc(3.5rem+env(safe-area-inset-bottom)+0.75rem)] w-[min(19rem,calc(100vw-1.5rem))] max-h-[60vh] rounded-2xl bg-brand-primary text-white shadow-2xl ring-1 ring-white/10"
+             aria-label="Módulos">
+        <div class="max-h-[60vh] overflow-y-auto rounded-2xl">
+            {% include "navigation/global_sidebar_menu.html" with expand_all=True %}
+        </div>
+        <span class="pointer-events-none absolute -bottom-1.5 h-3 w-3 rotate-45 bg-brand-primary ring-1 ring-white/10 [clip-path:polygon(100%_0,100%_100%,0_100%)]"
+              style="left: calc(var(--modules-x) - 0.75rem - 0.375rem);" aria-hidden="true"></span>
+    </section>
+</div>
+{% endif %}
 
 <nav
+    data-bottom-nav
     class="fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-gray-200/80 md:hidden pb-[env(safe-area-inset-bottom)]"
     aria-label="Navegación móvil"
 >
-    <div class="grid grid-cols-4">
+    <div class="grid {% if 'security' in allowed_modules %}grid-cols-4{% elif allowed_modules %}grid-cols-3{% else %}grid-cols-2{% endif %}">
 
         <a href="{{ hub_url }}"
            hx-get="{{ hub_url }}"
            hx-target="#workbench"
            hx-swap="innerHTML"
            hx-push-url="true"
-           class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide transition
-                  {% if request.resolver_match.view_name == 'index_hub' %}text-brand-accent{% else %}text-gray-400 hover:text-gray-700{% endif %}"
+           data-bottom-nav-path="{{ hub_url }}"
+           {% if request.resolver_match.view_name == 'index_hub' %}aria-current="page"{% endif %}
+           class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide text-gray-400 hover:text-gray-700 aria-[current=page]:text-brand-accent transition"
         >
             <i data-lucide="home" class="w-5 h-5"></i>
             <span>Inicio</span>
         </a>
 
-        <a href="{{ hub_url }}"
-           hx-get="{{ hub_url }}"
-           hx-target="#workbench"
-           hx-swap="innerHTML"
-           hx-push-url="true"
-           class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide text-gray-400 hover:text-gray-700 transition"
+        {% if allowed_modules %}
+        <button type="button"
+                data-modules-toggle
+                aria-controls="mobile-modules-sheet"
+                aria-expanded="false"
+                class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide text-gray-400 hover:text-gray-700 aria-expanded:text-brand-accent transition cursor-pointer"
         >
             <i data-lucide="layout-grid" class="w-5 h-5"></i>
             <span>Módulos</span>
-        </a>
+        </button>
+        {% endif %}
 
+        {% if 'security' in allowed_modules %}
         <a href="{{ control_panel_url }}"
            hx-get="{{ control_panel_url }}"
            hx-target="#workbench"
            hx-swap="innerHTML"
            hx-push-url="true"
-           class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide transition
-                  {% if request.resolver_match.view_name == 'security:control_panel' %}text-brand-accent{% else %}text-gray-400 hover:text-gray-700{% endif %}"
+           data-bottom-nav-path="{{ control_panel_url }}"
+           data-bottom-nav-match="prefix"
+           {% if request.resolver_match.view_name == 'security:control_panel' %}aria-current="page"{% endif %}
+           class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide text-gray-400 hover:text-gray-700 aria-[current=page]:text-brand-accent transition"
         >
             <i data-lucide="shield-check" class="w-5 h-5"></i>
             <span>Panel</span>
         </a>
+        {% endif %}
 
-        <span
-            class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide text-gray-300 cursor-not-allowed select-none"
-            aria-disabled="true"
-            title="Perfil de usuario: disponible próximamente"
+        {# Mi cuenta es una página independiente (no vive en el shell): enlace normal, sin HTMX. #}
+        <a href="{{ account_url }}"
+           {% if request.resolver_match.view_name == 'accounts:account_security' %}aria-current="page"{% endif %}
+           class="flex flex-col items-center justify-center gap-1 py-2.5 min-h-14 text-xs font-bold uppercase tracking-wide text-gray-400 hover:text-gray-700 aria-[current=page]:text-brand-accent transition"
         >
             <i data-lucide="user" class="w-5 h-5"></i>
             <span>Perfil</span>
-        </span>
+        </a>
 
     </div>
 </nav>

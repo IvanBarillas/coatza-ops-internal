@@ -131,6 +131,10 @@ u = g().objects.get(email='owner@axentra.com.mx'); u.is_email_verified = True; u
 ```
 El propietario debe cambiar la contraseña y enrolar MFA (TOTP) en su primer inicio de sesión (obligatorio para cuentas administrativas).
 
+**Paleta institucional.** Una instalación nueva arranca con la paleta de marca de Axentra (`apps/shared/branding.py`: tinta oscura, gris frío y acento esmeralda).
+Al aprovisionar, el propietario define la paleta del cliente en Configuración → Entidad Institucional; el botón «Restaurar Axentra» vuelve a la base
+y «Deshacer cambios» a lo último guardado.
+
 ## 7. Activar los satélites
 
 Trámites y Situaciones nacen **desactivados** (`default_enabled=False`); hasta activarlos no salen en el directorio público.

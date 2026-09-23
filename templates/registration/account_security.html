@@ -16,9 +16,9 @@
     {# Variables CSS por institución; las utilidades se compilan en el build. #}
     <style>
         :root {
-            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
-            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
-            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+            --color-brand-primary: {% firstof tenant.primary_color brand_defaults.primary %};
+            --color-brand-secondary: {% firstof tenant.secondary_color brand_defaults.secondary %};
+            --color-brand-accent: {% firstof tenant.accent_color brand_defaults.accent %};
         }
 
         [x-cloak] { display: none !important; }

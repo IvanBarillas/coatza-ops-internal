@@ -52,11 +52,19 @@ def index_hub_view(request):
         "module_summary": module_center_summary(cards),
         **launcher_context,
     }
-    template = (
-        "launcher/_content.html"
-        if request.headers.get("HX-Request") == "true"
-        else "index_hub.html"
-    )
+    if request.headers.get("HX-Request") != "true":
+        return render(request, "index_hub.html", context)
+
+    # Igual que las vistas de Seguridad: el destino HTMX decide cuánto se reemplaza.
+    # Sin esto, pedir el hub desde el nav móvil dejaba solo el buscador dentro de
+    # #workbench, sin #page-content (scroll y padding) ni footer.
+    target = request.headers.get("HX-Target", "")
+    if target == "workbench":
+        template = "launcher/_workbench.html"
+    elif target == "page-content":
+        template = "launcher/_page_content.html"
+    else:
+        template = "launcher/_content.html"
     return render(request, template, context)
 
 

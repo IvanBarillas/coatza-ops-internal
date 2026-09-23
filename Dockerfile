@@ -37,4 +37,10 @@ USER axentra
 
 EXPOSE 8000
 
+# Comprueba BD y caché (apps.security.management.commands.check_operational_health);
+# no asume satélites instalados, por eso sirve tanto para 'web' como para 'worker'.
+# El propio comando exige DJANGO_SETTINGS_MODULE/DJANGO_ENV del entorno del contenedor.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=3 \
+    CMD uv run python manage.py check_operational_health || exit 1
+
 CMD ["uv", "run", "gunicorn", "core.wsgi:application", "--bind", "0.0.0.0:8000", "--workers", "3"]

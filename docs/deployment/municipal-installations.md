@@ -63,3 +63,9 @@ la base activa. No se han aprovisionado instalaciones reales con esta modificaci
 Los permisos entre dependencias dentro del ayuntamiento son otra capa. El gate de
 módulo no filtra automáticamente expedientes ni archivos; cada consumidor debe
 aplicar el alcance de datos definido para su operación.
+
+## Paleta institucional
+
+Los colores por defecto (primario, secundario y acento) están en `apps/shared/branding.py` y son la identidad de marca de Axentra
+(tinta oscura, gris frío y acento esmeralda), no la de una institución. Cada ayuntamiento define su paleta al desplegar, en Configuración → Entidad Institucional. Cambiar
+`DEFAULT_BRAND_COLORS` solo afecta instalaciones nuevas y al botón «Restaurar Axentra»; las ya configuradas conservan lo guardado.

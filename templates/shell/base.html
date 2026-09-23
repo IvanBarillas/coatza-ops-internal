@@ -29,9 +29,9 @@
     {# Variables CSS por institución; las utilidades se compilan en el build. #}
     <style>
         :root {
-            --color-brand-primary: {{ tenant.primary_color|default:"#6B1D2F" }};
-            --color-brand-secondary: {{ tenant.secondary_color|default:"#4A5568" }};
-            --color-brand-accent: {{ tenant.accent_color|default:"#059669" }};
+            --color-brand-primary: {% firstof tenant.primary_color brand_defaults.primary %};
+            --color-brand-secondary: {% firstof tenant.secondary_color brand_defaults.secondary %};
+            --color-brand-accent: {% firstof tenant.accent_color brand_defaults.accent %};
 
             --ax-primary: #0a192f;
             --ax-secondary: #1e3a8a;
@@ -42,6 +42,23 @@
             --font-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
         }
         [x-cloak] { display: none !important; }
+
+        /* Capa neutra de marca: el color secundario tiñe las cabeceras de tabla.
+           El texto se mezcla con negro para conservar contraste (>= 4.5:1) aun con
+           secundarios claros; el CSS sin capa prevalece sobre las utilidades gray-*. */
+        :root {
+            --ax-table-head-bg: color-mix(in srgb, var(--color-brand-secondary) 7%, #ffffff);
+            --ax-table-head-text: color-mix(in srgb, var(--color-brand-secondary) 55%, #000000);
+            --ax-table-head-line: color-mix(in srgb, var(--color-brand-secondary) 22%, #ffffff);
+        }
+        thead {
+            background-color: var(--ax-table-head-bg);
+            box-shadow: 0 1px 0 var(--ax-table-head-line);
+        }
+        thead tr {
+            background-color: transparent;
+            color: var(--ax-table-head-text);
+        }
 
         /* Estado visual del sidebar contextual sincronizado por HTMX. */
         #module-sidebar a[data-axentra-sidebar-current="true"] {
@@ -62,6 +79,11 @@
         #module-sidebar a[data-axentra-sidebar-current="false"]:hover {
             background-color: rgb(255 255 255 / 0.1) !important;
             color: #ffffff !important;
+        }
+        .animate-pop-up { animation: popUp .16s ease-out; transform-origin: var(--modules-x, 37.5vw) bottom; }
+        @keyframes popUp {
+            from { opacity: 0; transform: translateY(10px) scale(.96); }
+            to { opacity: 1; transform: none; }
         }
         .animate-fade-in { animation: fadeIn .25s ease; }
         @keyframes fadeIn {
@@ -144,6 +166,7 @@
     <script src="{% static 'js/vendor/mermaid.min.js' %}" defer></script>
     <script src="{% static 'js/axentra-workflows.js' %}" defer></script>
     <script src="{% static 'js/axentra-secondary-sidebar.js' %}" defer></script>
+    <script src="{% static 'js/axentra-bottom-nav.js' %}" defer></script>
 
     <script>
         function bootIcons() {

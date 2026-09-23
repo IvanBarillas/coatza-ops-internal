@@ -2,7 +2,7 @@
 
 ### Chasis Maestro de Infraestructura, Ciberseguridad Centralizada y Software Federado
 
-Este repositorio concentra el Core Engine inmutable de **Axentra OS**. Está diseñado bajo una arquitectura matricial y agnóstica de software de alta velocidad, actuando como el motor maestro y la fuente única de verdad para la distribución de aplicaciones satélites hacia múltiples clientes remotos (Multi-Tenant).
+Este repositorio concentra el Core Engine inmutable de **Axentra OS**. Está diseñado bajo una arquitectura matricial y agnóstica de software de alta velocidad, actuando como el motor maestro y la fuente única de verdad para la distribución federada de aplicaciones satélites: cada ayuntamiento tiene su propia instalación y base de datos independiente, sin multi-tenancy compartido (ver [Instalaciones municipales independientes](#instalaciones-municipales-independientes) y [la arquitectura del Core](docs/apps/000_core_architecture.md)).
 
 ---
 
@@ -146,6 +146,9 @@ puertos distintos (`AXENTRA_HTTP_PORT`) y dominios HTTPS propios. Usar
 `--env-file .env.prod` para interpolar los puertos; la publicación predeterminada
 es `127.0.0.1:8000`, destinada a un proxy en el host. Producción lee
 `CSRF_TRUSTED_ORIGINS` del entorno de cada institución.
+
+Los colores institucionales por defecto son la paleta de marca de Axentra (`apps/shared/branding.py`); cada ayuntamiento define
+la suya en Entidad Institucional, con botones para deshacer cambios o restaurar la base.
 
 ## Alcance de datos institucionales
 

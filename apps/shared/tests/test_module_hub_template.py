@@ -14,9 +14,17 @@ class ModuleHubTemplateTests(SimpleTestCase):
             templates_dir / "launcher" / "_content.html"
         ).read_text(encoding="utf-8")
 
+        page_content_template = (
+            templates_dir / "launcher" / "_page_content.html"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            '{% include "launcher/_page_content.html" %}',
+            hub_template,
+        )
         self.assertIn(
             '{% include "launcher/_content.html" %}',
-            hub_template,
+            page_content_template,
         )
         self.assertIn('id="launcher-content"', launcher_template)
         self.assertIn("application_page", launcher_template)
