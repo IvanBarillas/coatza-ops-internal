@@ -13,9 +13,9 @@
         </div>
 
         <div class="flex items-center gap-3 font-mono text-xs tracking-wider uppercase text-gray-400">
-            {# Hallazgo real (docs/apps/public-municipal-portal.md sección 2): esta línea era la
+            {% comment %}Hallazgo real (docs/apps/public-municipal-portal.md sección 2): esta línea era la
             única de todo el footer que no leía tenant.* — el resto ya lo hacía (app_name arriba,
-            siglas, rfc abajo). Pedido explícito del cliente: consistente con ese patrón. #}
+            siglas, rfc abajo). Pedido explícito del cliente: consistente con ese patrón.{% endcomment %}
             <span>&copy; 2026 {{ tenant.app_name|default:"Axentra OS" }}</span>
             <span class="text-gray-200 font-sans">/</span>
             <span>RFC: <strong class="text-gray-600 font-bold">{{ tenant.rfc|default:"MUNICIPAL" }}</strong></span>
