@@ -1,15 +1,15 @@
 {# templates/navigation/global_sidebar_menu.html #}
 
 <nav id="global-sidebar-menu"
-     class="h-full overflow-y-auto px-5 py-4 space-y-2 font-mono text-left scrollbar-thin scrollbar-thumb-white/20"
+     class="h-full overflow-y-auto {% if expand_all %}px-2 py-2{% else %}px-5 py-4{% endif %} space-y-2 font-mono text-left scrollbar-thin scrollbar-thumb-white/20"
      x-data="{ openMenu: '{{ modulo_actual|default:"admin" }}' }">
 
     {# ADMINISTRACIÓN #}
     {% if 'security' in allowed_modules or 'accounts' in allowed_modules or 'organigrama' in allowed_modules %}
         <div class="space-y-1">
-            {% include "navigation/module_group.html" with group_id="admin" title="Administración" icon="sliders" %}
+            {% include "navigation/module_group.html" with group_id="admin" title="Administración" icon="sliders" static_group=expand_all %}
 
-            <div x-show="openMenu === 'admin'"
+            <div x-show="{% if expand_all %}true{% else %}openMenu === 'admin'{% endif %}"
                  x-cloak
                  class="ml-4 pl-3 border-l border-white/10 space-y-1">
 
@@ -34,10 +34,10 @@
     {# CONFIGURACIÓN #}
     {% if 'configuration' in allowed_modules %}
         <div class="space-y-1">
-            {% include "navigation/module_group.html" with group_id="config" title="Configuración" icon="settings" %}
+            {% include "navigation/module_group.html" with group_id="config" title="Configuración" icon="settings" static_group=expand_all %}
 
             <div
-                x-show="openMenu === 'config'"
+                x-show="{% if expand_all %}true{% else %}openMenu === 'config'{% endif %}"
                 x-cloak
                 class="ml-4 pl-3 border-l border-white/10 space-y-1"
             >

@@ -3,6 +3,7 @@
 @source "../../templates";
 @source "../../apps";
 @source "../../static/js/axentra-secondary-sidebar.js";
+@source "../../static/js/axentra-bottom-nav.js";
 @source "../../static/js/axentra-workflows.js";
 
 /* Paleta admitida por los componentes que interpolan colores en Django.

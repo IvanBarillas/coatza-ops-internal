@@ -80,6 +80,11 @@
             background-color: rgb(255 255 255 / 0.1) !important;
             color: #ffffff !important;
         }
+        .animate-pop-up { animation: popUp .16s ease-out; transform-origin: var(--modules-x, 37.5vw) bottom; }
+        @keyframes popUp {
+            from { opacity: 0; transform: translateY(10px) scale(.96); }
+            to { opacity: 1; transform: none; }
+        }
         .animate-fade-in { animation: fadeIn .25s ease; }
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(2px); }
@@ -161,6 +166,7 @@
     <script src="{% static 'js/vendor/mermaid.min.js' %}" defer></script>
     <script src="{% static 'js/axentra-workflows.js' %}" defer></script>
     <script src="{% static 'js/axentra-secondary-sidebar.js' %}" defer></script>
+    <script src="{% static 'js/axentra-bottom-nav.js' %}" defer></script>
 
     <script>
         function bootIcons() {
