@@ -104,14 +104,30 @@ Para cambios visuales, verificar escritorio/móvil, branding, iconos y swaps HTM
 
 ## Git y documentación
 
-Revisar estado y ramas antes de editar; preservar cambios del usuario. Trabajar en
-una rama `fix/...` o `feature/...` desde `develop`. `main` es estable y `develop`
-integración: deben recibir los mismos cambios al cerrar una entrega, no mediante
-reescritura forzada de historia. No mover ramas históricas solo para alinearlas.
-El flujo del workspace (ver `../AGENTS.md`) incluye el merge a `develop` y `main` y el
-push de ambas: hacerlo sin pedir confirmación cada vez, tras pruebas y prueba en vivo.
-Sí requiere autorización explícita: force-push, reescribir historia, publicar ramas
-de trabajo ajenas al flujo o abrir PR.
+Este repo (`coatza-ops-internal`) aloja las apps internas del departamento sobre el
+Core de Axentra. Remotos: `upstream` = Core (`axentra-core-django`), solo lectura,
+nunca hacer push ni modificar el Core; `origin` = este repo.
+
+Ramas: `main` es espejo del Core; solo recibe cambios cuando el Core cambia
+(`git fetch upstream` y merge, sin trabajo propio). `develop` es la línea de trabajo
+propia (nuestro "main"): de ahí salen las ramas `feature/...` y `fix/...` y ahí se
+integran. Tras actualizar `main` desde el Core, traerlo a `develop` con merge.
+Revisar estado y ramas antes de editar; preservar cambios del usuario. Sin
+reescritura forzada de historia ni mover ramas históricas solo para alinearlas.
+Sí requiere autorización explícita: force-push, reescribir historia, push a remotos
+nuevos, publicar ramas de trabajo o abrir PR.
+
+## Apps satélite propias (agnósticas del Core)
+
+Viven en paquetes nuevos activados con `AXENTRA_EXTRA_APPS`; no editar archivos del
+Core (`apps/security`, `apps/shared`, `core/`). Deben poder quitarse sin romper nada:
+- Un único punto de contacto con el Core: `integracion.py`. Ningún otro módulo de la
+  app importa `apps.*`.
+- Sin `ForeignKey` a tablas del Core: guardar UUID y snapshot de texto.
+- Tablas propias para entidades organizativas (p. ej. `Direccion`) con referencia
+  opcional a la dependencia del Core.
+- Usuarios vía `settings.AUTH_USER_MODEL`; tablas con prefijo propio.
+- Correo solo por `apps.shared.notifications.enqueue_email()`.
 
 Actualizar README si cambian instalación, configuración, build o despliegue;
 actualizar este contexto y la arquitectura cuando cambien sus contratos. Explicar
