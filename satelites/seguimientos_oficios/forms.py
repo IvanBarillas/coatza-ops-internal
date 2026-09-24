@@ -3,23 +3,36 @@ from django import forms
 import uuid
 
 from .integracion import dependencias_del_core
-from .models import ClaseDocumento, Direccion, Documento, Nomenclatura
+from .models import ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
 class DocumentoForm(forms.ModelForm):
+    def clean(self):
+        datos = super().clean()
+        gestor, direccion, sentido = datos.get("gestor"), datos.get("direccion"), datos.get("sentido")
+        if gestor and sentido == "recibido":
+            self.add_error("gestor", "Solo los documentos enviados llevan gestor.")
+        elif gestor and direccion and gestor.direccion_id != direccion.pk:
+            self.add_error("gestor", "El gestor no pertenece a la dirección elegida.")
+        return datos
+
     class Meta:
         model = Documento
-        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "director_nombre", "folio", "asunto"]
+        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "director_nombre", "gestor", "folio", "asunto"]
         widgets = {"fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
         labels = {"director_nombre": "Director"}
 
     campos_anchos = ("contraparte", "asunto")
 
-    def __init__(self, *args, direcciones=None, **kwargs):
+    def __init__(self, *args, direcciones=None, gestores=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["direccion"].queryset = (
             direcciones if direcciones is not None else Direccion.objects.none()
         )
+        self.fields["gestor"].queryset = gestores if gestores is not None else Gestor.objects.none()
+        self.fields["gestor"].required = False
+        self.fields["gestor"].empty_label = "Sin asignar"
+        self.fields["gestor"].help_text = "Quien llevará el oficio a la dependencia (solo enviados)."
         self.fields["director_nombre"].help_text = "Vacío = titular actual de la dirección."
         self.fields["folio"].help_text = "Solo recibidos. En enviados se genera según la nomenclatura de la clase."
         for campo in self.fields.values():
@@ -56,13 +69,18 @@ class FiltroDocumentosForm(forms.Form):
     clase = forms.ChoiceField(label="Clase", required=False, choices=[("", "Todas")] + ClaseDocumento.choices)
     estado = forms.ChoiceField(label="Estado", required=False, choices=[("", "Todos")] + Documento.Estado.choices)
     direccion = forms.ModelChoiceField(label="Dirección", required=False, queryset=Direccion.objects.none())
+    gestor = forms.ChoiceField(label="Gestor", required=False)
+    tab = forms.CharField(required=False, widget=forms.HiddenInput)
     desde = forms.DateField(label="Desde", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     hasta = forms.DateField(label="Hasta", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
 
-    def __init__(self, *args, direcciones=None, **kwargs):
+    def __init__(self, *args, direcciones=None, gestores=(), **kwargs):
         super().__init__(*args, **kwargs)
         if direcciones is not None:
             self.fields["direccion"].queryset = direcciones
+        self.fields["gestor"].choices = [("", "Todos los gestores"), ("sin", "Sin gestor")] + [
+            (str(g.pk), g.nombre) for g in gestores
+        ]
         for campo in self.fields.values():
             campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
 
@@ -162,9 +180,36 @@ class DocumentoEdicionForm(forms.Form):
         help_text="Opcional; queda en el historial junto con los valores anterior y nuevo.",
     )
 
+    gestor = forms.ModelChoiceField(label="Gestor", required=False, queryset=Gestor.objects.none(), empty_label="Sin asignar")
+
     def __init__(self, *args, documento, **kwargs):
         super().__init__(*args, **kwargs)
         if documento.sentido == "enviado":
             self.fields.pop("folio")
+            self.fields["gestor"].queryset = Gestor.objects.filter(
+                direccion=documento.direccion, is_active=True, is_deleted=False
+            )
+        else:
+            self.fields.pop("gestor")
         for campo in self.fields.values():
             campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+
+
+class GestorForm(forms.ModelForm):
+    class Meta:
+        model = Gestor
+        fields = ["nombre"]
+
+    def __init__(self, *args, direccion=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.direccion = direccion or getattr(self.instance, "direccion", None)
+        self.fields["nombre"].widget.attrs.setdefault(
+            "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+        )
+
+    def clean_nombre(self):
+        nombre = " ".join(self.cleaned_data["nombre"].split())
+        repetido = Gestor.objects.filter(direccion=self.direccion, nombre__iexact=nombre).exclude(pk=self.instance.pk)
+        if repetido.exists():
+            raise forms.ValidationError("Ya existe un gestor con ese nombre en esta dirección.")
+        return nombre

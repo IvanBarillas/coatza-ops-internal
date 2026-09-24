@@ -9,11 +9,14 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
 from .integracion import proteger_vista
-from .selectors import APP_SLUG, buscar_documentos, direcciones_visibles, documento_visible, documentos_visibles
+from .selectors import (
+    APP_SLUG, TABS, aplicar_tab, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
+    documentos_visibles, gestores_visibles, resumen_gestores, tab_activa,
+)
 from . import bandeja
-from .models import Direccion, Nomenclatura
+from .models import Direccion, Gestor, Nomenclatura
 from .storage import almacen
 from .services import adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
 
@@ -45,20 +48,44 @@ def _render(request, nombre, contexto):
     return render(request, f"seguimientos_oficios/pages/{nombre}.html", contexto)
 
 
+def _query(request, *, quitar=(), **poner):
+    parametros = request.GET.copy()
+    for clave in ("pagina", *quitar):
+        parametros.pop(clave, None)
+    for clave, valor in poner.items():
+        parametros[clave] = valor
+    return parametros.urlencode()
+
+
 @login_required
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def documento_list_view(request):
     direcciones = direcciones_visibles(request)
-    filtro = FiltroDocumentosForm(request.GET or None, direcciones=direcciones)
-    documentos = documentos_visibles(request)
-    if filtro.is_valid():
-        documentos = buscar_documentos(documentos, filtro.cleaned_data)
-    pagina = Paginator(documentos, POR_PAGINA).get_page(request.GET.get("pagina"))
-    parametros = request.GET.copy()
-    parametros.pop("pagina", None)
+    filtro = FiltroDocumentosForm(
+        request.GET or None, direcciones=direcciones, gestores=gestores_visibles(request)
+    )
+    limpio = filtro.cleaned_data if filtro.is_valid() else {}
+    todos = documentos_visibles(request)
+    filtrados = buscar_documentos(todos, limpio) if limpio else todos
+    tab = tab_activa(request.GET.get("tab"), bool(request.GET.get("q", "").strip()))
+    conteos = conteos_tabs(filtrados)
+    sin_gestor = buscar_documentos(todos, {**limpio, "gestor": ""}) if limpio else todos
+    gestor_activo = request.GET.get("gestor", "")
+    pagina = Paginator(aplicar_tab(filtrados, tab), POR_PAGINA).get_page(request.GET.get("pagina"))
     contexto = {
-        "filtro": filtro, "pagina": pagina, "total": pagina.paginator.count,
-        "filtros_activos": bool(parametros), "query_sin_pagina": parametros.urlencode(),
+        "filtro": filtro, "pagina": pagina, "total": pagina.paginator.count, "tab": tab,
+        "tabs": [
+            {"clave": c, "nombre": n, "total": conteos[c], "activa": c == tab, "query": _query(request, tab=c)}
+            for c, n, _ in TABS
+        ],
+        "gestores_resumen": [
+            {"nombre": nombre, "total": total, "query": _query(request, tab="pendientes", gestor=gestor_id or "sin"),
+             "activo": (gestor_id and str(gestor_id) == gestor_activo) or (gestor_id is None and gestor_activo == "sin")}
+            for gestor_id, nombre, total in resumen_gestores(sin_gestor)
+        ],
+        "filtros_activos": any(k not in ("pagina", "tab") for k in request.GET),
+        "query_sin_pagina": _query(request, tab=tab), "query_limpiar": _query(request, quitar=tuple(request.GET), tab=tab),
+        "tab_explicita": request.GET.get("tab", ""),
         "varias_direcciones": direcciones.count() > 1,
     }
     return _render(request, "documento_list", contexto)
@@ -68,7 +95,7 @@ def documento_list_view(request):
 @proteger_vista(APP_SLUG, "can_create_oficio")
 def documento_create_view(request):
     direcciones = direcciones_visibles(request)
-    form = DocumentoForm(request.POST or None, direcciones=direcciones)
+    form = DocumentoForm(request.POST or None, direcciones=direcciones, gestores=gestores_visibles(request))
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data
         try:
@@ -76,6 +103,7 @@ def documento_create_view(request):
                 usuario=request.user, direccion=datos["direccion"], sentido=datos["sentido"],
                 clase=datos["clase"], contraparte=datos["contraparte"], asunto=datos["asunto"],
                 fecha=datos["fecha"], folio=datos["folio"], director_nombre=datos["director_nombre"],
+                gestor=datos["gestor"],
             )
         except ValidationError as error:
             form.add_error(None, error)
@@ -288,6 +316,7 @@ def direccion_editar_view(request, pk=None):
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
             nomenclatura_form=NomenclaturaForm(direccion=direccion),
+            gestores=direccion.gestores.order_by("nombre"),
         )
     return _render(request, "direccion_form", contexto)
 
@@ -339,7 +368,7 @@ def nomenclatura_actualizar_view(request, pk):
 @proteger_vista(APP_SLUG, "can_edit_oficio")
 def documento_editar_view(request, pk):
     documento = documento_visible(request, pk)
-    inicial = {c: getattr(documento, c) for c in ("contraparte", "asunto", "fecha", "folio")}
+    inicial = {c: getattr(documento, c) for c in ("contraparte", "asunto", "fecha", "folio", "gestor")}
     form = DocumentoEdicionForm(request.POST or None, initial=inicial, documento=documento)
     if request.method == "POST" and form.is_valid():
         datos = dict(form.cleaned_data)
@@ -352,3 +381,42 @@ def documento_editar_view(request, pk):
             messages.success(request, "Cambios guardados.")
             return redirect("seguimientos_oficios:documento_detail", pk=pk)
     return _render(request, "documento_editar", {"form": form, "documento": documento})
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def gestor_crear_view(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk)
+    form = GestorForm(request.POST, direccion=direccion)
+    if form.is_valid():
+        gestor = form.save(commit=False)
+        gestor.direccion = direccion
+        gestor.save()
+        messages.success(request, f"Gestor {gestor.nombre} agregado.")
+    else:
+        for errores in form.errors.values():
+            for error in errores:
+                messages.error(request, error)
+    return _volver_a_direccion(pk)
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def gestor_actualizar_view(request, pk):
+    gestor = get_object_or_404(Gestor, pk=pk)
+    if request.POST.get("accion") == "estado":
+        gestor.is_active = not gestor.is_active
+        gestor.save()
+        messages.success(request, f"Gestor {gestor.nombre} " + ("activado." if gestor.is_active else "desactivado."))
+    else:
+        form = GestorForm(request.POST, instance=gestor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Nombre actualizado.")
+        else:
+            for errores in form.errors.values():
+                for error in errores:
+                    messages.error(request, error)
+    return _volver_a_direccion(gestor.direccion_id)

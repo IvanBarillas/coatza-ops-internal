@@ -54,11 +54,11 @@ class BusquedaTests(BaseAdjuntos):
         enviado = self.nuevo("Enviado de septiembre")
         marcar_entregado(enviado, usuario=self.user, fecha_entrega=datetime.date(2026, 9, 2), receptor="X")
         self.nuevo("Recibido de agosto", sentido="recibido", fecha=datetime.date(2026, 8, 15), clase="comunicado")
-        self.assertNotContains(self.buscar(sentido="recibido"), "Enviado de septiembre")
-        self.assertContains(self.buscar(estado="entregado"), "Enviado de septiembre")
-        self.assertNotContains(self.buscar(estado="entregado"), "Recibido de agosto")
-        self.assertContains(self.buscar(clase="comunicado"), "Recibido de agosto")
-        rango = self.buscar(desde="2026-09-01", hasta="2026-09-30")
+        self.assertNotContains(self.buscar(sentido="recibido", tab="todos"), "Enviado de septiembre")
+        self.assertContains(self.buscar(estado="entregado", tab="todos"), "Enviado de septiembre")
+        self.assertNotContains(self.buscar(estado="entregado", tab="todos"), "Recibido de agosto")
+        self.assertContains(self.buscar(clase="comunicado", tab="todos"), "Recibido de agosto")
+        rango = self.buscar(desde="2026-09-01", hasta="2026-09-30", tab="todos")
         self.assertContains(rango, "Enviado de septiembre")
         self.assertNotContains(rango, "Recibido de agosto")
 
@@ -73,10 +73,10 @@ class BusquedaTests(BaseAdjuntos):
     def test_paginacion_conserva_los_filtros(self):
         for numero in range(30):
             self.nuevo(f"Serie {numero}", sentido="recibido", clase="comunicado")
-        respuesta = self.buscar(clase="comunicado")
+        respuesta = self.buscar(clase="comunicado", tab="todos")
         self.assertContains(respuesta, "30 documentos")
-        self.assertContains(respuesta, "clase=comunicado&amp;pagina=2")
-        self.assertEqual(len(self.buscar(clase="comunicado", pagina=2).context["pagina"]), 5)
+        self.assertContains(respuesta, "tab=todos&amp;pagina=2")
+        self.assertEqual(len(self.buscar(clase="comunicado", tab="todos", pagina=2).context["pagina"]), 5)
 
     def test_filtros_invalidos_no_rompen_la_lista(self):
         self.nuevo("Sigue apareciendo")

@@ -14,6 +14,15 @@ from .tasks import TAREA_OCR, TIMEOUT_TAREA
 MOTIVO_MINIMO = 10
 
 
+def _validar_gestor(gestor, direccion, sentido):
+    if gestor is None:
+        return
+    if sentido != Documento.Sentido.ENVIADO:
+        raise ValidationError("Solo los documentos enviados llevan gestor.")
+    if gestor.direccion_id != direccion.pk or not gestor.is_active or gestor.is_deleted:
+        raise ValidationError("El gestor no pertenece a la dirección o está inactivo.")
+
+
 def _siguiente_folio(direccion, clase, anio):
     nomenclatura = Nomenclatura.objects.filter(
         direccion=direccion, clase=clase, is_active=True, is_deleted=False
@@ -29,7 +38,8 @@ def _siguiente_folio(direccion, clase, anio):
 
 @transaction.atomic
 def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, fecha,
-                    folio="", director_nombre=""):
+                    folio="", director_nombre="", gestor=None):
+    _validar_gestor(gestor, direccion, sentido)
     anio = consecutivo = None
     if sentido == Documento.Sentido.ENVIADO:
         consecutivo, folio = _siguiente_folio(direccion, clase, fecha.year)
@@ -40,6 +50,7 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
         anio=anio, consecutivo=consecutivo, creado_por=usuario,
         estado=(Documento.Estado.GENERADO if sentido == Documento.Sentido.ENVIADO else Documento.Estado.REGISTRADO),
         director_nombre=director_nombre or director_de_dependencia(direccion.dependencia_uuid),
+        gestor=gestor,
     )
     HistorialDocumento.objects.create(
         documento=documento, accion=HistorialDocumento.Accion.CREADO,
@@ -48,6 +59,7 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
             "sentido": sentido, "clase": clase, "folio": documento.folio,
             "direccion": documento.direccion_nombre, "director": documento.director_nombre,
             "contraparte": contraparte, "asunto": asunto, "fecha": fecha.isoformat(),
+            "gestor": gestor.nombre if gestor else None,
         },
     )
     return documento
@@ -213,13 +225,22 @@ def adjuntar_desde_bandeja(documento, *, usuario, nombre):
 CAMPOS_EDITABLES = ("contraparte", "asunto", "fecha")
 
 
+def _valor_historial(valor):
+    if hasattr(valor, "isoformat"):
+        return valor.isoformat()
+    return getattr(valor, "nombre", valor)
+
+
 @transaction.atomic
 def editar_documento(documento, *, usuario, cambios, motivo=""):
     """Corrige datos del documento y deja en el historial cada valor anterior y nuevo."""
     documento = Documento.objects.select_for_update().get(pk=documento.pk)
     if documento.estado == Documento.Estado.CANCELADO:
         raise ValidationError("Un documento cancelado no se puede editar.")
-    permitidos = CAMPOS_EDITABLES + (("folio",) if documento.sentido == Documento.Sentido.RECIBIDO else ())
+    if documento.sentido == Documento.Sentido.RECIBIDO:
+        permitidos = CAMPOS_EDITABLES + ("folio",)
+    else:
+        permitidos = CAMPOS_EDITABLES + ("gestor",)
     diferencias = {}
     for campo, nuevo in cambios.items():
         if campo not in permitidos:
@@ -228,6 +249,8 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         if isinstance(nuevo, str):
             nuevo = nuevo.strip()
         if nuevo != actual:
+            if campo == "gestor":
+                _validar_gestor(nuevo, documento.direccion, documento.sentido)
             diferencias[campo] = (actual, nuevo)
     if not diferencias:
         raise ValidationError("No hay cambios que guardar.")
@@ -238,8 +261,7 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
     documento.save()
     _historial(documento, HistorialDocumento.Accion.EDITADO, usuario, {
         "cambios": {
-            campo: {"antes": antes.isoformat() if hasattr(antes, "isoformat") else antes,
-                    "despues": despues.isoformat() if hasattr(despues, "isoformat") else despues}
+            campo: {"antes": _valor_historial(antes), "despues": _valor_historial(despues)}
             for campo, (antes, despues) in diferencias.items()
         },
         "motivo": (motivo or "").strip(),

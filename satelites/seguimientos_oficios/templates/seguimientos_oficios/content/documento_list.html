@@ -1,37 +1,66 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="flex items-center justify-between mb-4">
+{% url 'seguimientos_oficios:documento_list' as lista_url %}
+<div class="mb-4 flex items-center justify-between">
     <h1 class="text-xl font-black text-slate-800">Documentos</h1>
     {% if "can_create_oficio" in request.axentra_permissions_list %}
     <a href="{% url 'seguimientos_oficios:documento_create' %}" hx-get="{% url 'seguimientos_oficios:documento_create' %}" hx-target="#page-content" hx-push-url="true"
        class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white">Registrar documento</a>
     {% endif %}
 </div>
-<form method="get" action="{% url 'seguimientos_oficios:documento_list' %}" hx-get="{% url 'seguimientos_oficios:documento_list' %}" hx-target="#page-content" hx-push-url="true"
+
+<div class="mb-3 flex flex-wrap gap-2" role="tablist">
+    {% for t in tabs %}
+    <a href="{{ lista_url }}?{{ t.query }}" hx-get="{{ lista_url }}?{{ t.query }}" hx-target="#page-content" hx-push-url="true" role="tab"
+       {% if t.activa %}aria-selected="true"{% endif %}
+       class="rounded-full border px-4 py-1.5 text-xs font-black uppercase tracking-wide {% if t.activa %}border-brand-primary bg-brand-primary text-white{% else %}border-gray-300 bg-white text-slate-600 hover:bg-slate-50{% endif %}">
+        {{ t.nombre }} <span class="ml-1 opacity-80">{{ t.total }}</span>
+    </a>
+    {% endfor %}
+</div>
+
+{% if tab == "pendientes" and gestores_resumen %}
+<div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
+    <span class="font-bold uppercase text-slate-500">Por gestor:</span>
+    {% for g in gestores_resumen %}
+    <a href="{{ lista_url }}?{{ g.query }}" hx-get="{{ lista_url }}?{{ g.query }}" hx-target="#page-content" hx-push-url="true"
+       class="rounded-full border px-3 py-1 font-bold {% if g.activo %}border-amber-500 bg-amber-100 text-amber-900{% else %}border-gray-300 bg-white text-slate-600 hover:bg-slate-50{% endif %}">{{ g.nombre }} · {{ g.total }}</a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true"
       class="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+    {% if tab_explicita %}<input type="hidden" name="tab" value="{{ tab_explicita }}">{% endif %}
     <div class="sm:col-span-2 lg:col-span-4">{{ filtro.q }}</div>
-    <div>{{ filtro.sentido }}</div><div>{{ filtro.clase }}</div><div>{{ filtro.estado }}</div>
+    <div>{{ filtro.sentido }}</div><div>{{ filtro.clase }}</div><div>{{ filtro.estado }}</div><div>{{ filtro.gestor }}</div>
     {% if varias_direcciones %}<div>{{ filtro.direccion }}</div>{% endif %}
     <div><label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ filtro.desde.id_for_label }}">Desde</label>{{ filtro.desde }}</div>
     <div><label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ filtro.hasta.id_for_label }}">Hasta</label>{{ filtro.hasta }}</div>
     <div class="flex items-end gap-2 sm:col-span-2">
         <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">Buscar</button>
-        {% if filtros_activos %}<a href="{% url 'seguimientos_oficios:documento_list' %}" hx-get="{% url 'seguimientos_oficios:documento_list' %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Limpiar</a>{% endif %}
+        {% if filtros_activos %}<a href="{{ lista_url }}?{{ query_limpiar }}" hx-get="{{ lista_url }}?{{ query_limpiar }}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Limpiar</a>{% endif %}
     </div>
 </form>
+
 <p class="mb-2 text-xs text-slate-500">{{ total }} documento{{ total|pluralize }}</p>
 <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
     <table class="min-w-full text-sm">
         <thead class="text-left text-xs uppercase text-slate-500">
-            <tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Sentido</th><th class="px-4 py-3">Clase</th><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Asunto</th></tr>
+            <tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Sentido</th><th class="px-4 py-3">Clase</th><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Gestor</th><th class="px-4 py-3">Estado</th>{% if tab == "pendientes" %}<th class="px-4 py-3">Días</th>{% endif %}<th class="px-4 py-3">Asunto</th></tr>
         </thead>
         <tbody>
         {% for d in pagina %}
             <tr class="border-t border-gray-100">
-                <td class="px-4 py-3">{{ d.fecha|date:"d/m/Y" }}</td><td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.folio|default:"s/f" }}</a></td>
-                <td class="px-4 py-3">{{ d.get_sentido_display }}</td><td class="px-4 py-3">{{ d.get_clase_display }}</td><td class="px-4 py-3">{{ d.direccion }}</td><td class="px-4 py-3">{% include "seguimientos_oficios/content/_estado_badge.html" with documento=d %}</td><td class="px-4 py-3">{{ d.asunto }}</td>
+                <td class="px-4 py-3">{{ d.fecha|date:"d/m/Y" }}</td>
+                <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.folio|default:"s/f" }}</a></td>
+                <td class="px-4 py-3">{{ d.get_sentido_display }}</td><td class="px-4 py-3">{{ d.get_clase_display }}</td><td class="px-4 py-3">{{ d.direccion }}</td>
+                <td class="px-4 py-3">{{ d.gestor|default:"—" }}</td>
+                <td class="px-4 py-3">{% include "seguimientos_oficios/content/_estado_badge.html" with documento=d %}</td>
+                {% if tab == "pendientes" %}<td class="px-4 py-3 font-bold {% if d.dias_pendiente >= 15 %}text-red-600{% elif d.dias_pendiente >= 7 %}text-amber-600{% endif %}">{{ d.dias_pendiente }}</td>{% endif %}
+                <td class="px-4 py-3">{{ d.asunto }}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="7" class="px-4 py-8 text-center text-slate-500">Sin oficios registrados.</td></tr>
+            <tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">{% if tab == "pendientes" %}No hay documentos pendientes.{% else %}Sin documentos.{% endif %}</td></tr>
         {% endfor %}
         </tbody>
     </table>
@@ -39,9 +68,9 @@
 {% if pagina.paginator.num_pages > 1 %}
 <nav class="mt-4 flex items-center justify-center gap-3 text-sm">
     {% if pagina.has_previous %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true"
-        href="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.previous_page_number }}" hx-get="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+        href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
     <span class="text-slate-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
     {% if pagina.has_next %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true"
-        href="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.next_page_number }}" hx-get="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+        href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
 </nav>
 {% endif %}
