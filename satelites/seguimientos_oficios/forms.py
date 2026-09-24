@@ -38,3 +38,7 @@ class CancelacionForm(forms.Form):
         widget=forms.Textarea(attrs={"rows": 3}),
         help_text="Ej. Error en el número de serie del equipo X.",
     )
+
+
+class AdjuntoForm(forms.Form):
+    archivo = forms.FileField(label="Archivo PDF", widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}))

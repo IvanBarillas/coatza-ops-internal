@@ -1,9 +1,13 @@
+import hashlib
+
 from django.core.exceptions import ValidationError
+from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
 from .integracion import director_de_dependencia, nombre_de_usuario
-from .models import ConsecutivoFolio, Documento, Nomenclatura, HistorialDocumento
+from .models import Adjunto, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
+from .storage import almacen, ruta_por_contenido
 
 MOTIVO_MINIMO = 10
 
@@ -91,3 +95,56 @@ def cancelar_documento(documento, *, usuario, motivo, puede_cancelar_concluido=F
         "cancelado_en": timezone.now().isoformat(),
     })
     return documento
+
+
+TAMANO_MAXIMO = 25 * 1024 * 1024
+
+
+def _leer_pdf(archivo):
+    if archivo is None:
+        raise ValidationError("Seleccione un archivo PDF.")
+    if archivo.size > TAMANO_MAXIMO:
+        raise ValidationError("El archivo excede el tamaño máximo de 25 MB.")
+    contenido = archivo.read()
+    if not contenido.startswith(b"%PDF-"):
+        raise ValidationError("El archivo no es un PDF válido.")
+    return contenido
+
+
+@transaction.atomic
+def adjuntar_pdf(documento, *, usuario, archivo):
+    """Agrega el PDF con el rol que corresponde al sentido. Devuelve (adjunto, duplicado)."""
+    documento = Documento.objects.select_for_update().get(pk=documento.pk)
+    if documento.sentido == Documento.Sentido.RECIBIDO:
+        rol, permitidos = Adjunto.Rol.ORIGINAL, {Documento.Estado.REGISTRADO}
+        mensaje = "Solo se adjunta el original a un documento recibido en estado Registrado."
+    else:
+        rol = Adjunto.Rol.EVIDENCIA
+        permitidos = {Documento.Estado.ENTREGADO, Documento.Estado.CONCLUIDO}
+        mensaje = "La evidencia se adjunta cuando el documento ya fue entregado."
+    if documento.estado not in permitidos:
+        raise ValidationError(mensaje)
+    contenido = _leer_pdf(archivo)
+    sha256 = hashlib.sha256(contenido).hexdigest()
+    duplicado = Adjunto.objects.filter(sha256=sha256).exclude(documento=documento).select_related("documento").first()
+    ruta = ruta_por_contenido(sha256, timezone.now())
+    almacen_ = almacen()
+    existente = Adjunto.objects.filter(sha256=sha256).values_list("ruta", flat=True).first()
+    if existente:
+        ruta = existente
+    elif not almacen_.exists(ruta):
+        almacen_.save(ruta, ContentFile(contenido))
+    adjunto = Adjunto.objects.create(
+        documento=documento, rol=rol, ruta=ruta, nombre_original=archivo.name[:255],
+        sha256=sha256, tamano=len(contenido), subido_por=usuario,
+        subido_por_nombre=nombre_de_usuario(usuario),
+    )
+    datos = {"adjunto": archivo.name, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
+    if duplicado:
+        datos["duplicado_de"] = duplicado.documento.folio or str(duplicado.documento_id)
+    if rol == Adjunto.Rol.EVIDENCIA and documento.estado == Documento.Estado.ENTREGADO:
+        documento.estado = Documento.Estado.CONCLUIDO
+        documento.save()
+        datos.update(estado_anterior=Documento.Estado.ENTREGADO, estado_nuevo=documento.estado)
+    _historial(documento, HistorialDocumento.Accion.ADJUNTADO, usuario, datos)
+    return adjunto, duplicado

@@ -1,14 +1,18 @@
 from django.contrib import messages
+from django.http import FileResponse, Http404
+from django.shortcuts import get_object_or_404
+from django.utils.http import content_disposition_header
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import CancelacionForm, DocumentoForm, EntregaForm
+from .forms import AdjuntoForm, CancelacionForm, DocumentoForm, EntregaForm
 from .integracion import proteger_vista
 from .selectors import APP_SLUG, direcciones_visibles, documento_visible, documentos_visibles
-from .services import cancelar_documento, crear_documento, marcar_entregado
+from .storage import almacen
+from .services import adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
 
 def _sidebar_items(request):
@@ -77,6 +81,13 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "cancelacion_form": cancelacion_form or CancelacionForm(),
         "puede_entregar": _permitido(request, "can_update_status")
         and documento.estado == documento.Estado.GENERADO and documento.sentido == documento.Sentido.ENVIADO,
+        "adjuntos": documento.adjuntos.all(),
+        "adjunto_form": AdjuntoForm(),
+        "puede_adjuntar": _permitido(request, "can_upload_files") and (
+            documento.estado == documento.Estado.REGISTRADO
+            if documento.sentido == documento.Sentido.RECIBIDO
+            else documento.estado in (documento.Estado.ENTREGADO, documento.Estado.CONCLUIDO)
+        ),
         "puede_cancelar": documento.estado != documento.Estado.CANCELADO and (
             _permitido(request, "can_cancel_concluded")
             if documento.estado == documento.Estado.CONCLUIDO
@@ -124,3 +135,40 @@ def documento_cancelar_view(request, pk):
     else:
         messages.error(request, "Indique el motivo de la cancelación (mínimo 10 caracteres).")
     return redirect("seguimientos_oficios:documento_detail", pk=pk)
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_upload_files")
+def documento_adjuntar_view(request, pk):
+    documento = documento_visible(request, pk)
+    form = AdjuntoForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            _, duplicado = adjuntar_pdf(documento, usuario=request.user, archivo=form.cleaned_data["archivo"])
+        except ValidationError as error:
+            messages.error(request, "; ".join(error.messages))
+        else:
+            messages.success(request, "Archivo adjuntado.")
+            if duplicado:
+                messages.warning(
+                    request,
+                    f"Este archivo ya está en otro documento ({duplicado.documento.folio or 'sin folio'}).",
+                )
+    else:
+        messages.error(request, "Seleccione un archivo PDF.")
+    return redirect("seguimientos_oficios:documento_detail", pk=pk)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_oficios")
+def adjunto_descargar_view(request, pk, adjunto_pk):
+    documento = documento_visible(request, pk)
+    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    almacen_ = almacen()
+    if not almacen_.exists(adjunto.ruta):
+        raise Http404("El archivo no está en el almacén.")
+    respuesta = FileResponse(almacen_.open(adjunto.ruta, "rb"), content_type="application/pdf")
+    respuesta["Content-Disposition"] = content_disposition_header(False, adjunto.nombre_original)
+    respuesta["X-Content-Type-Options"] = "nosniff"
+    return respuesta

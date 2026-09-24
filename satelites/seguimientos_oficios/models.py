@@ -130,7 +130,6 @@ class Documento(BaseOficios):
     fecha_entrega = models.DateField("Fecha de entrega", null=True, blank=True)
     receptor_entrega = models.CharField("Recibió la entrega", max_length=200, blank=True)
     motivo_cancelacion = models.TextField("Motivo de cancelación", blank=True)
-    archivo_hash = models.CharField("SHA-256", max_length=64, blank=True, db_index=True)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
         on_delete=models.SET_NULL, related_name="+",
@@ -171,6 +170,7 @@ class HistorialDocumento(models.Model):
     class Accion(models.TextChoices):
         CREADO = "creado", "Creado"
         EDITADO = "editado", "Editado"
+        ADJUNTADO = "adjuntado", "Adjunto agregado"
         ELIMINADO = "eliminado", "Eliminado"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -195,3 +195,37 @@ class HistorialDocumento(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("El historial no se puede borrar.")
+
+
+class Adjunto(models.Model):
+    """Archivo (PDF) de un documento. Solo se agrega; nunca se borra ni se reemplaza."""
+
+    class Rol(models.TextChoices):
+        ORIGINAL = "original", "Original escaneado"
+        EVIDENCIA = "evidencia", "Evidencia de entrega"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    documento = models.ForeignKey(Documento, on_delete=models.PROTECT, related_name="adjuntos")
+    rol = models.CharField(max_length=10, choices=Rol.choices)
+    ruta = models.CharField("Ruta en el almacén", max_length=255)
+    nombre_original = models.CharField(max_length=255)
+    sha256 = models.CharField("SHA-256", max_length=64, db_index=True)
+    tamano = models.PositiveBigIntegerField("Tamaño (bytes)")
+    subido_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name="+",
+    )
+    subido_por_nombre = models.CharField(max_length=200, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "oficios_adjunto"
+        ordering = ["created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("Los adjuntos no se modifican.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Los adjuntos no se eliminan.")

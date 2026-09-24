@@ -6,6 +6,7 @@ class SeguimientosOficiosPermissions:
         "can_view_oficios": "Permite consultar los documentos de su dirección.",
         "can_create_oficio": "Permite registrar documentos nuevos.",
         "can_update_status": "Permite marcar un documento como entregado.",
+        "can_upload_files": "Permite adjuntar PDF (original o evidencia) a un documento.",
         "can_cancel_oficio": "Permite cancelar documentos (con motivo) que no estén concluidos.",
         "can_cancel_concluded": "Permiso especial: permite cancelar documentos ya concluidos, con motivo.",
     }
@@ -13,11 +14,11 @@ class SeguimientosOficiosPermissions:
     ROLE_MAPPING = {
         "owner": [
             "has_access_module", "can_view_oficios", "can_create_oficio",
-            "can_update_status", "can_cancel_oficio", "can_cancel_concluded",
+            "can_update_status", "can_upload_files", "can_cancel_oficio", "can_cancel_concluded",
         ],
         "editor": [
             "has_access_module", "can_view_oficios", "can_create_oficio",
-            "can_update_status", "can_cancel_oficio",
+            "can_update_status", "can_upload_files", "can_cancel_oficio",
         ],
         "viewer": ["has_access_module", "can_view_oficios"],
     }
