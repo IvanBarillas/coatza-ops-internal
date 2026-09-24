@@ -20,6 +20,15 @@ class CatalogosTests(BaseAdjuntos):
         self.assertIn(respuesta.status_code, (302, 403))
         self.assertFalse(Direccion.objects.filter(nombre="Intruso").exists())
 
+    def test_el_menu_muestra_catalogos_solo_a_quien_puede_administrarlos(self):
+        lista = reverse("seguimientos_oficios:documento_list")
+        self.client.force_login(self.user)
+        self.assertNotContains(self.client.get(lista), reverse("seguimientos_oficios:catalogos"))
+        self.como_owner()
+        respuesta = self.client.get(lista)
+        self.assertContains(respuesta, reverse("seguimientos_oficios:catalogos"))
+        self.assertContains(respuesta, reverse("seguimientos_oficios:configuracion"))
+
     def test_crear_direccion_vinculada_a_dependencia(self):
         self.como_owner()
         egresos = Dependencia.objects.create(nombre="Egresos")
