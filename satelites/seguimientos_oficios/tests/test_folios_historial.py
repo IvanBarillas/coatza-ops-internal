@@ -6,7 +6,7 @@ from django.test import TestCase
 
 from apps.security.models import Dependencia
 from satelites.seguimientos_oficios.models import Direccion, Documento, HistorialDocumento, Nomenclatura
-from satelites.seguimientos_oficios.services import crear_documento
+from satelites.seguimientos_oficios.services import cancelar_documento, crear_documento, marcar_entregado
 
 
 class FoliosYHistorialTests(TestCase):
@@ -92,3 +92,39 @@ class FoliosYHistorialTests(TestCase):
         documento.asunto = "Asunto corregido"
         documento.save()
         self.assertEqual(Documento.objects.get(pk=documento.pk).asunto, "Asunto corregido")
+
+    def test_entrega_y_cancelacion_dejan_historial(self):
+        documento = self.nuevo()
+        self.assertEqual(documento.estado, "generado")
+        marcar_entregado(documento, usuario=self.titular, fecha_entrega=datetime.date(2026, 9, 3), receptor="Recepción Tesorería")
+        documento.refresh_from_db()
+        self.assertEqual((documento.estado, documento.receptor_entrega), ("entregado", "Recepción Tesorería"))
+        with self.assertRaises(ValidationError):
+            marcar_entregado(documento, usuario=self.titular, fecha_entrega=datetime.date(2026, 9, 3), receptor="X")
+        cancelar_documento(documento, usuario=self.titular, motivo="Error en el número de serie del equipo X")
+        documento.refresh_from_db()
+        self.assertEqual(documento.estado, "cancelado")
+        self.assertEqual([h.accion for h in documento.historial.all()], ["creado", "editado", "eliminado"])
+        with self.assertRaises(ValidationError):
+            cancelar_documento(documento, usuario=self.titular, motivo="Otro motivo suficientemente largo")
+
+    def test_cancelar_exige_motivo(self):
+        documento = self.nuevo()
+        for motivo in ("", "   ", "corto"):
+            with self.assertRaises(ValidationError):
+                cancelar_documento(documento, usuario=self.titular, motivo=motivo)
+
+    def test_concluido_solo_se_cancela_con_permiso_especial(self):
+        documento = self.nuevo()
+        Documento.objects.filter(pk=documento.pk).update(estado="concluido")
+        motivo = "Error en el número de serie del equipo X"
+        with self.assertRaises(ValidationError):
+            cancelar_documento(documento, usuario=self.titular, motivo=motivo)
+        cancelar_documento(documento, usuario=self.titular, motivo=motivo, puede_cancelar_concluido=True)
+        documento.refresh_from_db()
+        self.assertEqual(documento.estado, "cancelado")
+
+    def test_documento_no_se_elimina(self):
+        documento = self.nuevo()
+        with self.assertRaises(ValueError):
+            documento.delete()

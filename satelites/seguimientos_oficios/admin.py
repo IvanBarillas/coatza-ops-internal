@@ -14,8 +14,11 @@ admin.site.register(Direccion)
 
 @admin.register(Documento)
 class DocumentoAdmin(admin.ModelAdmin):
-    list_display = ("folio", "sentido", "clase", "direccion_nombre", "asunto", "fecha")
-    list_filter = ("sentido", "clase")
+    list_display = ("folio", "sentido", "clase", "estado", "direccion_nombre", "asunto", "fecha")
+    list_filter = ("sentido", "clase", "estado")
+
+    def has_delete_permission(self, request, obj=None):
+        return False
 
 
 @admin.register(HistorialDocumento)

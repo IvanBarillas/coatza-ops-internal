@@ -100,6 +100,13 @@ class Documento(BaseOficios):
         RECIBIDO = "recibido", "Recibido"
         ENVIADO = "enviado", "Enviado"
 
+    class Estado(models.TextChoices):
+        REGISTRADO = "registrado", "Registrado"
+        GENERADO = "generado", "Generado"
+        ENTREGADO = "entregado", "Entregado"
+        CONCLUIDO = "concluido", "Concluido"
+        CANCELADO = "cancelado", "Cancelado"
+
     INMUTABLES = ("sentido", "clase", "direccion_id", "direccion_nombre", "director_nombre",
                   "folio", "anio", "consecutivo")
 
@@ -119,6 +126,10 @@ class Documento(BaseOficios):
     folio = models.CharField("Folio", max_length=80, blank=True, db_index=True)
     anio = models.PositiveSmallIntegerField(null=True, blank=True)
     consecutivo = models.PositiveIntegerField(null=True, blank=True)
+    estado = models.CharField("Estado", max_length=12, choices=Estado.choices, default=Estado.GENERADO, db_index=True)
+    fecha_entrega = models.DateField("Fecha de entrega", null=True, blank=True)
+    receptor_entrega = models.CharField("Recibió la entrega", max_length=200, blank=True)
+    motivo_cancelacion = models.TextField("Motivo de cancelación", blank=True)
     archivo_hash = models.CharField("SHA-256", max_length=64, blank=True, db_index=True)
     creado_por = models.ForeignKey(
         settings.AUTH_USER_MODEL, null=True, blank=True,
@@ -149,6 +160,9 @@ class Documento(BaseOficios):
                 if cambiados:
                     raise ValueError(f"Campos inmutables: {', '.join(cambiados)}")
         super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("Los documentos no se eliminan; se cancelan con motivo.")
 
 
 class HistorialDocumento(models.Model):

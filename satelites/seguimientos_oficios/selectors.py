@@ -16,3 +16,9 @@ def documentos_visibles(request):
     return Documento.objects.filter(
         is_deleted=False, direccion__in=direcciones_visibles(request)
     ).select_related("direccion")
+
+
+def documento_visible(request, pk):
+    from django.shortcuts import get_object_or_404
+
+    return get_object_or_404(documentos_visibles(request), pk=pk)
