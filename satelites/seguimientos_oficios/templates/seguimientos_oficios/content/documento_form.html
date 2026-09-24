@@ -13,13 +13,15 @@
             <div><label for="{{ form.clase.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">Clase de documento</label>{{ form.clase }}{% for e in form.clase.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
 
             {% if form.mostrar_direccion %}
-            <div><label for="{{ form.direccion.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500"><span x-text="sentido === 'enviado' ? 'Dirección que envía' : 'Dirección que recibe'">Dirección que registra</span></label>{{ form.direccion }}{% for e in form.direccion.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div class="sm:col-span-2"><label for="{{ form.direccion.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500"><span x-text="sentido === 'enviado' ? 'Dirección que envía' : 'Dirección que recibe'">Dirección que registra</span></label>{{ form.direccion }}{% for e in form.direccion.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
             {% endif %}
+
             <div><label for="{{ form.fecha.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">Fecha del documento</label>{{ form.fecha }}{% for e in form.fecha.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div x-show="sentido === 'recibido' || {{ form.hay_folio_manual|yesno:'true,false' }}"><label for="{{ form.folio.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500"><span x-text="sentido === 'enviado' ? 'Folio del oficio' : 'Folio del remitente'">Folio</span></label>{{ form.folio }}{% for e in form.folio.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
 
             <div class="sm:col-span-2">
                 <label for="{{ form.contraparte_dependencia.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500"><span x-text="sentido === 'enviado' ? 'Dirección destinataria' : 'Dirección remitente'">Dirección destinataria / remitente</span></label>
-                <select name="contraparte_dependencia" id="{{ form.contraparte_dependencia.id_for_label }}" x-model="dependencia" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                <select name="contraparte_dependencia" id="{{ form.contraparte_dependencia.id_for_label }}" x-model="dependencia" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
                     {% for valor, nombre in form.contraparte_dependencia.field.choices %}<option value="{{ valor }}">{{ nombre }}</option>{% endfor %}
                 </select>
                 {% for e in form.contraparte_dependencia.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
@@ -30,9 +32,7 @@
                 {% for e in form.contraparte.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
             </div>
 
-            <div><label for="{{ form.director_nombre.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">Director</label>{{ form.director_nombre }}<p class="mt-1 text-xs text-gray-400">{{ form.director_nombre.help_text }}</p></div>
-            <div x-show="sentido === 'enviado'"><label for="{{ form.gestor.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">Gestor</label>{{ form.gestor }}<p class="mt-1 text-xs text-gray-400">{{ form.gestor.help_text }}</p>{% for e in form.gestor.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
-            <div x-show="sentido === 'recibido' || {{ form.hay_folio_manual|yesno:'true,false' }}"><label for="{{ form.folio.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500"><span x-text="sentido === 'enviado' ? 'Folio del oficio' : 'Folio del remitente'">Folio</span></label>{{ form.folio }}<p class="mt-1 text-xs text-gray-400">{{ form.folio.help_text }}</p>{% for e in form.folio.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div class="sm:col-span-2" x-show="sentido === 'enviado'"><label for="{{ form.gestor.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">Gestor</label>{{ form.gestor }}<p class="mt-1 text-xs text-gray-400">{{ form.gestor.help_text }}</p>{% for e in form.gestor.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
 
             <div class="sm:col-span-2"><label for="{{ form.asunto.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">Asunto</label>{{ form.asunto }}{% for e in form.asunto.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
         </div>

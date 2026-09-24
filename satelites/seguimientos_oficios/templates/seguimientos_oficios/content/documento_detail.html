@@ -6,7 +6,7 @@
             <h1 class="mt-2 text-xl font-black uppercase leading-none tracking-tight text-gray-950">{{ documento.folio|default:"Sin folio" }}</h1>
         </div>
         <div class="flex items-center gap-3">
-            {% if puede_editar %}<a href="{% url 'seguimientos_oficios:documento_editar' documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_editar' documento.pk %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Editar</a>{% endif %}
+            {% if puede_editar %}<a href="{% url 'seguimientos_oficios:documento_editar' documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_editar' documento.pk %}" hx-target="#page-content" hx-push-url="true" class="inline-flex items-center rounded-xl border border-brand-primary bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-brand-primary transition hover:bg-brand-primary hover:text-white">Editar</a>{% endif %}
             {% include "seguimientos_oficios/content/_estado_badge.html" %}
         </div>
     </header>

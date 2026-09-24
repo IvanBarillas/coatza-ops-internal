@@ -101,18 +101,18 @@ def documento_create_view(request):
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data
         try:
-            crear_documento(
+            documento = crear_documento(
                 usuario=request.user, direccion=datos["direccion"], sentido=datos["sentido"],
                 clase=datos["clase"], contraparte=datos["contraparte"], asunto=datos["asunto"],
                 contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"],
-                fecha=datos["fecha"], folio=datos["folio"], director_nombre=datos["director_nombre"],
+                fecha=datos["fecha"], folio=datos["folio"],
                 gestor=datos["gestor"],
             )
         except ValidationError as error:
             form.add_error(None, error)
         else:
-            messages.success(request, "Documento registrado.")
-            return redirect("seguimientos_oficios:documento_list")
+            messages.success(request, "Documento registrado. Ya puedes adjuntar su archivo.")
+            return redirect("seguimientos_oficios:documento_detail", pk=documento.pk)
     return _render(request, "documento_form", {"form": form})
 
 

@@ -52,12 +52,12 @@ class DocumentoForm(forms.ModelForm):
 
     class Meta:
         model = Documento
-        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "director_nombre", "gestor", "folio", "asunto"]
+        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "gestor", "folio", "asunto"]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "sentido": forms.Select(attrs={"x-model": "sentido"}),
         }
-        labels = {"director_nombre": "Director", "direccion": "Dirección que registra"}
+        labels = {"direccion": "Dirección que registra"}
 
     def __init__(self, *args, direcciones=None, gestores=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -75,7 +75,6 @@ class DocumentoForm(forms.ModelForm):
         self.fields["gestor"].required = False
         self.fields["gestor"].empty_label = "Sin asignar"
         self.fields["gestor"].help_text = "Quien llevará el oficio a la dependencia (solo enviados)."
-        self.fields["director_nombre"].help_text = "Vacío = titular actual de la dirección."
         self.fields["folio"].required = False
         self.fields["folio"].help_text = "Escríbelo tal como aparece en el oficio."
         self.hay_folio_manual = any(d.folio_manual for d in self.fields["direccion"].queryset)
@@ -87,22 +86,29 @@ class DocumentoForm(forms.ModelForm):
 
 class EntregaForm(forms.Form):
     fecha_entrega = forms.DateField(
-        label="Fecha de entrega", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+        label="Fecha de entrega",
+        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
     )
-    receptor = forms.CharField(label="Recibió la entrega", max_length=200)
+    receptor = forms.CharField(
+        label="Recibió la entrega", max_length=200,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
+    )
 
 
 class CancelacionForm(forms.Form):
     motivo = forms.CharField(
         label="Motivo de la cancelación", min_length=10,
-        widget=forms.Textarea(attrs={"rows": 3}),
+        widget=forms.Textarea(attrs={"rows": 3, "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}),
         help_text="Ej. Error en el número de serie del equipo X.",
     )
 
 
 class AdjuntoForm(forms.Form):
     rol = forms.CharField(required=False, widget=forms.HiddenInput)
-    archivo = forms.FileField(label="Archivo PDF", widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}))
+    archivo = forms.FileField(
+        label="Archivo PDF",
+        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
+    )
 
 
 class FiltroDocumentosForm(forms.Form):
