@@ -1,5 +1,6 @@
+{% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 <div class="flex items-center justify-between mb-4">
-    <h1 class="text-xl font-black text-slate-800">Oficios</h1>
+    <h1 class="text-xl font-black text-slate-800">Documentos</h1>
     {% if "can_create_oficio" in request.axentra_permissions_list %}
     <a href="{% url 'seguimientos_oficios:documento_create' %}" hx-get="{% url 'seguimientos_oficios:documento_create' %}" hx-target="#page-content" hx-push-url="true"
        class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white">Registrar documento</a>
