@@ -5,9 +5,10 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
-from .integracion import director_de_dependencia, nombre_de_usuario
-from .models import Adjunto, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
+from .integracion import director_de_dependencia, encolar_tarea, nombre_de_usuario
+from .models import Adjunto, AdjuntoOCR, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
 from .storage import almacen, ruta_por_contenido
+from .tasks import TAREA_OCR, TIMEOUT_TAREA
 
 MOTIVO_MINIMO = 10
 
@@ -139,6 +140,7 @@ def adjuntar_pdf(documento, *, usuario, archivo):
         sha256=sha256, tamano=len(contenido), subido_por=usuario,
         subido_por_nombre=nombre_de_usuario(usuario),
     )
+    _preparar_ocr(adjunto)
     datos = {"adjunto": archivo.name, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
     if duplicado:
         datos["duplicado_de"] = duplicado.documento.folio or str(duplicado.documento_id)
@@ -148,3 +150,18 @@ def adjuntar_pdf(documento, *, usuario, archivo):
         datos.update(estado_anterior=Documento.Estado.ENTREGADO, estado_nuevo=documento.estado)
     _historial(documento, HistorialDocumento.Accion.ADJUNTADO, usuario, datos)
     return adjunto, duplicado
+
+
+def _preparar_ocr(adjunto):
+    previo = (
+        AdjuntoOCR.objects.filter(adjunto__sha256=adjunto.sha256, estado=AdjuntoOCR.Estado.LISTO)
+        .exclude(adjunto=adjunto).first()
+    )
+    if previo:
+        AdjuntoOCR.objects.create(
+            adjunto=adjunto, estado=AdjuntoOCR.Estado.LISTO, texto=previo.texto,
+            terminado_en=timezone.now(),
+        )
+        return
+    AdjuntoOCR.objects.create(adjunto=adjunto)
+    transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))

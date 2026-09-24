@@ -12,6 +12,7 @@ __all__ = [
     "ModuleManifest",
     "dependencias_autorizadas",
     "director_de_dependencia",
+    "encolar_tarea",
     "enqueue_email",
     "nombre_de_usuario",
     "proteger_vista",
@@ -46,3 +47,11 @@ def director_de_dependencia(dependencia_uuid):
 
 def nombre_de_usuario(usuario):
     return (getattr(usuario, "full_name", "") or getattr(usuario, "email", "")) if usuario else ""
+
+
+def encolar_tarea(ruta_funcion, *args, timeout=None):
+    """Encola una tarea en la cola del Core (Django-Q2)."""
+    from django_q.tasks import async_task
+
+    opciones = {"timeout": timeout} if timeout else {}
+    return async_task(ruta_funcion, *args, **opciones)

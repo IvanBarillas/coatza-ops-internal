@@ -229,3 +229,24 @@ class Adjunto(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("Los adjuntos no se eliminan.")
+
+
+class AdjuntoOCR(models.Model):
+    """Texto extraído de un adjunto; el PDF original nunca se altera."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = "pendiente", "Pendiente"
+        PROCESANDO = "procesando", "Procesando"
+        LISTO = "listo", "Listo"
+        ERROR = "error", "Error"
+
+    adjunto = models.OneToOneField(Adjunto, on_delete=models.PROTECT, related_name="ocr")
+    estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
+    texto = models.TextField(blank=True)
+    error = models.TextField(blank=True)
+    intentos = models.PositiveSmallIntegerField(default=0)
+    iniciado_en = models.DateTimeField(null=True, blank=True)
+    terminado_en = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "oficios_adjunto_ocr"
