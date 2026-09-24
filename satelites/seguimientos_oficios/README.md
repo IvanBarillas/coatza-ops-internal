@@ -64,6 +64,23 @@ python manage.py oficios_reprocesar_ocr
 El PDF original nunca se modifica; solo se guarda el texto extraído. La búsqueda usa texto
 completo en español con índice GIN en PostgreSQL y `icontains` en SQLite.
 
+## Importar histórico ya digitalizado
+
+Comando: `oficios_importar_historico --direccion <slug|nombre> --carpeta <ruta relativa a la raíz de la bandeja>`.
+Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borra los PDF de la QNAP.
+
+- `--sentido recibido|enviado` y `--clase` fijan los valores para todos los archivos.
+- `--csv manifiesto.csv` (columnas `archivo,sentido,clase,fecha,folio,contraparte,asunto,director`; solo
+  `archivo` es obligatoria) permite datos por archivo. Con CSV solo se importan los archivos listados.
+- Sin CSV: la fecha sale del nombre (`AAAA-MM-DD ...`) o de la fecha del archivo, el asunto del nombre, y en los
+  enviados el folio se busca en el nombre (`IN-045-2025 ...` equivale a `IN-045/2025`). Un enviado sin folio se
+  reporta como error.
+- Enviados importados quedan **Concluidos** (el PDF es la evidencia); recibidos, **Registrados**. El director
+  queda vacío salvo que venga en el CSV: nunca se usa el titular actual, porque falsearía el histórico.
+- El contador de folios avanza hasta el mayor importado, así el siguiente folio generado continúa la serie.
+- Es idempotente: un PDF con el mismo contenido ya registrado en esa dirección se omite.
+- El OCR no se encola en bloque; al terminar, `oficios_reprocesar_ocr` lo procesa.
+
 ## Reglas de negocio
 
 - El folio de los enviados sale de la **Nomenclatura** (dirección + clase), con contador por año.

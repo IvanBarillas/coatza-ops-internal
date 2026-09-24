@@ -108,6 +108,22 @@ class Nomenclatura(BaseOficios):
     def formatear(self, numero, anio):
         return self.plantilla.format(n=numero, anio=anio)
 
+    def interpretar(self, texto, *, buscar=False, tolerante=False):
+        """(numero, anio) si el texto sigue la plantilla; anio es None si la plantilla no lo lleva."""
+        patron, resto = "", self.plantilla
+        for pieza in re.split(r"(\{[^}]*\})", resto):
+            if pieza.startswith("{n"):
+                patron += r"(?P<n>\d+)"
+            elif pieza == "{anio}":
+                patron += r"(?P<anio>\d{4})"
+            else:
+                patron += re.escape(pieza).replace("/", "[/_-]" if tolerante else "/")
+        coincidencia = (re.search if buscar else re.fullmatch)(patron, texto or "")
+        if not coincidencia:
+            return None
+        grupos = coincidencia.groupdict()
+        return int(grupos["n"]), int(grupos["anio"]) if grupos.get("anio") else None
+
 
 class ConsecutivoFolio(models.Model):
     nomenclatura = models.ForeignKey(Nomenclatura, on_delete=models.PROTECT, related_name="consecutivos")
