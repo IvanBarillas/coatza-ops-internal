@@ -195,7 +195,11 @@ class Documento(BaseOficios):
     direccion_nombre = models.CharField("Dirección (al registrar)", max_length=150)
     contraparte = models.CharField(
         "Remitente o destinatario", max_length=200,
-        help_text="Quién envía (recibidos) o a quién se dirige (enviados).",
+        help_text="Nombre de quien envía (recibidos) o a quién se dirige (enviados).",
+    )
+    contraparte_dependencia_uuid = models.UUIDField(
+        "Dependencia remitente o destinataria", null=True, blank=True, editable=False,
+        help_text="UUID de la dependencia del Core cuando la contraparte es una dirección de la institución.",
     )
     director_nombre = models.CharField("Director (al registrar)", max_length=200, blank=True)
     asunto = models.CharField("Asunto", max_length=300)
