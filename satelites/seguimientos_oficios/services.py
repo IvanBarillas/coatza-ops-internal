@@ -38,7 +38,7 @@ def _siguiente_folio(direccion, clase, anio):
 
 @transaction.atomic
 def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, fecha,
-                    folio="", director_nombre="", gestor=None):
+                    folio="", director_nombre="", gestor=None, contraparte_dependencia_uuid=None):
     _validar_gestor(gestor, direccion, sentido)
     anio = consecutivo = None
     if sentido == Documento.Sentido.ENVIADO:
@@ -46,7 +46,8 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
         anio = fecha.year
     documento = Documento.objects.create(
         sentido=sentido, clase=clase, direccion=direccion, direccion_nombre=direccion.nombre,
-        contraparte=contraparte, asunto=asunto, fecha=fecha, folio=folio,
+        contraparte=contraparte, contraparte_dependencia_uuid=contraparte_dependencia_uuid,
+        asunto=asunto, fecha=fecha, folio=folio,
         anio=anio, consecutivo=consecutivo, creado_por=usuario,
         estado=(Documento.Estado.GENERADO if sentido == Documento.Sentido.ENVIADO else Documento.Estado.REGISTRADO),
         director_nombre=director_nombre or director_de_dependencia(direccion.dependencia_uuid),
@@ -222,7 +223,7 @@ def adjuntar_desde_bandeja(documento, *, usuario, nombre):
     return resultado
 
 
-CAMPOS_EDITABLES = ("contraparte", "asunto", "fecha")
+CAMPOS_EDITABLES = ("contraparte", "contraparte_dependencia_uuid", "asunto", "fecha")
 
 
 def _valor_historial(valor):
@@ -263,6 +264,7 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         "cambios": {
             campo: {"antes": _valor_historial(antes), "despues": _valor_historial(despues)}
             for campo, (antes, despues) in diferencias.items()
+            if campo != "contraparte_dependencia_uuid"
         },
         "motivo": (motivo or "").strip(),
     })

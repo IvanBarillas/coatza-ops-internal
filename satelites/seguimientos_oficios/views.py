@@ -104,6 +104,7 @@ def documento_create_view(request):
             crear_documento(
                 usuario=request.user, direccion=datos["direccion"], sentido=datos["sentido"],
                 clase=datos["clase"], contraparte=datos["contraparte"], asunto=datos["asunto"],
+                contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"],
                 fecha=datos["fecha"], folio=datos["folio"], director_nombre=datos["director_nombre"],
                 gestor=datos["gestor"],
             )
@@ -375,6 +376,7 @@ def documento_editar_view(request, pk):
     form = DocumentoEdicionForm(request.POST or None, initial=inicial, documento=documento)
     if request.method == "POST" and form.is_valid():
         datos = dict(form.cleaned_data)
+        datos.pop("contraparte_dependencia", None)
         motivo = datos.pop("motivo", "")
         try:
             editar_documento(documento, usuario=request.user, cambios=datos, motivo=motivo)

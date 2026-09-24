@@ -6,9 +6,35 @@ from .integracion import dependencias_del_core, usuarios_con_acceso
 from .models import ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
+def _agregar_contraparte(form, etiqueta):
+    opciones = dependencias_del_core()
+    form.fields["contraparte_dependencia"] = forms.ChoiceField(
+        label=etiqueta, required=False,
+        choices=[("", "Otra / externa (escribir nombre)")] + [(str(pk), nombre) for pk, nombre in opciones],
+    )
+    form.fields["contraparte"].required = False
+    form.fields["contraparte"].label = "Nombre si es otra / externa"
+    form._dependencias = {str(pk): nombre for pk, nombre in opciones}
+
+
+def _resolver_contraparte(form, datos, propia_uuid=None):
+    elegido = datos.get("contraparte_dependencia")
+    if elegido:
+        if propia_uuid and elegido == str(propia_uuid):
+            form.add_error("contraparte_dependencia", "No puede ser la propia dirección.")
+            return
+        datos["contraparte"] = form._dependencias.get(elegido, "")
+        datos["contraparte_dependencia_uuid"] = uuid.UUID(elegido)
+    else:
+        datos["contraparte_dependencia_uuid"] = None
+        if not (datos.get("contraparte") or "").strip():
+            form.add_error("contraparte", "Elija una dirección o escriba el nombre.")
+
+
 class DocumentoForm(forms.ModelForm):
     def clean(self):
         datos = super().clean()
+        _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
         gestor, direccion, sentido = datos.get("gestor"), datos.get("direccion"), datos.get("sentido")
         if gestor and sentido == "recibido":
             self.add_error("gestor", "Solo los documentos enviados llevan gestor.")
@@ -19,16 +45,24 @@ class DocumentoForm(forms.ModelForm):
     class Meta:
         model = Documento
         fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "director_nombre", "gestor", "folio", "asunto"]
-        widgets = {"fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")}
-        labels = {"director_nombre": "Director"}
-
-    campos_anchos = ("contraparte", "asunto")
+        widgets = {
+            "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+            "sentido": forms.Select(attrs={"x-model": "sentido"}),
+        }
+        labels = {"director_nombre": "Director", "direccion": "Dirección que registra"}
 
     def __init__(self, *args, direcciones=None, gestores=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["direccion"].queryset = (
             direcciones if direcciones is not None else Direccion.objects.none()
         )
+        propias = list(self.fields["direccion"].queryset[:2])
+        self.mostrar_direccion = len(propias) != 1
+        if not self.mostrar_direccion:
+            self.fields["direccion"].initial = propias[0].pk
+            self.fields["direccion"].widget = forms.HiddenInput()
+        self.fields["sentido"].initial = Documento.Sentido.ENVIADO
+        _agregar_contraparte(self, "Dirección destinataria / remitente")
         self.fields["gestor"].queryset = gestores if gestores is not None else Gestor.objects.none()
         self.fields["gestor"].required = False
         self.fields["gestor"].empty_label = "Sin asignar"
@@ -168,7 +202,7 @@ class NomenclaturaForm(forms.ModelForm):
 
 
 class DocumentoEdicionForm(forms.Form):
-    contraparte = forms.CharField(label="Remitente o destinatario", max_length=200)
+    contraparte = forms.CharField(label="Nombre si es otra / externa", max_length=200, required=False)
     asunto = forms.CharField(label="Asunto", max_length=300)
     fecha = forms.DateField(
         label="Fecha del documento",
@@ -182,8 +216,20 @@ class DocumentoEdicionForm(forms.Form):
 
     gestor = forms.ModelChoiceField(label="Gestor", required=False, queryset=Gestor.objects.none(), empty_label="Sin asignar")
 
+    def clean(self):
+        datos = super().clean()
+        _resolver_contraparte(self, datos, getattr(self.documento.direccion, "dependencia_uuid", None))
+        return datos
+
     def __init__(self, *args, documento, **kwargs):
         super().__init__(*args, **kwargs)
+        self.documento = documento
+        _agregar_contraparte(
+            self, "Dirección destinataria" if documento.sentido == "enviado" else "Dirección remitente"
+        )
+        if documento.contraparte_dependencia_uuid:
+            self.initial.setdefault("contraparte_dependencia", str(documento.contraparte_dependencia_uuid))
+        self.order_fields(["contraparte_dependencia", "contraparte", "asunto", "fecha", "folio", "gestor", "motivo"])
         if documento.sentido == "enviado":
             self.fields.pop("folio")
             self.fields["gestor"].queryset = Gestor.objects.filter(
