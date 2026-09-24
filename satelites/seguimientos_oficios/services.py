@@ -126,19 +126,34 @@ def _leer_pdf(archivo):
     return contenido
 
 
-@transaction.atomic
-def adjuntar_pdf(documento, *, usuario, archivo, origen="subida"):
-    """Agrega el PDF con el rol que corresponde al sentido. Devuelve (adjunto, duplicado)."""
-    documento = Documento.objects.select_for_update().get(pk=documento.pk)
+def roles_permitidos(documento):
+    """Tipos de archivo que se pueden adjuntar hoy al documento, el más habitual primero."""
+    Estado, Rol = Documento.Estado, Adjunto.Rol
+    if documento.estado == Estado.CANCELADO:
+        return []
     if documento.sentido == Documento.Sentido.RECIBIDO:
-        rol, permitidos = Adjunto.Rol.ORIGINAL, {Documento.Estado.REGISTRADO}
-        mensaje = "Solo se adjunta el original a un documento recibido en estado Registrado."
-    else:
-        rol = Adjunto.Rol.EVIDENCIA
-        permitidos = {Documento.Estado.ENTREGADO, Documento.Estado.CONCLUIDO}
-        mensaje = "La evidencia se adjunta cuando el documento ya fue entregado."
-    if documento.estado not in permitidos:
-        raise ValidationError(mensaje)
+        return [Rol.ORIGINAL] if documento.estado == Estado.REGISTRADO else []
+    if documento.estado == Estado.GENERADO:
+        return [Rol.FIRMADO]
+    return [Rol.EVIDENCIA, Rol.FIRMADO]
+
+
+def _elegir_rol(documento, rol):
+    permitidos = roles_permitidos(documento)
+    if not permitidos:
+        raise ValidationError("A este documento ya no se le pueden adjuntar archivos.")
+    rol = rol or permitidos[0]
+    if rol not in permitidos:
+        etiquetas = ", ".join(Adjunto.Rol(r).label for r in permitidos)
+        raise ValidationError(f"En este estado solo se puede adjuntar: {etiquetas}.")
+    return rol
+
+
+@transaction.atomic
+def adjuntar_pdf(documento, *, usuario, archivo, origen="subida", rol=None):
+    """Agrega el PDF con el tipo indicado (o el habitual del estado). Devuelve (adjunto, duplicado)."""
+    documento = Documento.objects.select_for_update().get(pk=documento.pk)
+    rol = _elegir_rol(documento, rol)
     contenido = _leer_pdf(archivo)
     return registrar_adjunto(
         documento, rol=rol, contenido=contenido, nombre=archivo.name, usuario=usuario,
@@ -188,23 +203,29 @@ def _preparar_ocr(adjunto, *, encolar=True):
         transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))
 
 
-def ruta_bandeja_de(documento):
+def ruta_bandeja_de(documento, rol=None):
     direccion = documento.direccion
-    return direccion.ruta_recibidos if documento.sentido == Documento.Sentido.RECIBIDO else direccion.ruta_evidencias
+    rol = rol or (roles_permitidos(documento) or [None])[0]
+    return {
+        Adjunto.Rol.ORIGINAL: direccion.ruta_recibidos,
+        Adjunto.Rol.FIRMADO: direccion.ruta_firmados,
+        Adjunto.Rol.EVIDENCIA: direccion.ruta_evidencias,
+    }.get(rol, "")
 
 
-def _carpeta_de(documento):
-    ruta = ruta_bandeja_de(documento)
+def _carpeta_de(documento, rol):
+    ruta = ruta_bandeja_de(documento, rol)
     if not ruta:
-        raise ValidationError("La dirección no tiene configurada la carpeta de la bandeja para este documento.")
+        raise ValidationError("La dirección no tiene configurada la carpeta de la bandeja para este tipo de archivo.")
     try:
         return bandeja.resolver(ruta)
     except bandeja.BandejaError as error:
         raise ValidationError(str(error)) from error
 
 
-def listar_bandeja(documento):
-    carpeta = _carpeta_de(documento)
+def listar_bandeja(documento, rol=None):
+    rol = _elegir_rol(documento, rol)
+    carpeta = _carpeta_de(documento, rol)
     try:
         return bandeja.listar_pdfs(carpeta)
     except bandeja.BandejaError as error:
@@ -212,13 +233,16 @@ def listar_bandeja(documento):
 
 
 @transaction.atomic
-def adjuntar_desde_bandeja(documento, *, usuario, nombre):
-    carpeta = _carpeta_de(documento)
+def adjuntar_desde_bandeja(documento, *, usuario, nombre, rol=None):
+    rol = _elegir_rol(documento, rol)
+    carpeta = _carpeta_de(documento, rol)
     try:
         contenido = bandeja.leer(carpeta, nombre, tamano_maximo=TAMANO_MAXIMO)
     except bandeja.BandejaError as error:
         raise ValidationError(str(error)) from error
-    resultado = adjuntar_pdf(documento, usuario=usuario, archivo=ContentFile(contenido, name=nombre), origen="bandeja")
+    resultado = adjuntar_pdf(
+        documento, usuario=usuario, archivo=ContentFile(contenido, name=nombre), origen="bandeja", rol=rol
+    )
     transaction.on_commit(lambda: bandeja.archivar_sin_fallar(carpeta, nombre))
     return resultado
 

@@ -28,6 +28,8 @@ class BandejaTests(BaseAdjuntos):
         (self.raiz / "innovacion" / "evidencias").mkdir(parents=True)
         self.direccion.ruta_recibidos = "innovacion/recibidos"
         self.direccion.ruta_evidencias = "innovacion/evidencias"
+        self.direccion.ruta_firmados = "innovacion/firmados"
+        (self.raiz / "innovacion" / "firmados").mkdir()
         self.direccion.save()
 
     def escanear(self, carpeta, nombre="scan.pdf", contenido=PDF):
@@ -126,3 +128,49 @@ class BandejaTests(BaseAdjuntos):
         with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
             self.client.post(reverse("seguimientos_oficios:documento_adjuntar_bandeja", args=[documento.pk]), {"nombre": "scan.pdf"})
         self.assertEqual(documento.adjuntos.count(), 1)
+
+    def test_generado_toma_el_firmado_de_su_carpeta_y_no_concluye(self):
+        documento = self.documento()
+        self.escanear("firmados", "oficio-firmado.pdf")
+        self.escanear("evidencias", "acuse.pdf")
+        self.assertEqual([a["nombre"] for a in listar_bandeja(documento)], ["oficio-firmado.pdf"])
+        with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
+            adjunto, _ = adjuntar_desde_bandeja(documento, usuario=self.user, nombre="oficio-firmado.pdf")
+        documento.refresh_from_db()
+        self.assertEqual((adjunto.rol, documento.estado), ("firmado", "generado"))
+        with self.assertRaises(ValidationError):
+            adjuntar_desde_bandeja(documento, usuario=self.user, nombre="acuse.pdf", rol="evidencia")
+
+    def test_entregado_elige_la_carpeta_segun_el_tipo(self):
+        documento = self.entregado()
+        self.escanear("firmados", "f.pdf")
+        self.escanear("evidencias", "e.pdf")
+        self.assertEqual([a["nombre"] for a in listar_bandeja(documento)], ["e.pdf"])
+        self.assertEqual([a["nombre"] for a in listar_bandeja(documento, "firmado")], ["f.pdf"])
+
+    def test_sin_carpeta_de_firmados_da_error_claro(self):
+        self.direccion.ruta_firmados = ""
+        self.direccion.save()
+        with self.assertRaises(ValidationError):
+            listar_bandeja(self.documento())
+
+    def test_vista_de_bandeja_usa_el_tipo_pedido(self):
+        documento = self.entregado()
+        self.escanear("firmados", "solo-firmado.pdf")
+        self.client.force_login(self.user)
+        url = reverse("seguimientos_oficios:documento_bandeja", args=[documento.pk])
+        self.assertContains(self.client.get(url, {"rol": "firmado"}), "solo-firmado.pdf")
+        self.assertNotContains(self.client.get(url, {"rol": "evidencia"}), "solo-firmado.pdf")
+        with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
+            self.client.post(reverse("seguimientos_oficios:documento_adjuntar_bandeja", args=[documento.pk]),
+                             {"nombre": "solo-firmado.pdf", "rol": "firmado"})
+        self.assertEqual(documento.adjuntos.get().rol, "firmado")
+
+    def test_configuracion_guarda_la_carpeta_de_firmados(self):
+        UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
+        self.client.force_login(self.user)
+        url = reverse("seguimientos_oficios:configuracion_guardar", args=[self.direccion.pk])
+        self.client.post(url, {"ruta_recibidos": "innovacion/recibidos", "ruta_firmados": "innovacion/firmados", "ruta_evidencias": ""})
+        self.direccion.refresh_from_db()
+        self.assertEqual((self.direccion.ruta_firmados, self.direccion.ruta_evidencias), ("innovacion/firmados", ""))
+        self.assertContains(self.client.get(reverse("seguimientos_oficios:configuracion")), "Firmados")

@@ -18,9 +18,9 @@ from .selectors import (
     documentos_de_gestor, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
 from . import bandeja
-from .models import Direccion, Gestor, Nomenclatura
+from .models import Adjunto, Direccion, Gestor, Nomenclatura
 from .storage import almacen
-from .services import adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
+from .services import roles_permitidos, adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
 
 
 POR_PAGINA = 25
@@ -132,13 +132,10 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         and documento.estado == documento.Estado.GENERADO and documento.sentido == documento.Sentido.ENVIADO,
         "adjuntos": documento.adjuntos.all(),
         "adjunto_form": AdjuntoForm(),
-        "puede_adjuntar": _permitido(request, "can_upload_files") and (
-            documento.estado == documento.Estado.REGISTRADO
-            if documento.sentido == documento.Sentido.RECIBIDO
-            else documento.estado in (documento.Estado.ENTREGADO, documento.Estado.CONCLUIDO)
+        "roles_adjuntables": (
+            [(r, Adjunto.Rol(r).label) for r in roles_permitidos(documento)]
+            if _permitido(request, "can_upload_files") else []
         ),
-        "bandeja_configurada": bool(ruta_bandeja_de(documento)),
-        "puede_editar": _permitido(request, "can_edit_oficio") and documento.estado != documento.Estado.CANCELADO,
         "puede_cancelar": documento.estado != documento.Estado.CANCELADO and (
             _permitido(request, "can_cancel_concluded")
             if documento.estado == documento.Estado.CONCLUIDO
@@ -196,7 +193,9 @@ def documento_adjuntar_view(request, pk):
     form = AdjuntoForm(request.POST, request.FILES)
     if form.is_valid():
         try:
-            _, duplicado = adjuntar_pdf(documento, usuario=request.user, archivo=form.cleaned_data["archivo"])
+            _, duplicado = adjuntar_pdf(
+                documento, usuario=request.user, archivo=form.cleaned_data["archivo"], rol=form.cleaned_data["rol"] or None
+            )
         except ValidationError as error:
             messages.error(request, "; ".join(error.messages))
         else:
@@ -231,11 +230,12 @@ def adjunto_descargar_view(request, pk, adjunto_pk):
 def documento_bandeja_view(request, pk):
     documento = documento_visible(request, pk)
     try:
-        archivos, error = listar_bandeja(documento), ""
+        rol = request.GET.get("rol") or None
+        archivos, error = listar_bandeja(documento, rol), ""
     except ValidationError as excepcion:
         archivos, error = [], "; ".join(excepcion.messages)
     return render(request, "seguimientos_oficios/htmx/bandeja_lista.html",
-                  {"documento": documento, "archivos": archivos, "error": error})
+                  {"documento": documento, "archivos": archivos, "error": error, "rol": request.GET.get("rol", "")})
 
 
 @login_required
@@ -244,7 +244,9 @@ def documento_bandeja_view(request, pk):
 def documento_adjuntar_bandeja_view(request, pk):
     documento = documento_visible(request, pk)
     try:
-        _, duplicado = adjuntar_desde_bandeja(documento, usuario=request.user, nombre=request.POST.get("nombre", ""))
+        _, duplicado = adjuntar_desde_bandeja(
+            documento, usuario=request.user, nombre=request.POST.get("nombre", ""), rol=request.POST.get("rol") or None
+        )
     except ValidationError as error:
         messages.error(request, "; ".join(error.messages))
     else:
@@ -271,9 +273,11 @@ def configuracion_view(request):
         filas.append({
             "direccion": direccion,
             "form": BandejaConfigForm(initial={
-                "ruta_recibidos": direccion.ruta_recibidos, "ruta_evidencias": direccion.ruta_evidencias,
+                "ruta_recibidos": direccion.ruta_recibidos, "ruta_firmados": direccion.ruta_firmados,
+                "ruta_evidencias": direccion.ruta_evidencias,
             }),
             "recibidos": _estado_bandeja(direccion.ruta_recibidos),
+            "firmados": _estado_bandeja(direccion.ruta_firmados),
             "evidencias": _estado_bandeja(direccion.ruta_evidencias),
         })
     raiz = bandeja.raiz()
@@ -288,6 +292,7 @@ def configuracion_guardar_view(request, pk):
     form = BandejaConfigForm(request.POST)
     if form.is_valid():
         direccion.ruta_recibidos = form.cleaned_data["ruta_recibidos"]
+        direccion.ruta_firmados = form.cleaned_data["ruta_firmados"]
         direccion.ruta_evidencias = form.cleaned_data["ruta_evidencias"]
         direccion.save()
         messages.success(request, f"Bandeja de {direccion.nombre} guardada.")

@@ -43,6 +43,10 @@ class Direccion(BaseOficios):
         "Carpeta de recibidos", max_length=255, blank=True,
         help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios recibidos.",
     )
+    ruta_firmados = models.CharField(
+        "Carpeta de firmados", max_length=255, blank=True,
+        help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios enviados ya firmados.",
+    )
     ruta_evidencias = models.CharField(
         "Carpeta de evidencias", max_length=255, blank=True,
         help_text="Ruta relativa a la raíz de la bandeja donde se escanean las evidencias de entrega.",
@@ -299,6 +303,7 @@ class Adjunto(models.Model):
 
     class Rol(models.TextChoices):
         ORIGINAL = "original", "Original escaneado"
+        FIRMADO = "firmado", "Documento firmado"
         EVIDENCIA = "evidencia", "Evidencia de entrega"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)

@@ -16,9 +16,49 @@ class AdjuntosTests(BaseAdjuntos):
         self.assertEqual((documento.estado, adjunto.rol, duplicado), ("concluido", "evidencia", None))
         self.assertEqual(documento.historial.last().datos["estado_nuevo"], "concluido")
 
+    def test_generado_recibe_el_documento_firmado_sin_cambiar_de_estado(self):
+        documento = self.documento()
+        adjunto, _ = adjuntar_pdf(documento, usuario=self.user, archivo=pdf())
+        documento.refresh_from_db()
+        self.assertEqual((adjunto.rol, documento.estado), ("firmado", "generado"))
+        self.assertRegex(adjunto.ruta, r"^2026/innovacion/enviados/IN-001-2026__firmado__")
+
     def test_evidencia_solo_si_ya_fue_entregado(self):
         with self.assertRaises(ValidationError):
-            adjuntar_pdf(self.documento(), usuario=self.user, archivo=pdf())
+            adjuntar_pdf(self.documento(), usuario=self.user, archivo=pdf(), rol="evidencia")
+
+    def test_entregado_acepta_firmado_o_evidencia_y_solo_la_evidencia_concluye(self):
+        documento = self.entregado()
+        firmado, _ = adjuntar_pdf(documento, usuario=self.user, archivo=pdf("f.pdf", PDF + b"f"), rol="firmado")
+        documento.refresh_from_db()
+        self.assertEqual((firmado.rol, documento.estado), ("firmado", "entregado"))
+        evidencia, _ = adjuntar_pdf(documento, usuario=self.user, archivo=pdf("e.pdf", PDF + b"e"))
+        documento.refresh_from_db()
+        self.assertEqual((evidencia.rol, documento.estado), ("evidencia", "concluido"))
+
+    def test_roles_permitidos_por_estado(self):
+        from satelites.seguimientos_oficios.services import cancelar_documento, roles_permitidos
+
+        self.assertEqual(roles_permitidos(self.documento("recibido")), ["original"])
+        self.assertEqual(roles_permitidos(self.documento()), ["firmado"])
+        self.assertEqual(roles_permitidos(self.entregado()), ["evidencia", "firmado"])
+        cancelado = self.documento()
+        cancelar_documento(cancelado, usuario=self.user, motivo="Registrado por error en la captura")
+        cancelado.refresh_from_db()
+        self.assertEqual(roles_permitidos(cancelado), [])
+        with self.assertRaises(ValidationError):
+            adjuntar_pdf(cancelado, usuario=self.user, archivo=pdf())
+
+    def test_el_detalle_ofrece_solo_lo_que_corresponde(self):
+        self.client.force_login(self.user)
+        generado = self.documento()
+        detalle = self.client.get(reverse("seguimientos_oficios:documento_detail", args=[generado.pk]))
+        self.assertContains(detalle, '<input type="hidden" name="rol" value="firmado">')
+        self.assertContains(detalle, "Documento firmado")
+        entregado = self.entregado()
+        detalle = self.client.get(reverse("seguimientos_oficios:documento_detail", args=[entregado.pk]))
+        self.assertContains(detalle, 'id="rol-adjunto"')
+        self.assertContains(detalle, "Evidencia de entrega")
 
     def test_recibido_adjunta_original_sin_cambiar_estado(self):
         documento = self.documento("recibido")
