@@ -3,6 +3,7 @@ from django.db.models import Count, Q
 
 from .integracion import dependencias_autorizadas
 from .models import AdjuntoOCR, Direccion, Documento
+from .textos import terminos
 
 APP_SLUG = "seguimientos_oficios"
 
@@ -48,14 +49,15 @@ def documento_visible(request, pk):
 
 
 def _coincidencias_ocr(termino):
+    """`termino` ya normalizado (minúsculas, sin acentos)."""
     if connection.vendor == "postgresql":
         from django.contrib.postgres.search import SearchQuery, SearchVector
 
         return (
-            AdjuntoOCR.objects.annotate(vector=SearchVector("texto", config="spanish"))
+            AdjuntoOCR.objects.annotate(vector=SearchVector("texto_normalizado", config="spanish"))
             .filter(vector=SearchQuery(termino, config="spanish", search_type="websearch"))
         )
-    return AdjuntoOCR.objects.filter(texto__icontains=termino)
+    return AdjuntoOCR.objects.filter(texto_normalizado__contains=termino)
 
 
 def buscar_documentos(queryset, filtros):
@@ -71,13 +73,14 @@ def buscar_documentos(queryset, filtros):
         queryset = queryset.filter(fecha__gte=filtros["desde"])
     if filtros.get("hasta"):
         queryset = queryset.filter(fecha__lte=filtros["hasta"])
-    for termino in (filtros.get("q") or "").split():
+    return con_texto(queryset, filtros.get("q"))
+
+
+def con_texto(queryset, consulta):
+    """Documentos que contienen todos los términos, sin importar acentos ni mayúsculas, en sus datos o en el OCR."""
+    for termino in terminos(consulta or ""):
         en_ocr = _coincidencias_ocr(termino).values("adjunto__documento_id")
-        queryset = queryset.filter(
-            Q(folio__icontains=termino) | Q(asunto__icontains=termino)
-            | Q(contraparte__icontains=termino) | Q(director_nombre__icontains=termino)
-            | Q(pk__in=en_ocr)
-        )
+        queryset = queryset.filter(Q(busqueda__contains=termino) | Q(pk__in=en_ocr))
     return queryset
 
 

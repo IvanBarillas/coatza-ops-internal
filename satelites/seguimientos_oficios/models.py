@@ -5,6 +5,8 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.utils.text import slugify
+
+from .textos import normalizar
 from django.db.models import Q
 
 
@@ -205,6 +207,7 @@ class Documento(BaseOficios):
         Gestor, null=True, blank=True, on_delete=models.PROTECT, related_name="documentos",
         verbose_name="Gestor",
     )
+    busqueda = models.TextField(editable=False, blank=True, default="")
     estado = models.CharField("Estado", max_length=12, choices=Estado.choices, default=Estado.GENERADO, db_index=True)
     fecha_entrega = models.DateField("Fecha de entrega", null=True, blank=True)
     receptor_entrega = models.CharField("Recibió la entrega", max_length=200, blank=True)
@@ -240,6 +243,7 @@ class Documento(BaseOficios):
         return (date.today() - desde).days
 
     def save(self, *args, **kwargs):
+        self.busqueda = normalizar(" ".join((self.folio, self.asunto, self.contraparte, self.director_nombre)))
         if not self._state.adding:
             protegidos = self.INMUTABLES + (("folio",) if self.sentido == self.Sentido.ENVIADO else ())
             original = type(self).objects.filter(pk=self.pk).values(*protegidos).first()
@@ -332,6 +336,7 @@ class AdjuntoOCR(models.Model):
     adjunto = models.OneToOneField(Adjunto, on_delete=models.PROTECT, related_name="ocr")
     estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
     texto = models.TextField(blank=True)
+    texto_normalizado = models.TextField(editable=False, blank=True, default="")
     error = models.TextField(blank=True)
     intentos = models.PositiveSmallIntegerField(default=0)
     iniciado_en = models.DateTimeField(null=True, blank=True)
@@ -339,3 +344,7 @@ class AdjuntoOCR(models.Model):
 
     class Meta:
         db_table = "oficios_adjunto_ocr"
+
+    def save(self, *args, **kwargs):
+        self.texto_normalizado = normalizar(self.texto)
+        super().save(*args, **kwargs)
