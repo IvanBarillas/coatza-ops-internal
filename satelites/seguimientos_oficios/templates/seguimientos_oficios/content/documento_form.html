@@ -31,7 +31,7 @@
 
             <div><label for="{{ form.director_nombre.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-slate-500">Director</label>{{ form.director_nombre }}<p class="mt-1 text-xs text-slate-400">{{ form.director_nombre.help_text }}</p></div>
             <div x-show="sentido === 'enviado'"><label for="{{ form.gestor.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-slate-500">Gestor</label>{{ form.gestor }}<p class="mt-1 text-xs text-slate-400">{{ form.gestor.help_text }}</p>{% for e in form.gestor.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
-            <div x-show="sentido === 'recibido'"><label for="{{ form.folio.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-slate-500">Folio del remitente</label>{{ form.folio }}<p class="mt-1 text-xs text-slate-400">En enviados el folio se genera solo.</p></div>
+            <div x-show="sentido === 'recibido' || {{ form.hay_folio_manual|yesno:'true,false' }}"><label for="{{ form.folio.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-slate-500"><span x-text="sentido === 'enviado' ? 'Folio del oficio' : 'Folio del remitente'">Folio</span></label>{{ form.folio }}<p class="mt-1 text-xs text-slate-400">{{ form.folio.help_text }}</p>{% for e in form.folio.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
 
             <div class="sm:col-span-2"><label for="{{ form.asunto.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-slate-500">Asunto</label>{{ form.asunto }}{% for e in form.asunto.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
         </div>

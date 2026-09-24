@@ -10,7 +10,7 @@ from django.db import IntegrityError, transaction
 
 from . import bandeja
 from .models import Adjunto, ClaseDocumento, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
-from .services import TAMANO_MAXIMO, _historial, registrar_adjunto
+from .services import TAMANO_MAXIMO, _historial, registrar_adjunto, sincronizar_contador
 
 ORIGEN = "importacion"
 USUARIO_NOMBRE = "Importación histórica"
@@ -80,14 +80,6 @@ def _preparar(direccion, carpeta, nombre, fila, opciones):
     }
 
 
-def _subir_contador(nomenclatura, anio, consecutivo):
-    ConsecutivoFolio.objects.get_or_create(nomenclatura=nomenclatura, anio=anio)
-    contador = ConsecutivoFolio.objects.select_for_update().get(nomenclatura=nomenclatura, anio=anio)
-    if consecutivo > contador.ultimo:
-        contador.ultimo = consecutivo
-        contador.save(update_fields=["ultimo"])
-
-
 @transaction.atomic
 def _crear(direccion, nombre, contenido, datos):
     enviado = datos["sentido"] == "enviado"
@@ -96,7 +88,7 @@ def _crear(direccion, nombre, contenido, datos):
         contraparte=datos["contraparte"], asunto=datos["asunto"], fecha=datos["fecha"], folio=datos["folio"],
         anio=datos["anio"], consecutivo=datos["consecutivo"],
         estado=Documento.Estado.CONCLUIDO if enviado else Documento.Estado.REGISTRADO,
-        director_nombre=datos["director"],
+        director_nombre=datos["director"], folio_manual=enviado,
     )
     _historial(documento, HistorialDocumento.Accion.CREADO, None, {
         "origen": ORIGEN, "sentido": datos["sentido"], "clase": datos["clase"], "folio": datos["folio"],
@@ -107,7 +99,7 @@ def _crear(direccion, nombre, contenido, datos):
     registrar_adjunto(documento, rol=rol, contenido=contenido, nombre=nombre, usuario=None,
                       origen=ORIGEN, encolar=False, usuario_nombre=USUARIO_NOMBRE)
     if enviado and datos["nomenclatura"] and datos["consecutivo"]:
-        _subir_contador(datos["nomenclatura"], datos["anio"], datos["consecutivo"])
+        sincronizar_contador(datos["nomenclatura"], datos["anio"], datos["consecutivo"])
     return documento
 
 

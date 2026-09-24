@@ -16,9 +16,9 @@ class FoliosYHistorialTests(TestCase):
             email="juan@example.test", first_name="Juan", last_name="Pérez"
         )
         cls.dep = Dependencia.objects.create(nombre="Innovación", encargado_departamento=cls.titular)
-        cls.innovacion = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep.pk)
-        cls.egresos = Direccion.objects.create(nombre="Egresos")
-        cls.sin_prefijo = Direccion.objects.create(nombre="Sin nomenclatura")
+        cls.innovacion = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep.pk, folio_manual=False)
+        cls.egresos = Direccion.objects.create(nombre="Egresos", folio_manual=False)
+        cls.sin_prefijo = Direccion.objects.create(nombre="Sin nomenclatura", folio_manual=False)
         for direccion, clase, plantilla in (
             (cls.innovacion, "dictamen_alta", "IN-{n:03d}/{anio}"),
             (cls.innovacion, "vale_prestamo", "VP-IN-{n}/{anio}"),

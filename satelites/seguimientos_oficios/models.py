@@ -39,6 +39,10 @@ class Direccion(BaseOficios):
         "Carpeta de archivos", max_length=160, unique=True, null=True, editable=False,
         help_text="Nombre de carpeta en el almacén; se fija al crear la dirección y no cambia si se renombra.",
     )
+    folio_manual = models.BooleanField(
+        "Folio manual", default=True,
+        help_text="Activo: quien registra un oficio enviado escribe su folio. Inactivo: se genera con la nomenclatura.",
+    )
     ruta_recibidos = models.CharField(
         "Carpeta de recibidos", max_length=255, blank=True,
         help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios recibidos.",
@@ -209,6 +213,7 @@ class Documento(BaseOficios):
     asunto = models.CharField("Asunto", max_length=300)
     fecha = models.DateField("Fecha del documento")
     folio = models.CharField("Folio", max_length=80, blank=True, db_index=True)
+    folio_manual = models.BooleanField("Folio capturado a mano", default=False)
     anio = models.PositiveSmallIntegerField(null=True, blank=True)
     consecutivo = models.PositiveIntegerField(null=True, blank=True)
     gestor = models.ForeignKey(
@@ -253,7 +258,7 @@ class Documento(BaseOficios):
     def save(self, *args, **kwargs):
         self.busqueda = normalizar(" ".join((self.folio, self.asunto, self.contraparte, self.director_nombre)))
         if not self._state.adding:
-            protegidos = self.INMUTABLES + (("folio",) if self.sentido == self.Sentido.ENVIADO else ())
+            protegidos = self.INMUTABLES + (("folio",) if self.sentido == self.Sentido.ENVIADO and not self.folio_manual else ())
             original = type(self).objects.filter(pk=self.pk).values(*protegidos).first()
             if original:
                 cambiados = [c for c in protegidos if original[c] != getattr(self, c)]

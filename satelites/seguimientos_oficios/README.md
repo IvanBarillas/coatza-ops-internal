@@ -105,7 +105,11 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
 
 ## Reglas de negocio
 
-- El folio de los enviados sale de la **Nomenclatura** (dirección + clase), con contador por año.
+- Folio: cada dirección tiene el ajuste **Folio manual** (Catálogos), activo por defecto en esta fase. Con folio
+  manual quien registra un enviado escribe el folio (obligatorio, único por dirección incluso frente a cancelados) y
+  se puede corregir después con rastro en el historial; si sigue la nomenclatura, el contador avanza hasta ese
+  número. Sin folio manual, el sistema lo genera. En los recibidos el folio del remitente siempre se captura a mano.
+- El folio automático de los enviados sale de la **Nomenclatura** (dirección + clase), con contador por año.
   Se administra en el admin de Django hasta que exista su pantalla.
 - Archivos por tipo: **Original** (recibidos), **Documento firmado** (enviados: el oficio ya firmado, se sube o se
   elige de la bandeja estando Generado; no cambia el estado) y **Evidencia de entrega** (enviados ya Entregados;

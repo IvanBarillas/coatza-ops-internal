@@ -33,8 +33,8 @@ class VisibilidadOficiosTests(TestCase):
         UserAppRole.objects.create(
             user=cls.user, app=cls.app, role="editor", permissions_list=P.ROLE_MAPPING["editor"]
         )
-        cls.dir_propia = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep_propia.pk)
-        cls.dir_ajena = Direccion.objects.create(nombre="Egresos", dependencia_uuid=cls.dep_ajena.pk)
+        cls.dir_propia = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep_propia.pk, folio_manual=False)
+        cls.dir_ajena = Direccion.objects.create(nombre="Egresos", dependencia_uuid=cls.dep_ajena.pk, folio_manual=False)
         Nomenclatura.objects.create(direccion=cls.dir_propia, clase="vale_prestamo", plantilla="IN-{n:03d}/{anio}")
         for direccion, asunto in ((cls.dir_propia, "Oficio propio"), (cls.dir_ajena, "Oficio ajeno")):
             Documento.objects.create(

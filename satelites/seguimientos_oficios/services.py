@@ -23,6 +23,24 @@ def _validar_gestor(gestor, direccion, sentido):
         raise ValidationError("El gestor no pertenece a la dirección o está inactivo.")
 
 
+def _folio_capturado(direccion, folio):
+    folio = (folio or "").strip()
+    if not folio:
+        raise ValidationError("Escriba el folio del oficio.")
+    if Documento.objects.filter(direccion=direccion, sentido=Documento.Sentido.ENVIADO, folio=folio).exists():
+        raise ValidationError(f"Ya existe un oficio enviado con el folio {folio} en esta dirección.")
+    return folio
+
+
+def sincronizar_contador(nomenclatura, anio, consecutivo):
+    """Sube el contador hasta el mayor folio conocido, para que el siguiente automático continúe la serie."""
+    ConsecutivoFolio.objects.get_or_create(nomenclatura=nomenclatura, anio=anio)
+    contador = ConsecutivoFolio.objects.select_for_update().get(nomenclatura=nomenclatura, anio=anio)
+    if consecutivo > contador.ultimo:
+        contador.ultimo = consecutivo
+        contador.save(update_fields=["ultimo"])
+
+
 def _siguiente_folio(direccion, clase, anio):
     nomenclatura = Nomenclatura.objects.filter(
         direccion=direccion, clase=clase, is_active=True, is_deleted=False
@@ -41,18 +59,29 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
                     folio="", director_nombre="", gestor=None, contraparte_dependencia_uuid=None):
     _validar_gestor(gestor, direccion, sentido)
     anio = consecutivo = None
-    if sentido == Documento.Sentido.ENVIADO:
+    nomenclatura, folio_manual = None, False
+    if sentido == Documento.Sentido.ENVIADO and direccion.folio_manual:
+        folio, folio_manual = _folio_capturado(direccion, folio), True
+        nomenclatura = Nomenclatura.objects.filter(
+            direccion=direccion, clase=clase, is_active=True, is_deleted=False
+        ).first()
+        interpretado = nomenclatura.interpretar(folio) if nomenclatura else None
+        if interpretado:
+            consecutivo, anio = interpretado[0], interpretado[1] or fecha.year
+    elif sentido == Documento.Sentido.ENVIADO:
         consecutivo, folio = _siguiente_folio(direccion, clase, fecha.year)
         anio = fecha.year
     documento = Documento.objects.create(
         sentido=sentido, clase=clase, direccion=direccion, direccion_nombre=direccion.nombre,
         contraparte=contraparte, contraparte_dependencia_uuid=contraparte_dependencia_uuid,
         asunto=asunto, fecha=fecha, folio=folio,
-        anio=anio, consecutivo=consecutivo, creado_por=usuario,
+        anio=anio, consecutivo=consecutivo, creado_por=usuario, folio_manual=folio_manual,
         estado=(Documento.Estado.GENERADO if sentido == Documento.Sentido.ENVIADO else Documento.Estado.REGISTRADO),
         director_nombre=director_nombre or director_de_dependencia(direccion.dependencia_uuid),
         gestor=gestor,
     )
+    if folio_manual and consecutivo:
+        sincronizar_contador(nomenclatura, anio, consecutivo)
     HistorialDocumento.objects.create(
         documento=documento, accion=HistorialDocumento.Accion.CREADO,
         usuario=usuario, usuario_nombre=nombre_de_usuario(usuario),
@@ -265,7 +294,7 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
     if documento.sentido == Documento.Sentido.RECIBIDO:
         permitidos = CAMPOS_EDITABLES + ("folio",)
     else:
-        permitidos = CAMPOS_EDITABLES + ("gestor",)
+        permitidos = CAMPOS_EDITABLES + ("gestor",) + (("folio",) if documento.folio_manual else ())
     diferencias = {}
     for campo, nuevo in cambios.items():
         if campo not in permitidos:
@@ -276,6 +305,13 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         if nuevo != actual:
             if campo == "gestor":
                 _validar_gestor(nuevo, documento.direccion, documento.sentido)
+            if campo == "folio" and documento.sentido == Documento.Sentido.ENVIADO:
+                if not nuevo:
+                    raise ValidationError("El folio de un oficio enviado no puede quedar vacío.")
+                if Documento.objects.filter(
+                    direccion=documento.direccion, sentido=Documento.Sentido.ENVIADO, folio=nuevo
+                ).exclude(pk=documento.pk).exists():
+                    raise ValidationError(f"Ya existe un oficio enviado con el folio {nuevo} en esta dirección.")
             diferencias[campo] = (actual, nuevo)
     if not diferencias:
         raise ValidationError("No hay cambios que guardar.")

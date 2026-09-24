@@ -32,6 +32,9 @@ def _resolver_contraparte(form, datos, propia_uuid=None):
 
 
 class DocumentoForm(forms.ModelForm):
+    def validate_unique(self):
+        """La unicidad del folio la valida el servicio, con un mensaje claro."""
+
     def clean(self):
         datos = super().clean()
         _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
@@ -40,6 +43,8 @@ class DocumentoForm(forms.ModelForm):
             self.add_error("gestor", "Solo los documentos enviados llevan gestor.")
         elif gestor and direccion and gestor.direccion_id != direccion.pk:
             self.add_error("gestor", "El gestor no pertenece a la dirección elegida.")
+        if sentido == "enviado" and direccion and direccion.folio_manual and not (datos.get("folio") or "").strip():
+            self.add_error("folio", "Escriba el folio del oficio.")
         return datos
 
     class Meta:
@@ -68,7 +73,9 @@ class DocumentoForm(forms.ModelForm):
         self.fields["gestor"].empty_label = "Sin asignar"
         self.fields["gestor"].help_text = "Quien llevará el oficio a la dependencia (solo enviados)."
         self.fields["director_nombre"].help_text = "Vacío = titular actual de la dirección."
-        self.fields["folio"].help_text = "Solo recibidos. En enviados se genera según la nomenclatura de la clase."
+        self.fields["folio"].required = False
+        self.fields["folio"].help_text = "Escríbelo tal como aparece en el oficio."
+        self.hay_folio_manual = any(d.folio_manual for d in self.fields["direccion"].queryset)
         for campo in self.fields.values():
             campo.widget.attrs.setdefault(
                 "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
@@ -162,8 +169,8 @@ class DireccionForm(forms.ModelForm):
 
     class Meta:
         model = Direccion
-        fields = ["nombre", "is_active"]
-        labels = {"is_active": "Activa"}
+        fields = ["nombre", "folio_manual", "is_active"]
+        labels = {"is_active": "Activa", "folio_manual": "Folio manual"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -173,7 +180,7 @@ class DireccionForm(forms.ModelForm):
         if self.instance.dependencia_uuid:
             self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
         for nombre, campo in self.fields.items():
-            if nombre != "is_active":
+            if nombre not in ("is_active", "folio_manual"):
                 campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
 
     def save(self, commit=True):
@@ -236,7 +243,10 @@ class DocumentoEdicionForm(forms.Form):
             self.initial.setdefault("contraparte_dependencia", str(documento.contraparte_dependencia_uuid))
         self.order_fields(["contraparte_dependencia", "contraparte", "asunto", "fecha", "folio", "gestor", "motivo"])
         if documento.sentido == "enviado":
-            self.fields.pop("folio")
+            if not documento.folio_manual:
+                self.fields.pop("folio")
+            if "folio" in self.fields:
+                self.fields["folio"].label = "Folio del oficio"
             self.fields["gestor"].queryset = Gestor.objects.filter(
                 direccion=documento.direccion, is_active=True, is_deleted=False
             )
