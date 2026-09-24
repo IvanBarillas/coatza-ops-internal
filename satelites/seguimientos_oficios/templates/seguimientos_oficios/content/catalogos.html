@@ -7,7 +7,7 @@
     {% include "seguimientos_oficios/content/_mensajes.html" %}
     <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
         <table class="min-w-full text-sm">
-            <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Carpeta</th><th class="px-4 py-3">Vinculada al Core</th><th class="px-4 py-3">Nomenclaturas</th><th class="px-4 py-3">Estado</th></tr></thead>
+            <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Carpeta</th><th class="px-4 py-3">Vinculada al Core</th><th class="px-4 py-3">Nomenclaturas</th><th class="px-4 py-3">Gestores</th><th class="px-4 py-3">Estado</th></tr></thead>
             <tbody>
             {% for d in direcciones %}
                 <tr class="border-t border-gray-100">
@@ -15,9 +15,10 @@
                     <td class="px-4 py-3 text-slate-500">{{ d.slug }}</td>
                     <td class="px-4 py-3">{% if d.dependencia_uuid %}Sí{% else %}<span class="text-amber-700">No</span>{% endif %}</td>
                     <td class="px-4 py-3">{{ d.nomenclaturas.all|length }}</td>
+                    <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}#gestores" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.gestores.all|length }} · administrar</a></td>
                     <td class="px-4 py-3">{% if d.is_active %}Activa{% else %}Inactiva{% endif %}</td>
                 </tr>
-            {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">Aún no hay direcciones.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Aún no hay direcciones.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
