@@ -35,12 +35,19 @@
             </li>
             {% empty %}<li class="text-slate-500">Sin archivos adjuntos.</li>{% endfor %}
         </ul>
-        {% if puede_adjuntar %}
+        {% if roles_adjuntables %}
         <form method="post" enctype="multipart/form-data" action="{% url 'seguimientos_oficios:documento_adjuntar' documento.pk %}" class="mt-4 flex flex-wrap items-end gap-3">
             {% csrf_token %}
+            {% if roles_adjuntables|length > 1 %}
+            <div><label for="rol-adjunto" class="mb-1 block text-xs font-bold uppercase text-slate-500">Tipo de archivo</label>
+                <select name="rol" id="rol-adjunto" class="rounded-xl border border-gray-300 px-3 py-2 text-sm">{% for valor, etiqueta in roles_adjuntables %}<option value="{{ valor }}">{{ etiqueta }}</option>{% endfor %}</select></div>
+            {% else %}
+            <input type="hidden" name="rol" value="{{ roles_adjuntables.0.0 }}">
+            <span class="w-full text-xs font-bold uppercase text-slate-500">{{ roles_adjuntables.0.1 }}</span>
+            {% endif %}
             <div>{{ adjunto_form.archivo.label_tag }}<div>{{ adjunto_form.archivo }}</div></div>
-            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">{% if documento.sentido == 'enviado' %}Subir evidencia{% else %}Subir original{% endif %}</button>
-            {% if bandeja_configurada %}<button type="button" hx-get="{% url 'seguimientos_oficios:documento_bandeja' documento.pk %}" hx-target="#bandeja-lista" hx-swap="innerHTML" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Elegir de la bandeja</button>{% endif %}
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">Subir</button>
+            {% if bandeja_configurada %}<button type="button" hx-get="{% url 'seguimientos_oficios:documento_bandeja' documento.pk %}" hx-include="closest form" hx-target="#bandeja-lista" hx-swap="innerHTML" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Elegir de la bandeja</button>{% endif %}
         </form>
         <div id="bandeja-lista"></div>
         {% endif %}

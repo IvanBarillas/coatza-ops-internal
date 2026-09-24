@@ -11,14 +11,19 @@
     <form method="post" action="{% url 'seguimientos_oficios:configuracion_guardar' fila.direccion.pk %}" class="rounded-2xl border border-gray-200 bg-white p-5">
         {% csrf_token %}
         <h2 class="mb-3 text-sm font-black uppercase text-slate-700">{{ fila.direccion.nombre }}</h2>
-        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <div>
                 <label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ fila.form.ruta_recibidos.id_for_label }}-{{ forloop.counter }}">Recibidos (oficios que llegan)</label>
                 <input type="text" name="ruta_recibidos" id="{{ fila.form.ruta_recibidos.id_for_label }}-{{ forloop.counter }}" value="{{ fila.recibidos.ruta }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" placeholder="innovacion/oficios/recibidos">
                 <p class="mt-1 text-xs {% if fila.recibidos.ok == False %}text-red-600{% elif fila.recibidos.ok %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ fila.recibidos.detalle }}</p>
             </div>
             <div>
-                <label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ fila.form.ruta_evidencias.id_for_label }}-{{ forloop.counter }}">Evidencias (oficios firmados y entregados)</label>
+                <label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ fila.form.ruta_firmados.id_for_label }}-{{ forloop.counter }}">Firmados (oficios enviados, antes de entregar)</label>
+                <input type="text" name="ruta_firmados" id="{{ fila.form.ruta_firmados.id_for_label }}-{{ forloop.counter }}" value="{{ fila.firmados.ruta }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" placeholder="innovacion/oficios/firmados">
+                <p class="mt-1 text-xs {% if fila.firmados.ok == False %}text-red-600{% elif fila.firmados.ok %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ fila.firmados.detalle }}</p>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ fila.form.ruta_evidencias.id_for_label }}-{{ forloop.counter }}">Evidencias (acuse de entrega)</label>
                 <input type="text" name="ruta_evidencias" id="{{ fila.form.ruta_evidencias.id_for_label }}-{{ forloop.counter }}" value="{{ fila.evidencias.ruta }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" placeholder="innovacion/oficios/evidencias">
                 <p class="mt-1 text-xs {% if fila.evidencias.ok == False %}text-red-600{% elif fila.evidencias.ok %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ fila.evidencias.detalle }}</p>
             </div>

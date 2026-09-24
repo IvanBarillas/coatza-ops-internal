@@ -107,6 +107,10 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
 
 - El folio de los enviados sale de la **Nomenclatura** (dirección + clase), con contador por año.
   Se administra en el admin de Django hasta que exista su pantalla.
+- Archivos por tipo: **Original** (recibidos), **Documento firmado** (enviados: el oficio ya firmado, se sube o se
+  elige de la bandeja estando Generado; no cambia el estado) y **Evidencia de entrega** (enviados ya Entregados;
+  concluye el documento). Estando Entregado o Concluido también se puede agregar un firmado. Cada tipo tiene su
+  carpeta de bandeja por dirección (recibidos, firmados, evidencias).
 - Estados: Generado → Entregado → Concluido (con evidencia PDF); Cancelado desde cualquiera, con
   motivo. Cancelar un Concluido exige `can_cancel_concluded`. Los documentos no se eliminan.
 - Director, dirección, folio (en enviados), clase y sentido quedan congelados al registrar; el historial es

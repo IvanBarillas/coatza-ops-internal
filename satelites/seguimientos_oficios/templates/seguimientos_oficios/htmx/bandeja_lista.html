@@ -8,7 +8,7 @@
                 <div><span class="font-bold text-slate-700">{{ a.nombre }}</span>
                     <span class="ml-2 text-xs text-slate-400">{{ a.tamano|filesizeformat }} · {{ a.modificado|date:"d/m/Y H:i" }}</span></div>
                 <form method="post" action="{% url 'seguimientos_oficios:documento_adjuntar_bandeja' documento.pk %}">
-                    {% csrf_token %}<input type="hidden" name="nombre" value="{{ a.nombre }}">
+                    {% csrf_token %}<input type="hidden" name="nombre" value="{{ a.nombre }}"><input type="hidden" name="rol" value="{{ rol }}">
                     <button type="submit" class="rounded-xl bg-brand-primary px-4 py-1.5 text-xs font-bold text-white">Adjuntar</button>
                 </form>
             </li>

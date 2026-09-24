@@ -91,6 +91,7 @@ class CancelacionForm(forms.Form):
 
 
 class AdjuntoForm(forms.Form):
+    rol = forms.CharField(required=False, widget=forms.HiddenInput)
     archivo = forms.FileField(label="Archivo PDF", widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}))
 
 
@@ -121,6 +122,7 @@ class FiltroDocumentosForm(forms.Form):
 
 class BandejaConfigForm(forms.Form):
     ruta_recibidos = forms.CharField(label="Carpeta de recibidos", required=False, max_length=255)
+    ruta_firmados = forms.CharField(label="Carpeta de firmados", required=False, max_length=255)
     ruta_evidencias = forms.CharField(label="Carpeta de evidencias", required=False, max_length=255)
 
     def __init__(self, *args, **kwargs):
@@ -144,6 +146,9 @@ class BandejaConfigForm(forms.Form):
 
     def clean_ruta_recibidos(self):
         return self._validar("ruta_recibidos")
+
+    def clean_ruta_firmados(self):
+        return self._validar("ruta_firmados")
 
     def clean_ruta_evidencias(self):
         return self._validar("ruta_evidencias")
