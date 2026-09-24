@@ -10,10 +10,10 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
-from .integracion import proteger_vista
+from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
     APP_SLUG, TABS, aplicar_tab, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
-    documentos_visibles, gestores_visibles, resumen_gestores, tab_activa,
+    documentos_de_gestor, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
 from . import bandeja
 from .models import Direccion, Gestor, Nomenclatura
@@ -113,12 +113,11 @@ def documento_create_view(request):
     return _render(request, "documento_form", {"form": form})
 
 
-def _permitido(request, llave):
-    return request.axentra_is_root or llave in request.axentra_permissions_list
+_permitido = permitido
 
 
 @login_required
-@proteger_vista(APP_SLUG, "can_view_oficios")
+@proteger_vista(APP_SLUG, "has_access_module")
 def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None):
     documento = documento_visible(request, pk)
     contexto = {
@@ -210,7 +209,7 @@ def documento_adjuntar_view(request, pk):
 
 
 @login_required
-@proteger_vista(APP_SLUG, "can_view_oficios")
+@proteger_vista(APP_SLUG, "has_access_module")
 def adjunto_descargar_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
     adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
@@ -316,7 +315,8 @@ def direccion_editar_view(request, pk=None):
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
             nomenclatura_form=NomenclaturaForm(direccion=direccion),
-            gestores=direccion.gestores.order_by("nombre"),
+            gestores=direccion.gestores.select_related("usuario").order_by("nombre"),
+            usuarios=usuarios_con_acceso(APP_SLUG),
         )
     return _render(request, "direccion_form", contexto)
 
@@ -420,3 +420,13 @@ def gestor_actualizar_view(request, pk):
                 for error in errores:
                     messages.error(request, error)
     return _volver_a_direccion(gestor.direccion_id)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_own_pendings")
+def mis_pendientes_view(request):
+    from .models import Gestor
+
+    vinculado = Gestor.objects.filter(usuario=request.user, is_active=True, is_deleted=False).exists()
+    documentos = documentos_de_gestor(request).order_by("created_at")
+    return _render(request, "mis_pendientes", {"documentos": documentos, "vinculado": vinculado})

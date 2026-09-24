@@ -6,6 +6,7 @@ app_name = "seguimientos_oficios"
 
 urlpatterns = [
     path("", views.documento_list_view, name="documento_list"),
+    path("mis-pendientes/", views.mis_pendientes_view, name="mis_pendientes"),
     path("nuevo/", views.documento_create_view, name="documento_create"),
     path("catalogos/", views.catalogos_view, name="catalogos"),
     path("catalogos/direcciones/nueva/", views.direccion_editar_view, name="direccion_crear"),

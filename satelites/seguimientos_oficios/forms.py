@@ -2,7 +2,7 @@ from django import forms
 
 import uuid
 
-from .integracion import dependencias_del_core
+from .integracion import dependencias_del_core, usuarios_con_acceso
 from .models import ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
@@ -198,11 +198,13 @@ class DocumentoEdicionForm(forms.Form):
 class GestorForm(forms.ModelForm):
     class Meta:
         model = Gestor
-        fields = ["nombre"]
+        fields = ["nombre", "usuario"]
 
     def __init__(self, *args, direccion=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.direccion = direccion or getattr(self.instance, "direccion", None)
+        self.fields["usuario"].queryset = usuarios_con_acceso("seguimientos_oficios")
+        self.fields["usuario"].required = False
         self.fields["nombre"].widget.attrs.setdefault(
             "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
         )
@@ -213,3 +215,9 @@ class GestorForm(forms.ModelForm):
         if repetido.exists():
             raise forms.ValidationError("Ya existe un gestor con ese nombre en esta dirección.")
         return nombre
+
+    def clean_usuario(self):
+        usuario = self.cleaned_data.get("usuario")
+        if usuario and Gestor.objects.filter(direccion=self.direccion, usuario=usuario).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Ese usuario ya está vinculado a otro gestor de esta dirección.")
+        return usuario

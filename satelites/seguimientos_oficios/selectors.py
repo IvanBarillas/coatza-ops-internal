@@ -21,10 +21,30 @@ def documentos_visibles(request):
     ).select_related("direccion")
 
 
-def documento_visible(request, pk):
-    from django.shortcuts import get_object_or_404
+def permitido(request, llave):
+    return request.axentra_is_root or llave in request.axentra_permissions_list
 
-    return get_object_or_404(documentos_visibles(request), pk=pk)
+
+def documentos_de_gestor(request):
+    """Pendientes asignados al gestor vinculado al usuario; independiente del alcance por dependencia."""
+    return Documento.objects.filter(
+        is_deleted=False, gestor__usuario=request.user,
+        estado__in=(Documento.Estado.GENERADO, Documento.Estado.ENTREGADO),
+    ).select_related("direccion", "gestor")
+
+
+def documento_visible(request, pk):
+    from django.http import Http404
+
+    if permitido(request, "can_view_oficios"):
+        documento = documentos_visibles(request).filter(pk=pk).first()
+        if documento:
+            return documento
+    if permitido(request, "can_view_own_pendings"):
+        documento = documentos_de_gestor(request).filter(pk=pk).first()
+        if documento:
+            return documento
+    raise Http404("Documento no disponible.")
 
 
 def _coincidencias_ocr(termino):

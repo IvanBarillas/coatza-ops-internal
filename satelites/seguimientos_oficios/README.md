@@ -111,6 +111,10 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   se ve el resumen por gestor y se puede filtrar por gestor o por "sin gestor".
 - Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es un catálogo por dirección (en Catálogos),
   solo aplica a enviados, se asigna al registrar y se reasigna al editar, con rastro en el historial.
+  Un gestor puede vincularse (opcional) a un usuario con membresía en el módulo; ese usuario ve sus pendientes
+  (Generado o Entregado) en **Mis pendientes**. El rol `gestor` solo tiene `has_access_module` y
+  `can_view_own_pendings`: no ve la lista general ni puede ejecutar acciones; sí abre el detalle y los archivos
+  de sus propios pendientes. Al concluir o cancelar un documento deja de verlo.
 - Editar (`can_edit_oficio`): asunto, remitente o destinatario y fecha (en enviados, dentro del año del
   folio); en recibidos también el folio del remitente. Un cancelado no se edita. Cada cambio guarda el valor
   anterior, el nuevo, quién y el motivo opcional.
