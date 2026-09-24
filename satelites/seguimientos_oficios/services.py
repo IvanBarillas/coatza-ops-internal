@@ -8,7 +8,7 @@ from django.utils import timezone
 from . import bandeja
 from .integracion import director_de_dependencia, encolar_tarea, nombre_de_usuario
 from .models import Adjunto, AdjuntoOCR, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
-from .storage import almacen, ruta_por_contenido
+from .storage import almacen, ruta_del_adjunto
 from .tasks import TAREA_OCR, TIMEOUT_TAREA
 
 MOTIVO_MINIMO = 10
@@ -129,12 +129,9 @@ def adjuntar_pdf(documento, *, usuario, archivo, origen="subida"):
     contenido = _leer_pdf(archivo)
     sha256 = hashlib.sha256(contenido).hexdigest()
     duplicado = Adjunto.objects.filter(sha256=sha256).exclude(documento=documento).select_related("documento").first()
-    ruta = ruta_por_contenido(sha256, timezone.now())
+    ruta = ruta_del_adjunto(documento, rol, sha256)
     almacen_ = almacen()
-    existente = Adjunto.objects.filter(sha256=sha256).values_list("ruta", flat=True).first()
-    if existente:
-        ruta = existente
-    elif not almacen_.exists(ruta):
+    if not almacen_.exists(ruta):
         almacen_.save(ruta, ContentFile(contenido))
     adjunto = Adjunto.objects.create(
         documento=documento, rol=rol, ruta=ruta, nombre_original=archivo.name[:255],

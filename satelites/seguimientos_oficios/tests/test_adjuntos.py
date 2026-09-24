@@ -1,7 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.urls import reverse
 
-from satelites.seguimientos_oficios.models import Adjunto
+from satelites.seguimientos_oficios.models import Adjunto, Direccion
+from satelites.seguimientos_oficios.storage import almacen
 from satelites.seguimientos_oficios.services import adjuntar_pdf
 
 from .base import PDF, AreaOperativa, BaseAdjuntos, Dependencia, Sede, UserProfile, pdf
@@ -36,8 +37,25 @@ class AdjuntosTests(BaseAdjuntos):
         segundo = self.documento("recibido")
         a2, duplicado = adjuntar_pdf(segundo, usuario=self.user, archivo=pdf("otro-nombre.pdf"))
         self.assertEqual(duplicado.documento, primero)
-        self.assertEqual(a1.ruta, a2.ruta)
+        self.assertNotEqual(a1.ruta, a2.ruta)
+        self.assertEqual(a1.sha256, a2.sha256)
         self.assertEqual(Adjunto.objects.count(), 2)
+
+    def test_ruta_ordenada_por_anio_direccion_y_sentido(self):
+        evidencia, _ = adjuntar_pdf(self.entregado(), usuario=self.user, archivo=pdf())
+        original, _ = adjuntar_pdf(self.documento("recibido"), usuario=self.user, archivo=pdf("x.pdf", PDF + b"otro"))
+        self.assertRegex(evidencia.ruta, r"^2026/innovacion/enviados/IN-001-2026__evidencia__[0-9a-f]{12}\.pdf$")
+        self.assertRegex(original.ruta, r"^2026/innovacion/recibidos/sin-folio__original__[0-9a-f]{12}\.pdf$")
+        self.assertTrue(almacen().exists(evidencia.ruta))
+
+    def test_slug_de_direccion_es_estable_y_unico(self):
+        otra = Direccion.objects.create(nombre="Innovación!")
+        self.assertEqual(self.direccion.slug, "innovacion")
+        self.assertEqual(otra.slug, "innovacion-2")
+        self.direccion.nombre = "Innovación y Gobierno Digital"
+        self.direccion.save()
+        self.direccion.refresh_from_db()
+        self.assertEqual(self.direccion.slug, "innovacion")
 
     def test_adjunto_no_se_modifica_ni_borra(self):
         adjunto, _ = adjuntar_pdf(self.documento("recibido"), usuario=self.user, archivo=pdf())

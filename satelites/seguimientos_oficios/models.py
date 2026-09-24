@@ -4,6 +4,7 @@ import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils.text import slugify
 from django.db.models import Q
 
 
@@ -32,6 +33,10 @@ class Direccion(BaseOficios):
     """Dirección propia de la app; se vincula al Core solo por UUID."""
 
     nombre = models.CharField("Nombre", max_length=150, unique=True)
+    slug = models.SlugField(
+        "Carpeta de archivos", max_length=160, unique=True, null=True, editable=False,
+        help_text="Nombre de carpeta en el almacén; se fija al crear la dirección y no cambia si se renombra.",
+    )
     ruta_recibidos = models.CharField(
         "Carpeta de recibidos", max_length=255, blank=True,
         help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios recibidos.",
@@ -56,6 +61,19 @@ class Direccion(BaseOficios):
 
     def __str__(self):
         return self.nombre
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            self.slug = self.slug_libre(self.nombre)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def slug_libre(cls, nombre):
+        base = slugify(nombre) or "direccion"
+        candidato, n = base, 2
+        while cls.objects.filter(slug=candidato).exists():
+            candidato, n = f"{base}-{n}", n + 1
+        return candidato
 
 
 class Nomenclatura(BaseOficios):
