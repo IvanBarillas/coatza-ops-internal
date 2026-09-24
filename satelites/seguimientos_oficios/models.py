@@ -32,6 +32,14 @@ class Direccion(BaseOficios):
     """Dirección propia de la app; se vincula al Core solo por UUID."""
 
     nombre = models.CharField("Nombre", max_length=150, unique=True)
+    ruta_recibidos = models.CharField(
+        "Carpeta de recibidos", max_length=255, blank=True,
+        help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios recibidos.",
+    )
+    ruta_evidencias = models.CharField(
+        "Carpeta de evidencias", max_length=255, blank=True,
+        help_text="Ruta relativa a la raíz de la bandeja donde se escanean las evidencias de entrega.",
+    )
     dependencia_uuid = models.UUIDField(
         "Dependencia del Core",
         null=True,

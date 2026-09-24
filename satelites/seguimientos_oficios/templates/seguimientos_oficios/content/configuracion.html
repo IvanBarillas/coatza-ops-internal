@@ -1,0 +1,28 @@
+<div class="mx-auto w-full max-w-4xl space-y-4">
+    <h1 class="text-xl font-black text-slate-800">Configuración de la bandeja</h1>
+    {% for m in messages %}<div class="rounded-xl border px-4 py-2 text-sm {% if m.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %}">{{ m }}</div>{% endfor %}
+    {% if raiz %}
+    <p class="text-sm text-slate-500">Raíz de la bandeja en el servidor: <code class="rounded bg-slate-100 px-1">{{ raiz }}</code>. Las carpetas se escriben relativas a esa raíz, por ejemplo <code class="rounded bg-slate-100 px-1">innovacion/oficios</code>.</p>
+    {% else %}
+    <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">El servidor no tiene definida la variable <code>OFICIOS_BANDEJA_RAIZ</code> (la carpeta donde está montada la QNAP). Sin ella no se pueden configurar carpetas.</p>
+    {% endif %}
+    {% for fila in filas %}
+    <form method="post" action="{% url 'seguimientos_oficios:configuracion_guardar' fila.direccion.pk %}" class="rounded-2xl border border-gray-200 bg-white p-5">
+        {% csrf_token %}
+        <h2 class="mb-3 text-sm font-black uppercase text-slate-700">{{ fila.direccion.nombre }}</h2>
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+                <label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ fila.form.ruta_recibidos.id_for_label }}-{{ forloop.counter }}">Recibidos (oficios que llegan)</label>
+                <input type="text" name="ruta_recibidos" id="{{ fila.form.ruta_recibidos.id_for_label }}-{{ forloop.counter }}" value="{{ fila.recibidos.ruta }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" placeholder="innovacion/oficios/recibidos">
+                <p class="mt-1 text-xs {% if fila.recibidos.ok == False %}text-red-600{% elif fila.recibidos.ok %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ fila.recibidos.detalle }}</p>
+            </div>
+            <div>
+                <label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ fila.form.ruta_evidencias.id_for_label }}-{{ forloop.counter }}">Evidencias (oficios firmados y entregados)</label>
+                <input type="text" name="ruta_evidencias" id="{{ fila.form.ruta_evidencias.id_for_label }}-{{ forloop.counter }}" value="{{ fila.evidencias.ruta }}" class="w-full rounded-xl border border-gray-300 px-3 py-2 text-sm" placeholder="innovacion/oficios/evidencias">
+                <p class="mt-1 text-xs {% if fila.evidencias.ok == False %}text-red-600{% elif fila.evidencias.ok %}text-emerald-600{% else %}text-slate-400{% endif %}">{{ fila.evidencias.detalle }}</p>
+            </div>
+        </div>
+        <button type="submit" class="mt-4 rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">Guardar</button>
+    </form>
+    {% empty %}<p class="text-slate-500">No hay direcciones a su cargo.</p>{% endfor %}
+</div>

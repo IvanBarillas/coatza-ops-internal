@@ -5,6 +5,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
+from . import bandeja
 from .integracion import director_de_dependencia, encolar_tarea, nombre_de_usuario
 from .models import Adjunto, AdjuntoOCR, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
 from .storage import almacen, ruta_por_contenido
@@ -113,7 +114,7 @@ def _leer_pdf(archivo):
 
 
 @transaction.atomic
-def adjuntar_pdf(documento, *, usuario, archivo):
+def adjuntar_pdf(documento, *, usuario, archivo, origen="subida"):
     """Agrega el PDF con el rol que corresponde al sentido. Devuelve (adjunto, duplicado)."""
     documento = Documento.objects.select_for_update().get(pk=documento.pk)
     if documento.sentido == Documento.Sentido.RECIBIDO:
@@ -141,7 +142,7 @@ def adjuntar_pdf(documento, *, usuario, archivo):
         subido_por_nombre=nombre_de_usuario(usuario),
     )
     _preparar_ocr(adjunto)
-    datos = {"adjunto": archivo.name, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
+    datos = {"adjunto": archivo.name, "origen": origen, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
     if duplicado:
         datos["duplicado_de"] = duplicado.documento.folio or str(duplicado.documento_id)
     if rol == Adjunto.Rol.EVIDENCIA and documento.estado == Documento.Estado.ENTREGADO:
@@ -165,3 +166,38 @@ def _preparar_ocr(adjunto):
         return
     AdjuntoOCR.objects.create(adjunto=adjunto)
     transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))
+
+
+def ruta_bandeja_de(documento):
+    direccion = documento.direccion
+    return direccion.ruta_recibidos if documento.sentido == Documento.Sentido.RECIBIDO else direccion.ruta_evidencias
+
+
+def _carpeta_de(documento):
+    ruta = ruta_bandeja_de(documento)
+    if not ruta:
+        raise ValidationError("La dirección no tiene configurada la carpeta de la bandeja para este documento.")
+    try:
+        return bandeja.resolver(ruta)
+    except bandeja.BandejaError as error:
+        raise ValidationError(str(error)) from error
+
+
+def listar_bandeja(documento):
+    carpeta = _carpeta_de(documento)
+    try:
+        return bandeja.listar_pdfs(carpeta)
+    except bandeja.BandejaError as error:
+        raise ValidationError(str(error)) from error
+
+
+@transaction.atomic
+def adjuntar_desde_bandeja(documento, *, usuario, nombre):
+    carpeta = _carpeta_de(documento)
+    try:
+        contenido = bandeja.leer(carpeta, nombre, tamano_maximo=TAMANO_MAXIMO)
+    except bandeja.BandejaError as error:
+        raise ValidationError(str(error)) from error
+    resultado = adjuntar_pdf(documento, usuario=usuario, archivo=ContentFile(contenido, name=nombre), origen="bandeja")
+    transaction.on_commit(lambda: bandeja.archivar_sin_fallar(carpeta, nombre))
+    return resultado

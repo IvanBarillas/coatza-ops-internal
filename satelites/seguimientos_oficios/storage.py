@@ -3,9 +3,11 @@ from pathlib import Path
 from django.conf import settings
 from django.core.files.storage import FileSystemStorage
 
+from .integracion import valor_entorno
+
 
 def almacen():
-    raiz = getattr(settings, "OFICIOS_ARCHIVOS_ROOT", None) or Path(settings.MEDIA_ROOT) / "oficios"
+    raiz = valor_entorno("OFICIOS_ARCHIVOS_ROOT") or Path(settings.MEDIA_ROOT) / "oficios"
     return FileSystemStorage(location=str(raiz), base_url=None)
 
 

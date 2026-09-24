@@ -35,7 +35,9 @@
             {% csrf_token %}
             <div>{{ adjunto_form.archivo.label_tag }}<div>{{ adjunto_form.archivo }}</div></div>
             <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">{% if documento.sentido == 'enviado' %}Subir evidencia{% else %}Subir original{% endif %}</button>
+            {% if bandeja_configurada %}<button type="button" hx-get="{% url 'seguimientos_oficios:documento_bandeja' documento.pk %}" hx-target="#bandeja-lista" hx-swap="innerHTML" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Elegir de la bandeja</button>{% endif %}
         </form>
+        <div id="bandeja-lista"></div>
         {% endif %}
     </section>
 

@@ -62,3 +62,33 @@ class FiltroDocumentosForm(forms.Form):
             self.fields["direccion"].queryset = direcciones
         for campo in self.fields.values():
             campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+
+
+class BandejaConfigForm(forms.Form):
+    ruta_recibidos = forms.CharField(label="Carpeta de recibidos", required=False, max_length=255)
+    ruta_evidencias = forms.CharField(label="Carpeta de evidencias", required=False, max_length=255)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for campo in self.fields.values():
+            campo.widget.attrs.update({
+                "class": "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm",
+                "placeholder": "innovacion/oficios",
+            })
+
+    def _validar(self, campo):
+        from . import bandeja
+
+        valor = self.cleaned_data.get(campo, "").strip()
+        if not valor:
+            return ""
+        try:
+            return bandeja.ruta_normalizada(bandeja.resolver(valor))
+        except bandeja.BandejaError as error:
+            raise forms.ValidationError(str(error)) from error
+
+    def clean_ruta_recibidos(self):
+        return self._validar("ruta_recibidos")
+
+    def clean_ruta_evidencias(self):
+        return self._validar("ruta_evidencias")

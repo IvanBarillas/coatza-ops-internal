@@ -9,6 +9,7 @@ from apps.shared.module_sdk.data_access import authorized_departments
 from apps.shared.notifications.services import enqueue_email
 
 __all__ = [
+    "valor_entorno",
     "ModuleManifest",
     "dependencias_autorizadas",
     "director_de_dependencia",
@@ -55,3 +56,15 @@ def encolar_tarea(ruta_funcion, *args, timeout=None):
 
     opciones = {"timeout": timeout} if timeout else {}
     return async_task(ruta_funcion, *args, **opciones)
+
+
+def valor_entorno(nombre, defecto=""):
+    """Ajuste propio de la app: setting de Django, variable de entorno o archivo .env del entorno."""
+    from django.conf import settings
+
+    valor = getattr(settings, nombre, None)
+    if valor:
+        return valor
+    from core.settings.base import config
+
+    return config(nombre, default=defecto)
