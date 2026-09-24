@@ -105,6 +105,12 @@ class Nomenclatura(BaseOficios):
         if "{n" not in self.plantilla or "{" in resto or "}" in resto:
             raise ValidationError({"plantilla": "Plantilla inválida: use {n}, {n:03d} y {anio}."})
 
+    @property
+    def ejemplo(self):
+        from datetime import date
+
+        return self.formatear(1, date.today().year)
+
     def formatear(self, numero, anio):
         return self.plantilla.format(n=numero, anio=anio)
 

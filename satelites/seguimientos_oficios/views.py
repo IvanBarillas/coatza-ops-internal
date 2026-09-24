@@ -9,10 +9,11 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, BandejaConfigForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, BandejaConfigForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
 from .integracion import proteger_vista
 from .selectors import APP_SLUG, buscar_documentos, direcciones_visibles, documento_visible, documentos_visibles
 from . import bandeja
+from .models import Direccion, Nomenclatura
 from .storage import almacen
 from .services import adjuntar_desde_bandeja, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
 
@@ -263,3 +264,71 @@ def configuracion_guardar_view(request, pk):
             for error in errores:
                 messages.error(request, f"{direccion.nombre}: {error}")
     return redirect("seguimientos_oficios:configuracion")
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def catalogos_view(request):
+    direcciones = Direccion.objects.order_by("nombre").prefetch_related("nomenclaturas")
+    return _render(request, "catalogos", {"direcciones": direcciones})
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def direccion_editar_view(request, pk=None):
+    direccion = get_object_or_404(Direccion, pk=pk) if pk else None
+    form = DireccionForm(request.POST or None, instance=direccion)
+    if request.method == "POST" and form.is_valid():
+        guardada = form.save()
+        messages.success(request, f"Dirección {guardada.nombre} guardada.")
+        return redirect("seguimientos_oficios:direccion_editar", pk=guardada.pk)
+    contexto = {"form": form, "direccion": direccion}
+    if direccion:
+        contexto.update(
+            nomenclaturas=direccion.nomenclaturas.order_by("clase"),
+            nomenclatura_form=NomenclaturaForm(direccion=direccion),
+        )
+    return _render(request, "direccion_form", contexto)
+
+
+def _volver_a_direccion(pk):
+    return redirect("seguimientos_oficios:direccion_editar", pk=pk)
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def nomenclatura_crear_view(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk)
+    form = NomenclaturaForm(request.POST, direccion=direccion)
+    if form.is_valid():
+        nomenclatura = form.save(commit=False)
+        nomenclatura.direccion = direccion
+        nomenclatura.save()
+        messages.success(request, f"Nomenclatura creada: {nomenclatura.ejemplo}.")
+    else:
+        for errores in form.errors.values():
+            for error in errores:
+                messages.error(request, error)
+    return _volver_a_direccion(pk)
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def nomenclatura_actualizar_view(request, pk):
+    nomenclatura = get_object_or_404(Nomenclatura, pk=pk)
+    if request.POST.get("accion") == "estado":
+        nomenclatura.is_active = not nomenclatura.is_active
+        nomenclatura.save()
+        messages.success(request, "Nomenclatura " + ("activada." if nomenclatura.is_active else "desactivada."))
+    else:
+        form = NomenclaturaForm(request.POST, instance=nomenclatura, direccion=nomenclatura.direccion)
+        if form.is_valid():
+            form.save()
+            messages.success(request, f"Plantilla actualizada: {nomenclatura.ejemplo}.")
+        else:
+            for errores in form.errors.values():
+                for error in errores:
+                    messages.error(request, error)
+    return _volver_a_direccion(nomenclatura.direccion_id)

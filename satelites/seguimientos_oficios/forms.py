@@ -1,6 +1,9 @@
 from django import forms
 
-from .models import ClaseDocumento, Direccion, Documento
+import uuid
+
+from .integracion import dependencias_del_core
+from .models import ClaseDocumento, Direccion, Documento, Nomenclatura
 
 
 class DocumentoForm(forms.ModelForm):
@@ -92,3 +95,55 @@ class BandejaConfigForm(forms.Form):
 
     def clean_ruta_evidencias(self):
         return self._validar("ruta_evidencias")
+
+
+class DireccionForm(forms.ModelForm):
+    dependencia = forms.ChoiceField(
+        label="Dependencia del Core", required=False,
+        help_text="Define quién ve los documentos de esta dirección. Sin vincular, solo los ve el administrador global.",
+    )
+
+    class Meta:
+        model = Direccion
+        fields = ["nombre", "is_active"]
+        labels = {"is_active": "Activa"}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["dependencia"].choices = [("", "Sin vincular")] + [
+            (str(pk), nombre) for pk, nombre in dependencias_del_core()
+        ]
+        if self.instance.dependencia_uuid:
+            self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
+        for nombre, campo in self.fields.items():
+            if nombre != "is_active":
+                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+
+    def save(self, commit=True):
+        valor = self.cleaned_data.get("dependencia")
+        self.instance.dependencia_uuid = uuid.UUID(valor) if valor else None
+        return super().save(commit)
+
+
+class NomenclaturaForm(forms.ModelForm):
+    class Meta:
+        model = Nomenclatura
+        fields = ["clase", "plantilla"]
+
+    def __init__(self, *args, direccion=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.direccion = direccion
+        if not self.instance._state.adding:
+            self.fields.pop("clase")
+        elif direccion is not None:
+            usadas = direccion.nomenclaturas.values_list("clase", flat=True)
+            self.fields["clase"].choices = [(v, e) for v, e in ClaseDocumento.choices if v not in usadas]
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+
+    def clean(self):
+        datos = super().clean()
+        clase = datos.get("clase")
+        if self.direccion is not None and clase and self.direccion.nomenclaturas.filter(clase=clase).exists():
+            self.add_error("clase", "Esa clase ya tiene nomenclatura en esta dirección.")
+        return datos
