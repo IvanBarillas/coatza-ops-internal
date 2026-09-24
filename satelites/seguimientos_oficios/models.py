@@ -131,6 +131,25 @@ class Nomenclatura(BaseOficios):
         return int(grupos["n"]), int(grupos["anio"]) if grupos.get("anio") else None
 
 
+class Gestor(BaseOficios):
+    """Quien lleva los oficios a la dependencia destino y trae la evidencia."""
+
+    direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="gestores")
+    nombre = models.CharField("Nombre", max_length=150)
+
+    class Meta:
+        db_table = "oficios_gestor"
+        ordering = ["nombre"]
+        verbose_name = "Gestor"
+        verbose_name_plural = "Gestores"
+        constraints = [
+            models.UniqueConstraint(fields=["direccion", "nombre"], name="oficios_gestor_unico")
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+
 class ConsecutivoFolio(models.Model):
     nomenclatura = models.ForeignKey(Nomenclatura, on_delete=models.PROTECT, related_name="consecutivos")
     anio = models.PositiveSmallIntegerField("Año")
@@ -174,6 +193,10 @@ class Documento(BaseOficios):
     folio = models.CharField("Folio", max_length=80, blank=True, db_index=True)
     anio = models.PositiveSmallIntegerField(null=True, blank=True)
     consecutivo = models.PositiveIntegerField(null=True, blank=True)
+    gestor = models.ForeignKey(
+        Gestor, null=True, blank=True, on_delete=models.PROTECT, related_name="documentos",
+        verbose_name="Gestor",
+    )
     estado = models.CharField("Estado", max_length=12, choices=Estado.choices, default=Estado.GENERADO, db_index=True)
     fecha_entrega = models.DateField("Fecha de entrega", null=True, blank=True)
     receptor_entrega = models.CharField("Recibió la entrega", max_length=200, blank=True)
@@ -198,6 +221,15 @@ class Documento(BaseOficios):
 
     def __str__(self):
         return f"{self.folio or 's/f'} - {self.asunto[:60]}"
+
+    @property
+    def dias_pendiente(self):
+        from datetime import date
+
+        if self.estado not in (self.Estado.GENERADO, self.Estado.ENTREGADO):
+            return None
+        desde = self.fecha_entrega or self.created_at.date()
+        return (date.today() - desde).days
 
     def save(self, *args, **kwargs):
         if not self._state.adding:

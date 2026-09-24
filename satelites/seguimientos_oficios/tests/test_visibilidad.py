@@ -44,7 +44,7 @@ class VisibilidadOficiosTests(TestCase):
 
     def test_lista_solo_muestra_oficios_de_su_direccion(self):
         self.client.force_login(self.user)
-        respuesta = self.client.get(reverse("seguimientos_oficios:documento_list"))
+        respuesta = self.client.get(reverse("seguimientos_oficios:documento_list"), {"tab": "todos"})
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "Oficio propio")
         self.assertNotContains(respuesta, "Oficio ajeno")

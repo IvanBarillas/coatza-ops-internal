@@ -105,6 +105,12 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   motivo. Cancelar un Concluido exige `can_cancel_concluded`. Los documentos no se eliminan.
 - Director, dirección, folio (en enviados), clase y sentido quedan congelados al registrar; el historial es
   solo de escritura.
+- Seguimiento: la lista abre en **Pendientes** (enviados Generado o Entregado, del más antiguo al más nuevo,
+  con los días transcurridos desde la entrega o el registro); las demás pestañas son Concluidos (incluye los
+  recibidos registrados), Cancelados y Todos. Buscar texto sin elegir pestaña busca en Todos. Sobre los pendientes
+  se ve el resumen por gestor y se puede filtrar por gestor o por "sin gestor".
+- Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es un catálogo por dirección (en Catálogos),
+  solo aplica a enviados, se asigna al registrar y se reasigna al editar, con rastro en el historial.
 - Editar (`can_edit_oficio`): asunto, remitente o destinatario y fecha (en enviados, dentro del año del
   folio); en recibidos también el folio del remitente. Un cancelado no se edita. Cada cambio guarda el valor
   anterior, el nuevo, quién y el motivo opcional.
