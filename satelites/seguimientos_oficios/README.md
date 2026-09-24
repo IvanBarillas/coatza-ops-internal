@@ -87,5 +87,8 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   Se administra en el admin de Django hasta que exista su pantalla.
 - Estados: Generado → Entregado → Concluido (con evidencia PDF); Cancelado desde cualquiera, con
   motivo. Cancelar un Concluido exige `can_cancel_concluded`. Los documentos no se eliminan.
-- Director, dirección, folio, clase y sentido quedan congelados al registrar; el historial es
+- Director, dirección, folio (en enviados), clase y sentido quedan congelados al registrar; el historial es
   solo de escritura.
+- Editar (`can_edit_oficio`): asunto, remitente o destinatario y fecha (en enviados, dentro del año del
+  folio); en recibidos también el folio del remitente. Un cancelado no se edita. Cada cambio guarda el valor
+  anterior, el nuevo, quién y el motivo opcional.

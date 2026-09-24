@@ -156,7 +156,7 @@ class Documento(BaseOficios):
         CANCELADO = "cancelado", "Cancelado"
 
     INMUTABLES = ("sentido", "clase", "direccion_id", "direccion_nombre", "director_nombre",
-                  "folio", "anio", "consecutivo")
+                  "anio", "consecutivo")
 
     sentido = models.CharField("Sentido", max_length=10, choices=Sentido.choices)
     clase = models.CharField("Clase de documento", max_length=25, choices=ClaseDocumento.choices, default=ClaseDocumento.OFICIO)
@@ -201,9 +201,10 @@ class Documento(BaseOficios):
 
     def save(self, *args, **kwargs):
         if not self._state.adding:
-            original = type(self).objects.filter(pk=self.pk).values(*self.INMUTABLES).first()
+            protegidos = self.INMUTABLES + (("folio",) if self.sentido == self.Sentido.ENVIADO else ())
+            original = type(self).objects.filter(pk=self.pk).values(*protegidos).first()
             if original:
-                cambiados = [c for c in self.INMUTABLES if original[c] != getattr(self, c)]
+                cambiados = [c for c in protegidos if original[c] != getattr(self, c)]
                 if cambiados:
                     raise ValueError(f"Campos inmutables: {', '.join(cambiados)}")
         super().save(*args, **kwargs)
