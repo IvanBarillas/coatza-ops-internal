@@ -2,17 +2,20 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 
 from .integracion import director_de_dependencia, nombre_de_usuario
-from .models import ConsecutivoFolio, Documento, HistorialDocumento
+from .models import ConsecutivoFolio, Documento, Nomenclatura, HistorialDocumento
 
 
-def _siguiente_folio(direccion, anio):
-    if not direccion.prefijo:
-        raise ValidationError("La dirección no tiene prefijo de folio configurado.")
-    ConsecutivoFolio.objects.get_or_create(direccion=direccion, anio=anio)
-    consecutivo = ConsecutivoFolio.objects.select_for_update().get(direccion=direccion, anio=anio)
+def _siguiente_folio(direccion, clase, anio):
+    nomenclatura = Nomenclatura.objects.filter(
+        direccion=direccion, clase=clase, is_active=True, is_deleted=False
+    ).first()
+    if nomenclatura is None:
+        raise ValidationError("No hay nomenclatura configurada para esta dirección y clase de documento.")
+    ConsecutivoFolio.objects.get_or_create(nomenclatura=nomenclatura, anio=anio)
+    consecutivo = ConsecutivoFolio.objects.select_for_update().get(nomenclatura=nomenclatura, anio=anio)
     consecutivo.ultimo += 1
     consecutivo.save(update_fields=["ultimo"])
-    return consecutivo.ultimo, f"{direccion.prefijo}-{consecutivo.ultimo:03d}/{anio}"
+    return consecutivo.ultimo, nomenclatura.formatear(consecutivo.ultimo, anio)
 
 
 @transaction.atomic
@@ -20,7 +23,7 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
                     folio="", director_nombre=""):
     anio = consecutivo = None
     if sentido == Documento.Sentido.ENVIADO:
-        consecutivo, folio = _siguiente_folio(direccion, fecha.year)
+        consecutivo, folio = _siguiente_folio(direccion, clase, fecha.year)
         anio = fecha.year
     documento = Documento.objects.create(
         sentido=sentido, clase=clase, direccion=direccion, direccion_nombre=direccion.nombre,

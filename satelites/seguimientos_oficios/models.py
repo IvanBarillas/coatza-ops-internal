@@ -1,6 +1,8 @@
+import re
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -16,14 +18,20 @@ class BaseOficios(models.Model):
         abstract = True
 
 
+class ClaseDocumento(models.TextChoices):
+    OFICIO = "oficio", "Oficio"
+    VALE_PRESTAMO = "vale_prestamo", "Vale de préstamo"
+    DIAGNOSTICO_TECNICO = "diagnostico_tecnico", "Diagnóstico técnico"
+    DICTAMEN_ALTA = "dictamen_alta", "Dictamen de alta"
+    DICTAMEN_BAJA = "dictamen_baja", "Dictamen de baja"
+    COMUNICADO = "comunicado", "Comunicado"
+    OTRO = "otro", "Otro"
+
+
 class Direccion(BaseOficios):
     """Dirección propia de la app; se vincula al Core solo por UUID."""
 
     nombre = models.CharField("Nombre", max_length=150, unique=True)
-    prefijo = models.CharField(
-        "Prefijo de folio", max_length=10, blank=True,
-        help_text="Ej. IN. Necesario para generar folios de los oficios enviados.",
-    )
     dependencia_uuid = models.UUIDField(
         "Dependencia del Core",
         null=True,
@@ -42,15 +50,48 @@ class Direccion(BaseOficios):
         return self.nombre
 
 
+class Nomenclatura(BaseOficios):
+    """Formato de folio de una clase de documento enviado por una dirección."""
+
+    PLANTILLA_VALIDA = re.compile(r"\{(n|n:0\d+d|anio)\}")
+
+    direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="nomenclaturas")
+    clase = models.CharField("Clase de documento", max_length=25, choices=ClaseDocumento.choices)
+    plantilla = models.CharField(
+        "Plantilla", max_length=60, default="{n:03d}/{anio}",
+        help_text="Ej. IN-{n:03d}/{anio} da IN-001/2026. Tokens: {n}, {n:03d} y {anio}.",
+    )
+
+    class Meta:
+        db_table = "oficios_nomenclatura"
+        ordering = ["direccion__nombre", "clase"]
+        verbose_name = "Nomenclatura"
+        verbose_name_plural = "Nomenclaturas"
+        constraints = [
+            models.UniqueConstraint(fields=["direccion", "clase"], name="oficios_nomenclatura_unica")
+        ]
+
+    def __str__(self):
+        return f"{self.direccion} / {self.get_clase_display()}: {self.plantilla}"
+
+    def clean(self):
+        resto = self.PLANTILLA_VALIDA.sub("", self.plantilla or "")
+        if "{n" not in self.plantilla or "{" in resto or "}" in resto:
+            raise ValidationError({"plantilla": "Plantilla inválida: use {n}, {n:03d} y {anio}."})
+
+    def formatear(self, numero, anio):
+        return self.plantilla.format(n=numero, anio=anio)
+
+
 class ConsecutivoFolio(models.Model):
-    direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="consecutivos")
+    nomenclatura = models.ForeignKey(Nomenclatura, on_delete=models.PROTECT, related_name="consecutivos")
     anio = models.PositiveSmallIntegerField("Año")
     ultimo = models.PositiveIntegerField("Último número", default=0)
 
     class Meta:
         db_table = "oficios_consecutivo"
         constraints = [
-            models.UniqueConstraint(fields=["direccion", "anio"], name="oficios_consecutivo_unico")
+            models.UniqueConstraint(fields=["nomenclatura", "anio"], name="oficios_consecutivo_unico")
         ]
 
 
@@ -59,20 +100,11 @@ class Documento(BaseOficios):
         RECIBIDO = "recibido", "Recibido"
         ENVIADO = "enviado", "Enviado"
 
-    class Clase(models.TextChoices):
-        OFICIO = "oficio", "Oficio"
-        VALE_PRESTAMO = "vale_prestamo", "Vale de préstamo"
-        DIAGNOSTICO_TECNICO = "diagnostico_tecnico", "Diagnóstico técnico"
-        DICTAMEN_ALTA = "dictamen_alta", "Dictamen de alta"
-        DICTAMEN_BAJA = "dictamen_baja", "Dictamen de baja"
-        COMUNICADO = "comunicado", "Comunicado"
-        OTRO = "otro", "Otro"
-
     INMUTABLES = ("sentido", "clase", "direccion_id", "direccion_nombre", "director_nombre",
                   "folio", "anio", "consecutivo")
 
     sentido = models.CharField("Sentido", max_length=10, choices=Sentido.choices)
-    clase = models.CharField("Clase de documento", max_length=25, choices=Clase.choices, default=Clase.OFICIO)
+    clase = models.CharField("Clase de documento", max_length=25, choices=ClaseDocumento.choices, default=ClaseDocumento.OFICIO)
     direccion = models.ForeignKey(
         Direccion, on_delete=models.PROTECT, related_name="documentos", verbose_name="Dirección"
     )
