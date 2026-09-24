@@ -3,7 +3,9 @@ from django.core.paginator import Paginator
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils.http import content_disposition_header
+from django.views.decorators.clickjacking import xframe_options_sameorigin
 from django.views.decorators.http import require_POST
+from django.utils.http import urlencode
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
@@ -12,7 +14,7 @@ from django.urls import reverse
 from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
-    APP_SLUG, TABS, aplicar_tab, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
+    APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
     documentos_de_gestor, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
 from . import bandeja
@@ -209,6 +211,7 @@ def documento_adjuntar_view(request, pk):
 
 
 @login_required
+@xframe_options_sameorigin
 @proteger_vista(APP_SLUG, "has_access_module")
 def adjunto_descargar_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
@@ -430,3 +433,34 @@ def mis_pendientes_view(request):
     vinculado = Gestor.objects.filter(usuario=request.user, is_active=True, is_deleted=False).exists()
     documentos = documentos_de_gestor(request).order_by("created_at")
     return _render(request, "mis_pendientes", {"documentos": documentos, "vinculado": vinculado})
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_oficios")
+def busqueda_view(request):
+    consulta = request.GET.get("q", "").strip()[:200]
+    paginador, resultados = (None, [])
+    if consulta:
+        paginador, resultados = buscar_con_coincidencias(request, consulta, request.GET.get("pagina"))
+    contexto = {
+        "consulta": consulta, "paginador": paginador, "resultados": resultados,
+        "query_sin_pagina": urlencode({"q": consulta}),
+    }
+    return _render(request, "busqueda", contexto)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "has_access_module")
+def visor_view(request, pk, adjunto_pk):
+    documento = documento_visible(request, pk)
+    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    try:
+        pagina = max(1, int(request.GET.get("pagina", 1)))
+    except ValueError:
+        pagina = 1
+    consulta = request.GET.get("q", "")[:200]
+    fragmento = urlencode({"page": pagina, "search": consulta}) if consulta else f"page={pagina}"
+    return render(request, "seguimientos_oficios/htmx/visor.html", {
+        "documento": documento, "adjunto": adjunto, "pagina": pagina,
+        "src": reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk]) + "#" + fragmento,
+    })

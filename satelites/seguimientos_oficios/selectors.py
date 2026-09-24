@@ -1,8 +1,12 @@
+from collections import defaultdict
+
+from django.core.paginator import Paginator
 from django.db import connection
 from django.db.models import Count, Q
 
 from .integracion import dependencias_autorizadas
-from .models import AdjuntoOCR, Direccion, Documento
+from .models import Adjunto, AdjuntoOCR, Direccion, Documento
+from .textos import coincidencias, terminos
 
 APP_SLUG = "seguimientos_oficios"
 
@@ -48,14 +52,15 @@ def documento_visible(request, pk):
 
 
 def _coincidencias_ocr(termino):
+    """`termino` ya normalizado (minúsculas, sin acentos)."""
     if connection.vendor == "postgresql":
         from django.contrib.postgres.search import SearchQuery, SearchVector
 
         return (
-            AdjuntoOCR.objects.annotate(vector=SearchVector("texto", config="spanish"))
+            AdjuntoOCR.objects.annotate(vector=SearchVector("texto_normalizado", config="spanish"))
             .filter(vector=SearchQuery(termino, config="spanish", search_type="websearch"))
         )
-    return AdjuntoOCR.objects.filter(texto__icontains=termino)
+    return AdjuntoOCR.objects.filter(texto_normalizado__contains=termino)
 
 
 def buscar_documentos(queryset, filtros):
@@ -71,13 +76,14 @@ def buscar_documentos(queryset, filtros):
         queryset = queryset.filter(fecha__gte=filtros["desde"])
     if filtros.get("hasta"):
         queryset = queryset.filter(fecha__lte=filtros["hasta"])
-    for termino in (filtros.get("q") or "").split():
+    return con_texto(queryset, filtros.get("q"))
+
+
+def con_texto(queryset, consulta):
+    """Documentos que contienen todos los términos, sin importar acentos ni mayúsculas, en sus datos o en el OCR."""
+    for termino in terminos(consulta or ""):
         en_ocr = _coincidencias_ocr(termino).values("adjunto__documento_id")
-        queryset = queryset.filter(
-            Q(folio__icontains=termino) | Q(asunto__icontains=termino)
-            | Q(contraparte__icontains=termino) | Q(director_nombre__icontains=termino)
-            | Q(pk__in=en_ocr)
-        )
+        queryset = queryset.filter(Q(busqueda__contains=termino) | Q(pk__in=en_ocr))
     return queryset
 
 
@@ -124,3 +130,23 @@ def gestores_visibles(request):
     return Gestor.objects.filter(
         is_active=True, is_deleted=False, direccion__in=direcciones_visibles(request)
     ).select_related("direccion")
+
+
+def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15):
+    """Documentos que contienen la consulta, con la página y el fragmento del OCR donde aparece."""
+    documentos = con_texto(documentos_visibles(request), consulta).order_by("-fecha", "-created_at")
+    paginador = Paginator(documentos, por_pagina).get_page(pagina)
+    ids = [d.pk for d in paginador]
+    encontrados = defaultdict(list)
+    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
+    for ocr in ocrs.order_by("adjunto__created_at"):
+        for numero, fragmento in coincidencias(ocr.texto, ocr.texto_normalizado, consulta):
+            encontrados[ocr.adjunto.documento_id].append({"adjunto": ocr.adjunto, "pagina": numero, "fragmento": fragmento})
+    primeros = {}
+    for adjunto in Adjunto.objects.filter(documento_id__in=ids).order_by("-created_at"):
+        primeros[adjunto.documento_id] = adjunto
+    resultados = [
+        {"documento": d, "coincidencias": encontrados[d.pk][:4], "primer_adjunto": primeros.get(d.pk)}
+        for d in paginador
+    ]
+    return paginador, resultados

@@ -44,7 +44,9 @@ class BusquedaTests(BaseAdjuntos):
         documento = self.nuevo("Documento escaneado", sentido="recibido")
         with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
             adjunto, _ = adjuntar_pdf(documento, usuario=self.user, archivo=pdf())
-        AdjuntoOCR.objects.filter(adjunto=adjunto).update(estado="listo", texto="Se solicita el dictamen del rack número 7")
+        ocr = AdjuntoOCR.objects.get(adjunto=adjunto)
+        ocr.estado, ocr.texto = "listo", "Se solicita el dictamen del rack número 7"
+        ocr.save()
         self.nuevo("Trámite sin relación")
         respuesta = self.buscar(q="rack")
         self.assertContains(respuesta, "Documento escaneado")
@@ -81,3 +83,24 @@ class BusquedaTests(BaseAdjuntos):
     def test_filtros_invalidos_no_rompen_la_lista(self):
         self.nuevo("Sigue apareciendo")
         self.assertContains(self.buscar(desde="no-es-fecha", estado="inventado"), "Sigue apareciendo")
+
+    def test_busqueda_ignora_acentos_y_mayusculas_en_datos_y_ocr(self):
+        self.nuevo("Reparación urgente", contraparte="Tesorería Municipal")
+        documento = self.nuevo("Documento escaneado", sentido="recibido")
+        with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
+            adjunto, _ = adjuntar_pdf(documento, usuario=self.user, archivo=pdf())
+        ocr = AdjuntoOCR.objects.get(adjunto=adjunto)
+        ocr.estado, ocr.texto = "listo", "Requerimiento de instalación eléctrica"
+        ocr.save()
+        for consulta in ("REPARACION", "reparación", "tesoreria"):
+            self.assertContains(self.buscar(q=consulta), "Reparación urgente")
+        self.assertContains(self.buscar(q="instalacion electrica"), "Documento escaneado")
+        self.assertContains(self.buscar(q="INSTALACIÓN"), "Documento escaneado")
+
+    def test_editar_actualiza_lo_que_se_busca(self):
+        from satelites.seguimientos_oficios.services import editar_documento
+
+        documento = self.nuevo("Asunto original")
+        editar_documento(documento, usuario=self.user, cambios={"asunto": "Cotización de cámaras"})
+        self.assertContains(self.buscar(q="camaras"), "Cotización de cámaras")
+        self.assertNotContains(self.buscar(q="original"), "Asunto original")

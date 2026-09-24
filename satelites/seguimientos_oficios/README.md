@@ -77,8 +77,14 @@ propia para el worker. Sin ellos los adjuntos quedan con OCR en estado Error y s
 python manage.py oficios_reprocesar_ocr
 ```
 
-El PDF original nunca se modifica; solo se guarda el texto extraído. La búsqueda usa texto
-completo en español con índice GIN en PostgreSQL y `icontains` en SQLite.
+El PDF original nunca se modifica; solo se guarda el texto extraído, con un salto de página (`\f`) entre hojas,
+y una copia normalizada (minúsculas, sin acentos, misma longitud) sobre la que se busca. PostgreSQL usa texto
+completo en español con índice GIN sobre esa copia; SQLite, coincidencia por subcadena.
+
+**Búsqueda en documentos** (menú *Búsqueda*): lista los documentos que contienen la consulta en sus datos o en el
+OCR, sin importar acentos ni mayúsculas, con la página y un fragmento resaltado. Al elegir un resultado, el PDF se
+abre a la derecha en esa página (iframe del visor del navegador: `#page=N` funciona en todos; el resaltado de la
+palabra lo aplica el visor de Firefox, no el de Chrome). Los PDF nuevos aparecen cuando termina su OCR.
 
 ## Importar histórico ya digitalizado
 
