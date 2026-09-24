@@ -174,3 +174,11 @@ class BandejaTests(BaseAdjuntos):
         self.direccion.refresh_from_db()
         self.assertEqual((self.direccion.ruta_firmados, self.direccion.ruta_evidencias), ("innovacion/firmados", ""))
         self.assertContains(self.client.get(reverse("seguimientos_oficios:configuracion")), "Firmados")
+
+    def test_la_configuracion_no_muestra_la_ruta_del_servidor_ni_habla_de_qnap(self):
+        UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
+        self.client.force_login(self.user)
+        pagina = self.client.get(reverse("seguimientos_oficios:configuracion"))
+        self.assertNotContains(pagina, str(self.raiz))
+        self.assertNotContains(pagina, "QNAP")
+        self.assertContains(pagina, "innovacion/oficios/recibidos")

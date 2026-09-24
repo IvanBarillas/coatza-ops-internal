@@ -45,15 +45,15 @@ class Direccion(BaseOficios):
     )
     ruta_recibidos = models.CharField(
         "Carpeta de recibidos", max_length=255, blank=True,
-        help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios recibidos.",
+        help_text="Carpeta donde se escanean los oficios recibidos (ej. innovacion/oficios/recibidos).",
     )
     ruta_firmados = models.CharField(
         "Carpeta de firmados", max_length=255, blank=True,
-        help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios enviados ya firmados.",
+        help_text="Carpeta donde se escanean los oficios enviados ya firmados.",
     )
     ruta_evidencias = models.CharField(
         "Carpeta de evidencias", max_length=255, blank=True,
-        help_text="Ruta relativa a la raíz de la bandeja donde se escanean las evidencias de entrega.",
+        help_text="Carpeta donde se escanean las evidencias de entrega.",
     )
     dependencia_uuid = models.UUIDField(
         "Dependencia del Core",

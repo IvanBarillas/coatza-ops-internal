@@ -23,13 +23,13 @@ def resolver(ruta_relativa, *, debe_existir=True):
     """Carpeta absoluta dentro de la raíz de la bandeja; rechaza salidas por '..' o enlaces simbólicos."""
     base = raiz()
     if base is None:
-        raise BandejaError("El servidor no tiene definida la raíz de la bandeja (OFICIOS_BANDEJA_RAIZ).")
+        raise BandejaError("La bandeja de escaneo aún no está habilitada en el servidor. Avisa al administrador.")
     relativa = (ruta_relativa or "").strip().strip("/")
     if not relativa:
         raise BandejaError("Indique la carpeta.")
     destino = (base / relativa).resolve()
     if destino != base and not destino.is_relative_to(base):
-        raise BandejaError("La carpeta debe estar dentro de la raíz de la bandeja.")
+        raise BandejaError("La carpeta debe estar dentro del almacenamiento de escaneo.")
     if debe_existir and not destino.is_dir():
         raise BandejaError("La carpeta no existe o no es accesible desde el servidor.")
     return destino
