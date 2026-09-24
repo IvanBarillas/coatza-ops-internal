@@ -49,6 +49,7 @@ class VisibilidadOficiosTests(TestCase):
         self.assertContains(respuesta, "Oficio propio")
         self.assertNotContains(respuesta, "Oficio ajeno")
         self.assertContains(respuesta, 'id="module-sidebar"')
+        self.assertContains(respuesta, "data-menu-movil")
         self.assertContains(respuesta, "Registrar documento")
 
     def test_alta_solo_en_direccion_visible(self):
@@ -108,3 +109,12 @@ class VisibilidadOficiosTests(TestCase):
             self.assertIn(respuesta.status_code, (302, 403))
         documento.refresh_from_db()
         self.assertEqual(documento.estado, "registrado")
+
+    def test_menu_movil_marca_la_seccion_actual_y_llega_por_htmx(self):
+        self.client.force_login(self.user)
+        url = reverse("seguimientos_oficios:documento_create")
+        respuesta = self.client.get(url, headers={"HX-Request": "true", "HX-Target": "page-content"})
+        contenido = respuesta.content.decode()
+        self.assertIn("data-menu-movil", contenido)
+        self.assertNotIn('id="module-sidebar"', contenido)
+        self.assertRegex(contenido, r'aria-current="page"[^>]*>\s*<i[^>]*></i><span[^>]*>Registrar documento')
