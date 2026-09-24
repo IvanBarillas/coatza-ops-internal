@@ -29,6 +29,19 @@ class CatalogosTests(BaseAdjuntos):
         self.assertContains(respuesta, reverse("seguimientos_oficios:catalogos"))
         self.assertContains(respuesta, reverse("seguimientos_oficios:configuracion"))
 
+    def test_la_lista_enlaza_a_los_gestores_de_cada_direccion(self):
+        from satelites.seguimientos_oficios.models import Gestor
+
+        Gestor.objects.create(direccion=self.direccion, nombre="Juan")
+        self.como_owner()
+        lista = self.client.get(reverse("seguimientos_oficios:catalogos"))
+        editar = reverse("seguimientos_oficios:direccion_editar", args=[self.direccion.pk])
+        self.assertContains(lista, "Gestores")
+        self.assertContains(lista, f"{editar}#gestores")
+        pagina = self.client.get(editar)
+        self.assertContains(pagina, 'id="gestores"')
+        self.assertContains(pagina, "Agregar")
+
     def test_crear_direccion_vinculada_a_dependencia(self):
         self.como_owner()
         egresos = Dependencia.objects.create(nombre="Egresos")

@@ -298,7 +298,7 @@ def configuracion_guardar_view(request, pk):
 @login_required
 @proteger_vista(APP_SLUG, "can_manage_catalogs")
 def catalogos_view(request):
-    direcciones = Direccion.objects.order_by("nombre").prefetch_related("nomenclaturas")
+    direcciones = Direccion.objects.order_by("nombre").prefetch_related("nomenclaturas", "gestores")
     return _render(request, "catalogos", {"direcciones": direcciones})
 
 
