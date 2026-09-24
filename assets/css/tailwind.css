@@ -2,6 +2,7 @@
 @import "tailwindcss" source(none);
 @source "../../templates";
 @source "../../apps";
+@source "../../satelites";
 @source "../../static/js/axentra-secondary-sidebar.js";
 @source "../../static/js/axentra-bottom-nav.js";
 @source "../../static/js/axentra-workflows.js";
