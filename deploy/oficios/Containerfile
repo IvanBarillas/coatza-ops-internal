@@ -1,0 +1,15 @@
+# Capa de OCR sobre la imagen construida con el Dockerfile de la raíz (Core + satélites propios).
+# `ocrmypdf` y `tesseract` (español) solo los necesita el proceso que corre la cola (worker);
+# se instalan en la misma imagen que `web` para mantener una sola imagen, como en docker-compose.prod.yml.
+#
+#   podman build -t localhost/axentra-ops-internal:base .
+#   podman build -f deploy/oficios/Containerfile -t localhost/axentra-ops-internal:latest .
+ARG BASE=localhost/axentra-ops-internal:base
+FROM ${BASE}
+
+ARG RUNTIME_USER=axentra
+USER root
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ocrmypdf tesseract-ocr-spa ghostscript \
+    && rm -rf /var/lib/apt/lists/*
+USER ${RUNTIME_USER}
