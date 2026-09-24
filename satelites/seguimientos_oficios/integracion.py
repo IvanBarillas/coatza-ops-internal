@@ -9,6 +9,7 @@ from apps.shared.module_sdk.data_access import authorized_departments
 from apps.shared.notifications.services import enqueue_email
 
 __all__ = [
+    "dependencias_del_core",
     "valor_entorno",
     "ModuleManifest",
     "dependencias_autorizadas",
@@ -68,3 +69,13 @@ def valor_entorno(nombre, defecto=""):
     from core.settings.base import config
 
     return config(nombre, default=defecto)
+
+
+def dependencias_del_core():
+    """[(uuid, nombre)] de las dependencias activas del Core, para vincular direcciones."""
+    from apps.security.models import Dependencia
+
+    return list(
+        Dependencia.objects.filter(is_active=True, is_deleted=False)
+        .order_by("nombre").values_list("pk", "nombre")
+    )
