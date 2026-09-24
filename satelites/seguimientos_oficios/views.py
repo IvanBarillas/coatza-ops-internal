@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.core.paginator import Paginator
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
 from django.utils.http import content_disposition_header
@@ -8,11 +9,14 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, CancelacionForm, DocumentoForm, EntregaForm
+from .forms import AdjuntoForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
 from .integracion import proteger_vista
-from .selectors import APP_SLUG, direcciones_visibles, documento_visible, documentos_visibles
+from .selectors import APP_SLUG, buscar_documentos, direcciones_visibles, documento_visible, documentos_visibles
 from .storage import almacen
 from .services import adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
+
+
+POR_PAGINA = 25
 
 
 def _sidebar_items(request):
@@ -42,7 +46,20 @@ def _render(request, nombre, contexto):
 @login_required
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def documento_list_view(request):
-    return _render(request, "documento_list", {"documentos": documentos_visibles(request)[:200]})
+    direcciones = direcciones_visibles(request)
+    filtro = FiltroDocumentosForm(request.GET or None, direcciones=direcciones)
+    documentos = documentos_visibles(request)
+    if filtro.is_valid():
+        documentos = buscar_documentos(documentos, filtro.cleaned_data)
+    pagina = Paginator(documentos, POR_PAGINA).get_page(request.GET.get("pagina"))
+    parametros = request.GET.copy()
+    parametros.pop("pagina", None)
+    contexto = {
+        "filtro": filtro, "pagina": pagina, "total": pagina.paginator.count,
+        "filtros_activos": bool(parametros), "query_sin_pagina": parametros.urlencode(),
+        "varias_direcciones": direcciones.count() > 1,
+    }
+    return _render(request, "documento_list", contexto)
 
 
 @login_required

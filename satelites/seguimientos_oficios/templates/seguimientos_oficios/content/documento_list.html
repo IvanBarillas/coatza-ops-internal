@@ -5,13 +5,26 @@
        class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white">Registrar documento</a>
     {% endif %}
 </div>
+<form method="get" action="{% url 'seguimientos_oficios:documento_list' %}" hx-get="{% url 'seguimientos_oficios:documento_list' %}" hx-target="#page-content" hx-push-url="true"
+      class="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div class="sm:col-span-2 lg:col-span-4">{{ filtro.q }}</div>
+    <div>{{ filtro.sentido }}</div><div>{{ filtro.clase }}</div><div>{{ filtro.estado }}</div>
+    {% if varias_direcciones %}<div>{{ filtro.direccion }}</div>{% endif %}
+    <div><label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ filtro.desde.id_for_label }}">Desde</label>{{ filtro.desde }}</div>
+    <div><label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ filtro.hasta.id_for_label }}">Hasta</label>{{ filtro.hasta }}</div>
+    <div class="flex items-end gap-2 sm:col-span-2">
+        <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">Buscar</button>
+        {% if filtros_activos %}<a href="{% url 'seguimientos_oficios:documento_list' %}" hx-get="{% url 'seguimientos_oficios:documento_list' %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Limpiar</a>{% endif %}
+    </div>
+</form>
+<p class="mb-2 text-xs text-slate-500">{{ total }} documento{{ total|pluralize }}</p>
 <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
     <table class="min-w-full text-sm">
         <thead class="text-left text-xs uppercase text-slate-500">
             <tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Sentido</th><th class="px-4 py-3">Clase</th><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Asunto</th></tr>
         </thead>
         <tbody>
-        {% for d in documentos %}
+        {% for d in pagina %}
             <tr class="border-t border-gray-100">
                 <td class="px-4 py-3">{{ d.fecha|date:"d/m/Y" }}</td><td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.folio|default:"s/f" }}</a></td>
                 <td class="px-4 py-3">{{ d.get_sentido_display }}</td><td class="px-4 py-3">{{ d.get_clase_display }}</td><td class="px-4 py-3">{{ d.direccion }}</td><td class="px-4 py-3">{% include "seguimientos_oficios/content/_estado_badge.html" with documento=d %}</td><td class="px-4 py-3">{{ d.asunto }}</td>
@@ -22,3 +35,12 @@
         </tbody>
     </table>
 </div>
+{% if pagina.paginator.num_pages > 1 %}
+<nav class="mt-4 flex items-center justify-center gap-3 text-sm">
+    {% if pagina.has_previous %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true"
+        href="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.previous_page_number }}" hx-get="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+    <span class="text-slate-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true"
+        href="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.next_page_number }}" hx-get="?{% if query_sin_pagina %}{{ query_sin_pagina }}&amp;{% endif %}pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+</nav>
+{% endif %}

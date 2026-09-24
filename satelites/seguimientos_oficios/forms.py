@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Direccion, Documento
+from .models import ClaseDocumento, Direccion, Documento
 
 
 class DocumentoForm(forms.ModelForm):
@@ -42,3 +42,23 @@ class CancelacionForm(forms.Form):
 
 class AdjuntoForm(forms.Form):
     archivo = forms.FileField(label="Archivo PDF", widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}))
+
+
+class FiltroDocumentosForm(forms.Form):
+    q = forms.CharField(
+        label="Buscar", required=False, max_length=200,
+        widget=forms.TextInput(attrs={"placeholder": "Folio, asunto, remitente o texto del documento…", "type": "search"}),
+    )
+    sentido = forms.ChoiceField(label="Sentido", required=False, choices=[("", "Todos")] + Documento.Sentido.choices)
+    clase = forms.ChoiceField(label="Clase", required=False, choices=[("", "Todas")] + ClaseDocumento.choices)
+    estado = forms.ChoiceField(label="Estado", required=False, choices=[("", "Todos")] + Documento.Estado.choices)
+    direccion = forms.ModelChoiceField(label="Dirección", required=False, queryset=Direccion.objects.none())
+    desde = forms.DateField(label="Desde", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    hasta = forms.DateField(label="Hasta", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+
+    def __init__(self, *args, direcciones=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        if direcciones is not None:
+            self.fields["direccion"].queryset = direcciones
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
