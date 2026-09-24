@@ -34,8 +34,9 @@ class SeguimientosOficiosPermissions:
 
     SIDEBAR_MENU = [
         ["file-text", "Documentos", "seguimientos_oficios:documento_list", 1, "can_view_oficios"],
-        ["clipboard-list", "Mis pendientes", "seguimientos_oficios:mis_pendientes", 2, "can_view_own_pendings"],
-        ["plus-circle", "Registrar documento", "seguimientos_oficios:documento_create", 3, "can_create_oficio"],
-        ["settings", "Configuración", "seguimientos_oficios:configuracion", 4, "can_configure_bandeja"],
-        ["layers", "Catálogos", "seguimientos_oficios:catalogos", 5, "can_manage_catalogs"],
+        ["search", "Búsqueda", "seguimientos_oficios:busqueda", 2, "can_view_oficios"],
+        ["clipboard-list", "Mis pendientes", "seguimientos_oficios:mis_pendientes", 3, "can_view_own_pendings"],
+        ["plus-circle", "Registrar documento", "seguimientos_oficios:documento_create", 4, "can_create_oficio"],
+        ["settings", "Configuración", "seguimientos_oficios:configuracion", 5, "can_configure_bandeja"],
+        ["layers", "Catálogos", "seguimientos_oficios:catalogos", 6, "can_manage_catalogs"],
     ]
