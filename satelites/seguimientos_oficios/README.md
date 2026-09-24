@@ -51,6 +51,22 @@ escritura: al adjuntar, el archivo se mueve a `procesados/AAAA-MM/`; con solo le
 funciona pero el archivo sigue apareciendo en la lista. En contenedores, montar la raíz con el
 mismo permiso de escritura en `web`.
 
+## Despliegue (Podman)
+
+`deploy/oficios/` contiene lo propio de este repo (no se toca el Dockerfile ni el compose del Core):
+
+- `Containerfile`: capa con `ocrmypdf` y `tesseract-ocr-spa` sobre la imagen base. Verificado: se construye
+  y `ocrmypdf --language spa --force-ocr --sidecar` extrae el texto de un PDF de prueba dentro del contenedor.
+- `build.sh`: construye la base y la capa de OCR (`localhost/axentra-ops-internal:latest`).
+- `docker-compose.oficios.yml`: override de `docker-compose.prod.yml` (misma imagen para `web` y `worker`, el
+  worker monta el mismo volumen `media_data` para leer los PDF, `web` monta la QNAP). **No se ha levantado
+  con `.env.prod` real**: revisarlo antes de usarlo.
+
+Pendiente de resolver en el servidor real: el usuario del contenedor (`axentra`, UID 1000) debe poder
+**escribir** en la QNAP montada. En Podman rootless eso depende del mapeo de UID (por ejemplo `userns: keep-id`
+o montar el CIFS con `uid=`/`gid=` del UID que ve el contenedor). Sin escritura el adjuntar funciona, pero el
+archivo no se mueve a `procesados/`. Además, `media_data` guarda los PDF adjuntos: incluirlo en los respaldos.
+
 ## OCR
 
 Requiere `ocrmypdf` y `tesseract` con el idioma español en el proceso que ejecuta la cola

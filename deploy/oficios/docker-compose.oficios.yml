@@ -1,0 +1,24 @@
+# Override de docker-compose.prod.yml para las apps internas (seguimientos_oficios).
+#
+#   deploy/oficios/build.sh
+#   podman-compose -f docker-compose.prod.yml -f deploy/oficios/docker-compose.oficios.yml up -d
+#
+# Cambios respecto al compose base:
+#   - web y worker usan la imagen con OCR (ver Containerfile) en vez de construir la del Dockerfile.
+#   - el worker monta el mismo volumen de archivos que web: el OCR lee los PDF adjuntos de ahí.
+#   - web monta la QNAP (bandeja); el worker no la necesita.
+# AXENTRA_EXTRA_APPS y el resto de secretos siguen viniendo de .env.prod.
+services:
+  web:
+    image: localhost/axentra-ops-internal:latest
+    pull_policy: never
+    volumes:
+      - ${OFICIOS_QNAP_MONTAJE:-/mnt/qnap}:/mnt/qnap
+    environment:
+      OFICIOS_BANDEJA_RAIZ: /mnt/qnap
+
+  worker:
+    image: localhost/axentra-ops-internal:latest
+    pull_policy: never
+    volumes:
+      - media_data:/app/media
