@@ -81,7 +81,7 @@ class DocumentoForm(forms.ModelForm):
         self.hay_folio_manual = any(d.folio_manual for d in self.fields["direccion"].queryset)
         for campo in self.fields.values():
             campo.widget.attrs.setdefault(
-                "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+                "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
             )
 
 
@@ -127,7 +127,7 @@ class FiltroDocumentosForm(forms.Form):
             (str(g.pk), g.nombre) for g in gestores
         ]
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
 class BandejaConfigForm(forms.Form):
@@ -139,7 +139,7 @@ class BandejaConfigForm(forms.Form):
         super().__init__(*args, **kwargs)
         for campo in self.fields.values():
             campo.widget.attrs.update({
-                "class": "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm",
+                "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white",
                 "placeholder": "innovacion/oficios",
             })
 
@@ -184,7 +184,7 @@ class DireccionForm(forms.ModelForm):
             self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
         for nombre, campo in self.fields.items():
             if nombre not in ("is_active", "folio_manual"):
-                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def save(self, commit=True):
         valor = self.cleaned_data.get("dependencia")
@@ -206,7 +206,7 @@ class NomenclaturaForm(forms.ModelForm):
             usadas = direccion.nomenclaturas.values_list("clase", flat=True)
             self.fields["clase"].choices = [(v, e) for v, e in ClaseDocumento.choices if v not in usadas]
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def clean(self):
         datos = super().clean()
@@ -256,7 +256,7 @@ class DocumentoEdicionForm(forms.Form):
         else:
             self.fields.pop("gestor")
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
 class GestorForm(forms.ModelForm):
@@ -270,7 +270,7 @@ class GestorForm(forms.ModelForm):
         self.fields["usuario"].queryset = usuarios_con_acceso("seguimientos_oficios")
         self.fields["usuario"].required = False
         self.fields["nombre"].widget.attrs.setdefault(
-            "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
         )
 
     def clean_nombre(self):

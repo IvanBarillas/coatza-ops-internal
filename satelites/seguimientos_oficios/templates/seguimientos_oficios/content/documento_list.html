@@ -1,10 +1,12 @@
+<div class="w-full font-mono text-left">
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:documento_list' as lista_url %}
-<div class="mb-4 flex items-center justify-between">
-    <h1 class="text-xl font-black text-slate-800">Documentos</h1>
+<div class="mb-4">
     {% if "can_create_oficio" in request.axentra_permissions_list %}
-    <a href="{% url 'seguimientos_oficios:documento_create' %}" hx-get="{% url 'seguimientos_oficios:documento_create' %}" hx-target="#page-content" hx-push-url="true"
-       class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white">Registrar documento</a>
+    {% url 'seguimientos_oficios:documento_create' as crear_url %}
+    {% include "components/list_header.html" with module_label="Oficios" status_label="Seguimiento" title="Documentos" description="Oficios y documentos recibidos y enviados: pendientes, concluidos y cancelados." icon="file-text" action_url=crear_url action_label="Registrar documento" %}
+    {% else %}
+    {% include "components/list_header.html" with module_label="Oficios" status_label="Seguimiento" title="Documentos" description="Oficios y documentos recibidos y enviados: pendientes, concluidos y cancelados." icon="file-text" %}
     {% endif %}
 </div>
 
@@ -12,7 +14,7 @@
     {% for t in tabs %}
     <a href="{{ lista_url }}?{{ t.query }}" hx-get="{{ lista_url }}?{{ t.query }}" hx-target="#page-content" hx-push-url="true" role="tab"
        {% if t.activa %}aria-selected="true"{% endif %}
-       class="rounded-full border px-4 py-1.5 text-xs font-black uppercase tracking-wide {% if t.activa %}border-brand-primary bg-brand-primary text-white{% else %}border-gray-300 bg-white text-slate-600 hover:bg-slate-50{% endif %}">
+       class="rounded-full border px-4 py-1.5 text-xs font-black uppercase tracking-wide {% if t.activa %}border-brand-primary bg-brand-primary text-white{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50{% endif %}">
         {{ t.nombre }} <span class="ml-1 opacity-80">{{ t.total }}</span>
     </a>
     {% endfor %}
@@ -20,32 +22,32 @@
 
 {% if tab == "pendientes" and gestores_resumen %}
 <div class="mb-3 flex flex-wrap items-center gap-2 text-xs">
-    <span class="font-bold uppercase text-slate-500">Por gestor:</span>
+    <span class="font-bold uppercase text-gray-500">Por gestor:</span>
     {% for g in gestores_resumen %}
     <a href="{{ lista_url }}?{{ g.query }}" hx-get="{{ lista_url }}?{{ g.query }}" hx-target="#page-content" hx-push-url="true"
-       class="rounded-full border px-3 py-1 font-bold {% if g.activo %}border-amber-500 bg-amber-100 text-amber-900{% else %}border-gray-300 bg-white text-slate-600 hover:bg-slate-50{% endif %}">{{ g.nombre }} · {{ g.total }}</a>
+       class="rounded-full border px-3 py-1 font-bold {% if g.activo %}border-amber-500 bg-amber-100 text-amber-900{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50{% endif %}">{{ g.nombre }} · {{ g.total }}</a>
     {% endfor %}
 </div>
 {% endif %}
 
 <form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true"
-      class="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-gray-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
+      class="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-gray-200/80 bg-white shadow-sm p-4 sm:grid-cols-2 lg:grid-cols-4">
     {% if tab_explicita %}<input type="hidden" name="tab" value="{{ tab_explicita }}">{% endif %}
     <div class="sm:col-span-2 lg:col-span-4">{{ filtro.q }}</div>
     <div>{{ filtro.sentido }}</div><div>{{ filtro.clase }}</div><div>{{ filtro.estado }}</div><div>{{ filtro.gestor }}</div>
     {% if varias_direcciones %}<div>{{ filtro.direccion }}</div>{% endif %}
-    <div><label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ filtro.desde.id_for_label }}">Desde</label>{{ filtro.desde }}</div>
-    <div><label class="mb-1 block text-xs font-bold uppercase text-slate-500" for="{{ filtro.hasta.id_for_label }}">Hasta</label>{{ filtro.hasta }}</div>
+    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ filtro.desde.id_for_label }}">Desde</label>{{ filtro.desde }}</div>
+    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ filtro.hasta.id_for_label }}">Hasta</label>{{ filtro.hasta }}</div>
     <div class="flex items-end gap-2 sm:col-span-2">
-        <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">Buscar</button>
-        {% if filtros_activos %}<a href="{{ lista_url }}?{{ query_limpiar }}" hx-get="{{ lista_url }}?{{ query_limpiar }}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-300 px-5 py-2 text-sm font-bold text-slate-600">Limpiar</a>{% endif %}
+        <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
+        {% if filtros_activos %}<a href="{{ lista_url }}?{{ query_limpiar }}" hx-get="{{ lista_url }}?{{ query_limpiar }}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Limpiar</a>{% endif %}
     </div>
 </form>
 
-<p class="mb-2 text-xs text-slate-500">{{ total }} documento{{ total|pluralize }}</p>
-<div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-    <table class="min-w-full text-sm">
-        <thead class="text-left text-xs uppercase text-slate-500">
+<p class="mb-2 text-xs text-gray-500">{{ total }} documento{{ total|pluralize }}</p>
+<div class="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+    <table class="min-w-full text-xs">
+        <thead class="text-left text-xs font-black uppercase tracking-widest text-gray-500">
             <tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Sentido</th><th class="px-4 py-3">Clase</th><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Gestor</th><th class="px-4 py-3">Estado</th>{% if tab == "pendientes" %}<th class="px-4 py-3">Días</th>{% endif %}<th class="px-4 py-3">Asunto</th></tr>
         </thead>
         <tbody>
@@ -60,17 +62,18 @@
                 <td class="px-4 py-3">{{ d.asunto }}</td>
             </tr>
         {% empty %}
-            <tr><td colspan="9" class="px-4 py-8 text-center text-slate-500">{% if tab == "pendientes" %}No hay documentos pendientes.{% else %}Sin documentos.{% endif %}</td></tr>
+            <tr><td colspan="9" class="px-4 py-8 text-center text-gray-500">{% if tab == "pendientes" %}No hay documentos pendientes.{% else %}Sin documentos.{% endif %}</td></tr>
         {% endfor %}
         </tbody>
     </table>
 </div>
 {% if pagina.paginator.num_pages > 1 %}
-<nav class="mt-4 flex items-center justify-center gap-3 text-sm">
-    {% if pagina.has_previous %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true"
+<nav class="mt-4 flex items-center justify-center gap-3 text-xs">
+    {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950" hx-target="#page-content" hx-push-url="true"
         href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
-    <span class="text-slate-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
-    {% if pagina.has_next %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true"
+    <span class="text-gray-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+    {% if pagina.has_next %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950" hx-target="#page-content" hx-push-url="true"
         href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
 </nav>
 {% endif %}
+</div>

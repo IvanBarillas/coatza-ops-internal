@@ -1,13 +1,13 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-4xl space-y-4">
-    <h1 class="text-xl font-black text-slate-800">Mis pendientes</h1>
+<div class="mx-auto w-full max-w-4xl space-y-4 font-mono">
+    {% include "components/list_header.html" with module_label="Oficios" title="Mis pendientes" description="Documentos enviados que tienes por entregar o sin evidencia." icon="clipboard-list" %}
     {% if not vinculado %}
-    <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">Tu usuario no está vinculado a un gestor. Pide a un administrador que lo vincule en Catálogos para ver aquí tus oficios pendientes.</p>
+    <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">Tu usuario no está vinculado a un gestor. Pide a un administrador que lo vincule en Catálogos para ver aquí tus oficios pendientes.</p>
     {% else %}
-    <p class="text-xs text-slate-500">{{ documentos|length }} documento{{ documentos|length|pluralize }} por entregar o sin evidencia.</p>
-    <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-        <table class="min-w-full text-sm">
-            <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Dirigido a</th><th class="px-4 py-3">Asunto</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Días</th></tr></thead>
+    <p class="text-xs text-gray-500">{{ documentos|length }} documento{{ documentos|length|pluralize }} por entregar o sin evidencia.</p>
+    <div class="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+        <table class="min-w-full text-xs">
+            <thead class="text-left text-xs font-black uppercase tracking-widest text-gray-500"><tr><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Dirigido a</th><th class="px-4 py-3">Asunto</th><th class="px-4 py-3">Estado</th><th class="px-4 py-3">Días</th></tr></thead>
             <tbody>
             {% for d in documentos %}
                 <tr class="border-t border-gray-100">
@@ -16,7 +16,7 @@
                     <td class="px-4 py-3">{% include "seguimientos_oficios/content/_estado_badge.html" with documento=d %}</td>
                     <td class="px-4 py-3 font-bold {% if d.dias_pendiente >= 15 %}text-red-600{% elif d.dias_pendiente >= 7 %}text-amber-600{% endif %}">{{ d.dias_pendiente }}</td>
                 </tr>
-            {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-slate-500">No tienes documentos pendientes.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No tienes documentos pendientes.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
