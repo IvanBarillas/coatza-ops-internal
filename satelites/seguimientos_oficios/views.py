@@ -9,13 +9,13 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, BandejaConfigForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
 from .integracion import proteger_vista
 from .selectors import APP_SLUG, buscar_documentos, direcciones_visibles, documento_visible, documentos_visibles
 from . import bandeja
 from .models import Direccion, Nomenclatura
 from .storage import almacen
-from .services import adjuntar_desde_bandeja, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
+from .services import adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
 
 
 POR_PAGINA = 25
@@ -108,6 +108,7 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
             else documento.estado in (documento.Estado.ENTREGADO, documento.Estado.CONCLUIDO)
         ),
         "bandeja_configurada": bool(ruta_bandeja_de(documento)),
+        "puede_editar": _permitido(request, "can_edit_oficio") and documento.estado != documento.Estado.CANCELADO,
         "puede_cancelar": documento.estado != documento.Estado.CANCELADO and (
             _permitido(request, "can_cancel_concluded")
             if documento.estado == documento.Estado.CONCLUIDO
@@ -332,3 +333,22 @@ def nomenclatura_actualizar_view(request, pk):
                 for error in errores:
                     messages.error(request, error)
     return _volver_a_direccion(nomenclatura.direccion_id)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_edit_oficio")
+def documento_editar_view(request, pk):
+    documento = documento_visible(request, pk)
+    inicial = {c: getattr(documento, c) for c in ("contraparte", "asunto", "fecha", "folio")}
+    form = DocumentoEdicionForm(request.POST or None, initial=inicial, documento=documento)
+    if request.method == "POST" and form.is_valid():
+        datos = dict(form.cleaned_data)
+        motivo = datos.pop("motivo", "")
+        try:
+            editar_documento(documento, usuario=request.user, cambios=datos, motivo=motivo)
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Cambios guardados.")
+            return redirect("seguimientos_oficios:documento_detail", pk=pk)
+    return _render(request, "documento_editar", {"form": form, "documento": documento})

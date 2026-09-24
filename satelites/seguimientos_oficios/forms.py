@@ -147,3 +147,24 @@ class NomenclaturaForm(forms.ModelForm):
         if self.direccion is not None and clase and self.direccion.nomenclaturas.filter(clase=clase).exists():
             self.add_error("clase", "Esa clase ya tiene nomenclatura en esta dirección.")
         return datos
+
+
+class DocumentoEdicionForm(forms.Form):
+    contraparte = forms.CharField(label="Remitente o destinatario", max_length=200)
+    asunto = forms.CharField(label="Asunto", max_length=300)
+    fecha = forms.DateField(
+        label="Fecha del documento",
+        widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
+    )
+    folio = forms.CharField(label="Folio del remitente", max_length=80, required=False)
+    motivo = forms.CharField(
+        label="Motivo del cambio", required=False, max_length=300,
+        help_text="Opcional; queda en el historial junto con los valores anterior y nuevo.",
+    )
+
+    def __init__(self, *args, documento, **kwargs):
+        super().__init__(*args, **kwargs)
+        if documento.sentido == "enviado":
+            self.fields.pop("folio")
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")

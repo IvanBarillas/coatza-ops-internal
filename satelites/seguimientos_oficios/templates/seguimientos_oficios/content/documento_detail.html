@@ -5,7 +5,10 @@
             <div class="text-xs font-bold uppercase text-slate-500">{{ documento.get_clase_display }} · {{ documento.get_sentido_display }}</div>
             <h1 class="text-xl font-black text-slate-800">{{ documento.folio|default:"Sin folio" }}</h1>
         </div>
-        {% include "seguimientos_oficios/content/_estado_badge.html" %}
+        <div class="flex items-center gap-3">
+            {% if puede_editar %}<a href="{% url 'seguimientos_oficios:documento_editar' documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_editar' documento.pk %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-300 px-3 py-1.5 text-xs font-bold text-slate-600">Editar</a>{% endif %}
+            {% include "seguimientos_oficios/content/_estado_badge.html" %}
+        </div>
     </div>
 
     {% if messages %}{% for m in messages %}<div class="rounded-xl border px-4 py-2 text-sm {% if m.tags == 'error' %}border-red-200 bg-red-50 text-red-700{% elif m.tags == 'warning' %}border-amber-200 bg-amber-50 text-amber-800{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %}">{{ m }}</div>{% endfor %}{% endif %}
@@ -69,7 +72,7 @@
             <li class="border-l-4 border-gray-200 pl-3">
                 <div class="font-bold text-slate-700">{{ h.get_accion_display }} · {{ h.usuario_nombre|default:"—" }}</div>
                 <div class="text-xs text-slate-400">{{ h.created_at|date:"d/m/Y H:i" }}</div>
-                {% if h.datos.adjunto %}<div class="text-xs text-slate-500">{{ h.datos.adjunto }}{% if h.datos.duplicado_de %} · duplicado de {{ h.datos.duplicado_de }}{% endif %}</div>{% endif %}{% if h.datos.estado_nuevo %}<div class="text-xs text-slate-500">{{ h.datos.estado_anterior }} → {{ h.datos.estado_nuevo }}{% if h.datos.motivo %} · {{ h.datos.motivo }}{% endif %}</div>{% endif %}
+                {% if h.datos.adjunto %}<div class="text-xs text-slate-500">{{ h.datos.adjunto }}{% if h.datos.duplicado_de %} · duplicado de {{ h.datos.duplicado_de }}{% endif %}</div>{% endif %}{% for campo, cambio in h.datos.cambios.items %}<div class="text-xs text-slate-500"><b>{{ campo }}</b>: {{ cambio.antes|default:"—" }} → {{ cambio.despues|default:"—" }}</div>{% endfor %}{% if h.datos.motivo and not h.datos.estado_nuevo %}<div class="text-xs text-slate-500">Motivo: {{ h.datos.motivo }}</div>{% endif %}{% if h.datos.estado_nuevo %}<div class="text-xs text-slate-500">{{ h.datos.estado_anterior }} → {{ h.datos.estado_nuevo }}{% if h.datos.motivo %} · {{ h.datos.motivo }}{% endif %}</div>{% endif %}
             </li>
             {% endfor %}
         </ol>

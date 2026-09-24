@@ -208,3 +208,40 @@ def adjuntar_desde_bandeja(documento, *, usuario, nombre):
     resultado = adjuntar_pdf(documento, usuario=usuario, archivo=ContentFile(contenido, name=nombre), origen="bandeja")
     transaction.on_commit(lambda: bandeja.archivar_sin_fallar(carpeta, nombre))
     return resultado
+
+
+CAMPOS_EDITABLES = ("contraparte", "asunto", "fecha")
+
+
+@transaction.atomic
+def editar_documento(documento, *, usuario, cambios, motivo=""):
+    """Corrige datos del documento y deja en el historial cada valor anterior y nuevo."""
+    documento = Documento.objects.select_for_update().get(pk=documento.pk)
+    if documento.estado == Documento.Estado.CANCELADO:
+        raise ValidationError("Un documento cancelado no se puede editar.")
+    permitidos = CAMPOS_EDITABLES + (("folio",) if documento.sentido == Documento.Sentido.RECIBIDO else ())
+    diferencias = {}
+    for campo, nuevo in cambios.items():
+        if campo not in permitidos:
+            raise ValidationError(f"El campo '{campo}' no se puede editar.")
+        actual = getattr(documento, campo)
+        if isinstance(nuevo, str):
+            nuevo = nuevo.strip()
+        if nuevo != actual:
+            diferencias[campo] = (actual, nuevo)
+    if not diferencias:
+        raise ValidationError("No hay cambios que guardar.")
+    if "fecha" in diferencias and documento.anio and diferencias["fecha"][1].year != documento.anio:
+        raise ValidationError(f"La fecha debe seguir en {documento.anio}, el año del folio {documento.folio}.")
+    for campo, (_, nuevo) in diferencias.items():
+        setattr(documento, campo, nuevo)
+    documento.save()
+    _historial(documento, HistorialDocumento.Accion.EDITADO, usuario, {
+        "cambios": {
+            campo: {"antes": antes.isoformat() if hasattr(antes, "isoformat") else antes,
+                    "despues": despues.isoformat() if hasattr(despues, "isoformat") else despues}
+            for campo, (antes, despues) in diferencias.items()
+        },
+        "motivo": (motivo or "").strip(),
+    })
+    return documento
