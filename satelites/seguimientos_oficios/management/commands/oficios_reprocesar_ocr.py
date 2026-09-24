@@ -4,17 +4,19 @@ import datetime
 from django.utils import timezone
 
 from satelites.seguimientos_oficios import tasks
-from satelites.seguimientos_oficios.models import AdjuntoOCR
+from satelites.seguimientos_oficios.models import Adjunto, AdjuntoOCR
 
 
 class Command(BaseCommand):
-    help = "Reintenta el OCR de adjuntos con error o atascados en 'procesando' (sin ejecutar en la cola)."
+    help = "Crea el OCR de adjuntos que no lo tienen y reintenta los con error o atascados (sin usar la cola)."
 
     def add_arguments(self, parser):
         parser.add_argument("--atascados-min", type=int, default=60,
                             help="Minutos tras los que un 'procesando' se considera atascado.")
 
     def handle(self, *args, **opciones):
+        for adjunto in Adjunto.objects.filter(ocr__isnull=True):
+            AdjuntoOCR.objects.create(adjunto=adjunto)
         limite = timezone.now() - datetime.timedelta(minutes=opciones["atascados_min"])
         AdjuntoOCR.objects.filter(
             estado=AdjuntoOCR.Estado.PROCESANDO, iniciado_en__lt=limite

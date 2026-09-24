@@ -13,6 +13,7 @@ from satelites.seguimientos_oficios.services import adjuntar_pdf
 from .base import BaseAdjuntos, pdf
 
 FALSO_OCRMYPDF = """#!/bin/sh
+case "$*" in *--force-ocr*) ;; *) echo "falta --force-ocr" >&2; exit 1 ;; esac
 while [ "$#" -gt 0 ]; do
   [ "$1" = "--sidecar" ] && { shift; echo "Texto reconocido del oficio" > "$1"; }
   shift
@@ -63,6 +64,13 @@ class OcrTests(BaseAdjuntos):
             call_command("oficios_reprocesar_ocr", stdout=mock.MagicMock())
         adjunto.ocr.refresh_from_db()
         self.assertEqual(adjunto.ocr.estado, "listo")
+
+    def test_reprocesar_crea_el_ocr_de_adjuntos_anteriores(self):
+        adjunto = self.adjunto()
+        AdjuntoOCR.objects.filter(adjunto=adjunto).delete()
+        with mock.patch.object(ocr, "extraer_texto", return_value="antiguo"):
+            call_command("oficios_reprocesar_ocr", stdout=mock.MagicMock())
+        self.assertEqual(AdjuntoOCR.objects.get(adjunto=adjunto).texto, "antiguo")
 
     def test_mismo_archivo_reutiliza_el_texto_ya_extraido(self):
         primero = self.adjunto()

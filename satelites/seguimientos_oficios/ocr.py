@@ -26,7 +26,7 @@ def extraer_texto(ruta_pdf):
         salida, texto = Path(tmp) / "salida.pdf", Path(tmp) / "texto.txt"
         try:
             proceso = subprocess.run(
-                [comando, "--language", idioma, "--skip-text", "--sidecar", str(texto),
+                [comando, "--language", idioma, "--force-ocr", "--sidecar", str(texto),
                  "--output-type", "pdf", str(ruta_pdf), str(salida)],
                 capture_output=True, text=True, timeout=limite, check=False,
             )
