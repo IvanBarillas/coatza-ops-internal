@@ -53,10 +53,10 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
     return documento
 
 
-def _historial(documento, accion, usuario, datos):
+def _historial(documento, accion, usuario, datos, usuario_nombre=None):
     HistorialDocumento.objects.create(
-        documento=documento, accion=accion, usuario=usuario,
-        usuario_nombre=nombre_de_usuario(usuario), datos=datos,
+        documento=documento, accion=accion, usuario=usuario, datos=datos,
+        usuario_nombre=nombre_de_usuario(usuario) if usuario_nombre is None else usuario_nombre,
     )
 
 
@@ -127,6 +127,15 @@ def adjuntar_pdf(documento, *, usuario, archivo, origen="subida"):
     if documento.estado not in permitidos:
         raise ValidationError(mensaje)
     contenido = _leer_pdf(archivo)
+    return registrar_adjunto(
+        documento, rol=rol, contenido=contenido, nombre=archivo.name, usuario=usuario,
+        origen=origen, concluir=True,
+    )
+
+
+def registrar_adjunto(documento, *, rol, contenido, nombre, usuario, origen, concluir=False, encolar=True,
+                     usuario_nombre=None):
+    """Guarda el PDF y su registro; no valida el estado (lo hacen quienes lo llaman)."""
     sha256 = hashlib.sha256(contenido).hexdigest()
     duplicado = Adjunto.objects.filter(sha256=sha256).exclude(documento=documento).select_related("documento").first()
     ruta = ruta_del_adjunto(documento, rol, sha256)
@@ -134,23 +143,23 @@ def adjuntar_pdf(documento, *, usuario, archivo, origen="subida"):
     if not almacen_.exists(ruta):
         almacen_.save(ruta, ContentFile(contenido))
     adjunto = Adjunto.objects.create(
-        documento=documento, rol=rol, ruta=ruta, nombre_original=archivo.name[:255],
+        documento=documento, rol=rol, ruta=ruta, nombre_original=nombre[:255],
         sha256=sha256, tamano=len(contenido), subido_por=usuario,
-        subido_por_nombre=nombre_de_usuario(usuario),
+        subido_por_nombre=nombre_de_usuario(usuario) if usuario_nombre is None else usuario_nombre,
     )
-    _preparar_ocr(adjunto)
-    datos = {"adjunto": archivo.name, "origen": origen, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
+    _preparar_ocr(adjunto, encolar=encolar)
+    datos = {"adjunto": nombre, "origen": origen, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
     if duplicado:
         datos["duplicado_de"] = duplicado.documento.folio or str(duplicado.documento_id)
-    if rol == Adjunto.Rol.EVIDENCIA and documento.estado == Documento.Estado.ENTREGADO:
+    if concluir and rol == Adjunto.Rol.EVIDENCIA and documento.estado == Documento.Estado.ENTREGADO:
         documento.estado = Documento.Estado.CONCLUIDO
         documento.save()
         datos.update(estado_anterior=Documento.Estado.ENTREGADO, estado_nuevo=documento.estado)
-    _historial(documento, HistorialDocumento.Accion.ADJUNTADO, usuario, datos)
+    _historial(documento, HistorialDocumento.Accion.ADJUNTADO, usuario, datos, usuario_nombre)
     return adjunto, duplicado
 
 
-def _preparar_ocr(adjunto):
+def _preparar_ocr(adjunto, *, encolar=True):
     previo = (
         AdjuntoOCR.objects.filter(adjunto__sha256=adjunto.sha256, estado=AdjuntoOCR.Estado.LISTO)
         .exclude(adjunto=adjunto).first()
@@ -162,7 +171,8 @@ def _preparar_ocr(adjunto):
         )
         return
     AdjuntoOCR.objects.create(adjunto=adjunto)
-    transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))
+    if encolar:
+        transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))
 
 
 def ruta_bandeja_de(documento):
