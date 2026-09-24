@@ -35,6 +35,9 @@ class DocumentoForm(forms.ModelForm):
     def validate_unique(self):
         """La unicidad del folio la valida el servicio, con un mensaje claro."""
 
+    def validate_constraints(self):
+        """Ídem: evita el mensaje genérico de la restricción de folio único."""
+
     def clean(self):
         datos = super().clean()
         _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
