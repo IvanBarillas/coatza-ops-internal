@@ -16,6 +16,6 @@ class SeguimientosOficiosPermissions:
     ROLE_WEIGHTS = {"owner": 100, "editor": 60, "viewer": 20}
 
     SIDEBAR_MENU = [
-        ["file-text", "Oficios", "seguimientos_oficios:documento_list", 1, "can_view_oficios"],
-        ["plus-circle", "Registrar oficio", "seguimientos_oficios:documento_create", 2, "can_create_oficio"],
+        ["file-text", "Documentos", "seguimientos_oficios:documento_list", 1, "can_view_oficios"],
+        ["plus-circle", "Registrar documento", "seguimientos_oficios:documento_create", 2, "can_create_oficio"],
     ]

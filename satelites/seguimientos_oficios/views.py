@@ -1,10 +1,12 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .forms import DocumentoForm
 from .integracion import proteger_vista
+from .services import crear_documento
 from .selectors import APP_SLUG, direcciones_visibles, documentos_visibles
 
 
@@ -44,9 +46,16 @@ def documento_create_view(request):
     direcciones = direcciones_visibles(request)
     form = DocumentoForm(request.POST or None, direcciones=direcciones)
     if request.method == "POST" and form.is_valid():
-        documento = form.save(commit=False)
-        documento.creado_por = request.user
-        documento.save()
-        messages.success(request, "Oficio registrado.")
-        return redirect("seguimientos_oficios:documento_list")
+        datos = form.cleaned_data
+        try:
+            crear_documento(
+                usuario=request.user, direccion=datos["direccion"], sentido=datos["sentido"],
+                clase=datos["clase"], contraparte=datos["contraparte"], asunto=datos["asunto"],
+                fecha=datos["fecha"], folio=datos["folio"], director_nombre=datos["director_nombre"],
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, "Documento registrado.")
+            return redirect("seguimientos_oficios:documento_list")
     return _render(request, "documento_form", {"form": form})

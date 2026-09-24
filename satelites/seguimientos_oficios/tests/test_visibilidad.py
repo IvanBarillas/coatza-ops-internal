@@ -33,11 +33,11 @@ class VisibilidadOficiosTests(TestCase):
         UserAppRole.objects.create(
             user=cls.user, app=cls.app, role="editor", permissions_list=P.ROLE_MAPPING["editor"]
         )
-        cls.dir_propia = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep_propia.pk)
+        cls.dir_propia = Direccion.objects.create(nombre="Innovación", prefijo="IN", dependencia_uuid=cls.dep_propia.pk)
         cls.dir_ajena = Direccion.objects.create(nombre="Egresos", dependencia_uuid=cls.dep_ajena.pk)
         for direccion, asunto in ((cls.dir_propia, "Oficio propio"), (cls.dir_ajena, "Oficio ajeno")):
             Documento.objects.create(
-                tipo="recibido", direccion=direccion, contraparte="X",
+                sentido="recibido", direccion=direccion, direccion_nombre=direccion.nombre, contraparte="X",
                 asunto=asunto, fecha=datetime.date(2026, 9, 1),
             )
 
@@ -48,12 +48,12 @@ class VisibilidadOficiosTests(TestCase):
         self.assertContains(respuesta, "Oficio propio")
         self.assertNotContains(respuesta, "Oficio ajeno")
         self.assertContains(respuesta, 'id="module-sidebar"')
-        self.assertContains(respuesta, "Registrar oficio")
+        self.assertContains(respuesta, "Registrar documento")
 
     def test_alta_solo_en_direccion_visible(self):
         self.client.force_login(self.user)
         datos = {
-            "tipo": "enviado", "contraparte": "Cabildo", "asunto": "Nuevo",
+            "sentido": "enviado", "clase": "vale_prestamo", "contraparte": "Cabildo", "asunto": "Nuevo",
             "fecha": "2026-09-02", "direccion": str(self.dir_ajena.pk),
         }
         respuesta = self.client.post(reverse("seguimientos_oficios:documento_create"), datos)

@@ -11,7 +11,9 @@ from apps.shared.notifications.services import enqueue_email
 __all__ = [
     "ModuleManifest",
     "dependencias_autorizadas",
+    "director_de_dependencia",
     "enqueue_email",
+    "nombre_de_usuario",
     "proteger_vista",
 ]
 
@@ -26,3 +28,21 @@ def dependencias_autorizadas(usuario, *, app_slug, permiso):
         authorized_departments(usuario, app_slug=app_slug, permission=permiso)
         .values_list("pk", flat=True)
     )
+
+
+def director_de_dependencia(dependencia_uuid):
+    """Nombre del titular actual de la dependencia del Core, o cadena vacía."""
+    from apps.security.models import Dependencia
+
+    if not dependencia_uuid:
+        return ""
+    dependencia = (
+        Dependencia.objects.select_related("encargado_departamento")
+        .filter(pk=dependencia_uuid).first()
+    )
+    titular = dependencia.encargado_departamento if dependencia else None
+    return (titular.full_name or titular.email) if titular else ""
+
+
+def nombre_de_usuario(usuario):
+    return (getattr(usuario, "full_name", "") or getattr(usuario, "email", "")) if usuario else ""
