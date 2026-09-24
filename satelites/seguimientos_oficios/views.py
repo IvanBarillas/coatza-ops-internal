@@ -20,7 +20,7 @@ from .selectors import (
 from . import bandeja
 from .models import Adjunto, Direccion, Gestor, Nomenclatura
 from .storage import almacen
-from .services import roles_permitidos, adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
+from .services import quitar_adjunto, roles_permitidos, adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
 
 
 POR_PAGINA = 25
@@ -130,7 +130,9 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "cancelacion_form": cancelacion_form or CancelacionForm(),
         "puede_entregar": _permitido(request, "can_update_status")
         and documento.estado == documento.Estado.GENERADO and documento.sentido == documento.Sentido.ENVIADO,
-        "adjuntos": documento.adjuntos.all(),
+        "adjuntos": documento.adjuntos.filter(eliminado=False),
+        "adjuntos_quitados": documento.adjuntos.filter(eliminado=True).order_by("eliminado_en"),
+        "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
         "roles_adjuntables": (
             [(r, Adjunto.Rol(r).label) for r in roles_permitidos(documento)]
@@ -215,7 +217,7 @@ def documento_adjuntar_view(request, pk):
 @proteger_vista(APP_SLUG, "has_access_module")
 def adjunto_descargar_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
-    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    adjunto = get_object_or_404(documento.adjuntos.filter(eliminado=False), pk=adjunto_pk)
     almacen_ = almacen()
     if not almacen_.exists(adjunto.ruta):
         raise Http404("El archivo no está en el almacén.")
@@ -460,7 +462,7 @@ def busqueda_view(request):
 @proteger_vista(APP_SLUG, "has_access_module")
 def visor_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
-    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    adjunto = get_object_or_404(documento.adjuntos.filter(eliminado=False), pk=adjunto_pk)
     try:
         pagina = max(1, int(request.GET.get("pagina", 1)))
     except ValueError:
@@ -471,3 +473,18 @@ def visor_view(request, pk, adjunto_pk):
         "documento": documento, "adjunto": adjunto, "pagina": pagina,
         "src": reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk]) + "#" + fragmento,
     })
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_remove_files")
+def adjunto_quitar_view(request, pk, adjunto_pk):
+    documento = documento_visible(request, pk)
+    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    try:
+        quitar_adjunto(adjunto, usuario=request.user, motivo=request.POST.get("motivo", ""))
+    except ValidationError as error:
+        messages.error(request, "; ".join(error.messages))
+    else:
+        messages.success(request, "Archivo quitado. Queda registrado en el historial.")
+    return redirect("seguimientos_oficios:documento_detail", pk=pk)

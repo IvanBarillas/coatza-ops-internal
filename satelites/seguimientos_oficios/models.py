@@ -272,6 +272,7 @@ class HistorialDocumento(models.Model):
         CREADO = "creado", "Creado"
         EDITADO = "editado", "Editado"
         ADJUNTADO = "adjuntado", "Adjunto agregado"
+        QUITADO = "quitado", "Archivo quitado"
         ELIMINADO = "eliminado", "Eliminado"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -319,6 +320,10 @@ class Adjunto(models.Model):
     )
     subido_por_nombre = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    eliminado = models.BooleanField(default=False, db_index=True)
+    eliminado_motivo = models.TextField(blank=True)
+    eliminado_por_nombre = models.CharField(max_length=200, blank=True)
+    eliminado_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "oficios_adjunto"

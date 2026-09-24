@@ -165,7 +165,7 @@ def registrar_adjunto(documento, *, rol, contenido, nombre, usuario, origen, con
                      usuario_nombre=None):
     """Guarda el PDF y su registro; no valida el estado (lo hacen quienes lo llaman)."""
     sha256 = hashlib.sha256(contenido).hexdigest()
-    duplicado = Adjunto.objects.filter(sha256=sha256).exclude(documento=documento).select_related("documento").first()
+    duplicado = Adjunto.objects.filter(sha256=sha256, eliminado=False).exclude(documento=documento).select_related("documento").first()
     ruta = ruta_del_adjunto(documento, rol, sha256)
     almacen_ = almacen()
     if not almacen_.exists(ruta):
@@ -293,3 +293,30 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         "motivo": (motivo or "").strip(),
     })
     return documento
+
+
+@transaction.atomic
+def quitar_adjunto(adjunto, *, usuario, motivo):
+    """Retira un archivo subido por error. Queda registrado (quién, cuándo y por qué); el PDF no se destruye."""
+    documento = Documento.objects.select_for_update().get(pk=adjunto.documento_id)
+    adjunto = Adjunto.objects.get(pk=adjunto.pk)
+    motivo = (motivo or "").strip()
+    if len(motivo) < MOTIVO_MINIMO:
+        raise ValidationError(f"El motivo debe tener al menos {MOTIVO_MINIMO} caracteres.")
+    if adjunto.eliminado:
+        raise ValidationError("El archivo ya fue quitado.")
+    if documento.estado == Documento.Estado.CANCELADO:
+        raise ValidationError("Un documento cancelado no se modifica.")
+    Adjunto.objects.filter(pk=adjunto.pk).update(
+        eliminado=True, eliminado_motivo=motivo, eliminado_en=timezone.now(),
+        eliminado_por_nombre=nombre_de_usuario(usuario),
+    )
+    datos = {"adjunto": adjunto.nombre_original, "rol": adjunto.rol, "sha256": adjunto.sha256, "motivo": motivo}
+    quedan_evidencias = documento.adjuntos.filter(rol=Adjunto.Rol.EVIDENCIA, eliminado=False).exists()
+    if (adjunto.rol == Adjunto.Rol.EVIDENCIA and documento.estado == Documento.Estado.CONCLUIDO
+            and documento.sentido == Documento.Sentido.ENVIADO and not quedan_evidencias):
+        documento.estado = Documento.Estado.ENTREGADO
+        documento.save()
+        datos.update(estado_anterior=Documento.Estado.CONCLUIDO, estado_nuevo=documento.estado)
+    _historial(documento, HistorialDocumento.Accion.QUITADO, usuario, datos)
+    return Adjunto.objects.get(pk=adjunto.pk)

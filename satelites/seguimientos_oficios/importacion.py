@@ -126,7 +126,7 @@ def importar(direccion, carpeta_relativa, *, sentido="", clase="", manifiesto=No
             if not contenido.startswith(b"%PDF-"):
                 raise ValueError("No es un PDF válido.")
             sha256 = hashlib.sha256(contenido).hexdigest()
-            if Adjunto.objects.filter(sha256=sha256, documento__direccion=direccion).exists():
+            if Adjunto.objects.filter(sha256=sha256, eliminado=False, documento__direccion=direccion).exists():
                 resultado.duplicados.append(nombre)
                 continue
             datos = _preparar(direccion, carpeta, nombre, (manifiesto or {}).get(nombre), opciones)

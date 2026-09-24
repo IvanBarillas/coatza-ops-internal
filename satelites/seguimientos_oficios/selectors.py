@@ -57,10 +57,11 @@ def _coincidencias_ocr(termino):
         from django.contrib.postgres.search import SearchQuery, SearchVector
 
         return (
-            AdjuntoOCR.objects.annotate(vector=SearchVector("texto_normalizado", config="spanish"))
+            AdjuntoOCR.objects.filter(adjunto__eliminado=False)
+            .annotate(vector=SearchVector("texto_normalizado", config="spanish"))
             .filter(vector=SearchQuery(termino, config="spanish", search_type="websearch"))
         )
-    return AdjuntoOCR.objects.filter(texto_normalizado__contains=termino)
+    return AdjuntoOCR.objects.filter(adjunto__eliminado=False, texto_normalizado__contains=termino)
 
 
 def buscar_documentos(queryset, filtros):
@@ -138,12 +139,12 @@ def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15):
     paginador = Paginator(documentos, por_pagina).get_page(pagina)
     ids = [d.pk for d in paginador]
     encontrados = defaultdict(list)
-    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
+    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, adjunto__eliminado=False, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
     for ocr in ocrs.order_by("adjunto__created_at"):
         for numero, fragmento in coincidencias(ocr.texto, ocr.texto_normalizado, consulta):
             encontrados[ocr.adjunto.documento_id].append({"adjunto": ocr.adjunto, "pagina": numero, "fragmento": fragmento})
     primeros = {}
-    for adjunto in Adjunto.objects.filter(documento_id__in=ids).order_by("-created_at"):
+    for adjunto in Adjunto.objects.filter(documento_id__in=ids, eliminado=False).order_by("-created_at"):
         primeros[adjunto.documento_id] = adjunto
     resultados = [
         {"documento": d, "coincidencias": encontrados[d.pk][:4], "primer_adjunto": primeros.get(d.pk)}
