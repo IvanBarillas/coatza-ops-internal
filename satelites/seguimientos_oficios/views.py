@@ -1,13 +1,28 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
+from django.urls import reverse
 
 from .forms import DocumentoForm
 from .integracion import proteger_vista
 from .selectors import APP_SLUG, direcciones_visibles, documentos_visibles
 
 
+def _sidebar_items(request):
+    actual = request.resolver_match.view_name if request.resolver_match else ""
+    return [
+        {
+            "icon": item["icon"],
+            "name": item["name"],
+            "href": reverse(item["url"]),
+            "active": item["url"] == actual,
+        }
+        for item in getattr(request, "axentra_sidebar_menu", [])
+    ]
+
+
 def _render(request, nombre, contexto):
+    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": _sidebar_items(request)}
     destino = request.headers.get("HX-Target", "")
     if request.headers.get("HX-Request") == "true":
         if destino == "workbench":

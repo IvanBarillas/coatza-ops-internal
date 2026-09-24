@@ -47,6 +47,8 @@ class VisibilidadOficiosTests(TestCase):
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, "Oficio propio")
         self.assertNotContains(respuesta, "Oficio ajeno")
+        self.assertContains(respuesta, 'id="module-sidebar"')
+        self.assertContains(respuesta, "Registrar oficio")
 
     def test_alta_solo_en_direccion_visible(self):
         self.client.force_login(self.user)
