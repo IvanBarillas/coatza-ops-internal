@@ -15,7 +15,7 @@ from . import services
 from .forms import (
     AtenderForm, ComentarioForm, EvidenciaForm, LineaForm, MotivoForm, ReporteEdicionForm, ReporteForm,
 )
-from .integracion import nombre_de_usuario, proteger_vista, telefono_de_usuario, usuarios_con_acceso
+from .integracion import nombre_de_usuario, proteger_vista, telefono_de_usuario, usuarios_con_acceso, valor_entorno
 from .models import Evidencia, Linea, Reporte
 from .selectors import APP_SLUG, permitido
 from .storage import almacen
@@ -29,8 +29,13 @@ def _menu(request):
     ]
 
 
+def _config_mapa():
+    """Proveedor de mosaicos del mapa (por defecto OpenStreetMap). Se puede cambiar por entorno si el proveedor bloquea."""
+    return {"tiles": valor_entorno("TEL_MAPA_TILES_URL", ""), "atribucion": valor_entorno("TEL_MAPA_ATRIBUCION", "")}
+
+
 def _render(request, nombre, contexto):
-    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": _menu(request)}
+    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": _menu(request), "mapa_config": _config_mapa()}
     destino = request.headers.get("HX-Target", "")
     if request.headers.get("HX-Request") == "true":
         if destino == "workbench":

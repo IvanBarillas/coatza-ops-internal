@@ -21,7 +21,7 @@
             {% if puede_gestionar %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600" href="{% url 'telefonia:linea_editar' linea.pk %}" hx-get="{% url 'telefonia:linea_editar' linea.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}
             {% if linea.con_ubicacion %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600" href="{{ linea.enlace_google_maps }}" target="_blank" rel="noopener">Abrir en Google Maps</a>{% endif %}
         </div>
-        {% if linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" class="mt-4 h-64 w-full overflow-hidden rounded-xl border border-gray-200"></div>
+        {% if linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" data-tiles="{{ mapa_config.tiles }}" data-atribucion="{{ mapa_config.atribucion }}" class="mt-4 h-64 w-full overflow-hidden rounded-xl border border-gray-200"></div>
         {% else %}<p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">Esta línea aún no tiene ubicación. Edítela y pegue el enlace de Google Maps o las coordenadas.</p>{% endif %}
     </section>
     <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">

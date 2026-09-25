@@ -4,6 +4,8 @@
 (function () {
     var TILES = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
     var ATRIBUCION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
+    // La app manda Referrer-Policy: same-origin y los servidores de mosaicos (OpenStreetMap) exigen un Referer válido: por eso
+    // los mosaicos piden explícitamente que se envíe el origen (solo el dominio, sin ruta).
     var COLORES = { rojo: '#dc2626', ambar: '#d97706', verde: '#059669', ninguno: '#6b7280' };
     var COATZACOALCOS = [18.15, -94.42];
 
@@ -27,7 +29,9 @@
         el.setAttribute('data-listo', '1');
         var lineas = leerLineas(el).filter(function (l) { return l.lat !== null && l.lng !== null; });
         var mapa = L.map(el, { scrollWheelZoom: false }).setView(COATZACOALCOS, 12);
-        L.tileLayer(TILES, { maxZoom: 19, attribution: ATRIBUCION }).addTo(mapa);
+        L.tileLayer(el.getAttribute('data-tiles') || TILES, {
+            maxZoom: 19, attribution: el.getAttribute('data-atribucion') || ATRIBUCION, referrerPolicy: 'origin',
+        }).addTo(mapa);
         var marcadores = {};
         lineas.forEach(function (linea) {
             var marcador = L.circleMarker([linea.lat, linea.lng], {

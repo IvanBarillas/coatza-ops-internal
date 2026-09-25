@@ -29,7 +29,7 @@
             {% if reporte.detalle %}<div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Detalle de la falla</dt><dd class="whitespace-pre-line">{{ reporte.detalle }}</dd></div>{% endif %}
             {% if reporte.motivo_cancelacion %}<div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Motivo de cancelación</dt><dd>{{ reporte.motivo_cancelacion }}</dd></div>{% endif %}
         </dl>
-        {% if reporte.linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" class="mt-4 h-56 w-full overflow-hidden rounded-xl border border-gray-200"></div>{% endif %}
+        {% if reporte.linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" data-tiles="{{ mapa_config.tiles }}" data-atribucion="{{ mapa_config.atribucion }}" class="mt-4 h-56 w-full overflow-hidden rounded-xl border border-gray-200"></div>{% endif %}
     </section>
 
     {% if puede_actualizar %}
