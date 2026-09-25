@@ -124,6 +124,10 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   con los días transcurridos desde la entrega o el registro); las demás pestañas son Concluidos (incluye los
   recibidos registrados), Cancelados y Todos. Buscar texto sin elegir pestaña busca en Todos. Sobre los pendientes
   se ve el resumen por gestor y se puede filtrar por gestor o por "sin gestor".
+- Categoría: tema opcional (una por documento) con el que cada dirección clasifica sus documentos (p. ej. panteones,
+  escuelas). Catálogo por dirección en Catálogos, elegible al registrar y al editar (con rastro en el historial),
+  visible en lista, detalle y búsqueda, y filtrable en ambas. Las categorías no se borran: se desactivan, y un
+  documento ya clasificado conserva la suya aunque se desactive.
 - Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es un catálogo por dirección (en Catálogos),
   solo aplica a enviados, se asigna al registrar y se reasigna al editar, con rastro en el historial.
 - **Seguimiento** (menú *Seguimiento*, permiso `can_view_tracking`, rol `seguimiento` de solo consulta): tablero de los

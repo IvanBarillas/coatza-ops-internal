@@ -86,6 +86,10 @@ def buscar_documentos(queryset, filtros):
     for campo in ("sentido", "clase", "estado", "direccion"):
         if filtros.get(campo):
             queryset = queryset.filter(**{campo: filtros[campo]})
+    if filtros.get("categoria") == "sin":
+        queryset = queryset.filter(categoria__isnull=True)
+    elif filtros.get("categoria"):
+        queryset = queryset.filter(categoria_id=filtros["categoria"])
     if filtros.get("gestor") == "sin":
         queryset = queryset.filter(gestor__isnull=True)
     elif filtros.get("gestor"):
@@ -146,6 +150,14 @@ def gestores_visibles(request):
     from .models import Gestor
 
     return Gestor.objects.filter(
+        is_active=True, is_deleted=False, direccion__in=direcciones_visibles(request)
+    ).select_related("direccion")
+
+
+def categorias_visibles(request):
+    from .models import Categoria
+
+    return Categoria.objects.filter(
         is_active=True, is_deleted=False, direccion__in=direcciones_visibles(request)
     ).select_related("direccion")
 

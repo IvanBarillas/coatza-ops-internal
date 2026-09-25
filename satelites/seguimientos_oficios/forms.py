@@ -2,8 +2,10 @@ from django import forms
 
 import uuid
 
+from django.db.models import Q
+
 from .integracion import dependencias_del_core
-from .models import ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
+from .models import Categoria, ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
 def _agregar_contraparte(form, etiqueta):
@@ -46,21 +48,27 @@ class DocumentoForm(forms.ModelForm):
             self.add_error("gestor", "Solo los documentos enviados llevan gestor.")
         elif gestor and direccion and gestor.direccion_id != direccion.pk:
             self.add_error("gestor", "El gestor no pertenece a la dirección elegida.")
+        categoria = datos.get("categoria")
+        if categoria and direccion and categoria.direccion_id != direccion.pk:
+            self.add_error("categoria", "La categoría no pertenece a la dirección elegida.")
         if sentido == "enviado" and direccion and direccion.folio_manual and not (datos.get("folio") or "").strip():
             self.add_error("folio", "Escriba el folio del oficio.")
         return datos
 
     class Meta:
         model = Documento
-        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "gestor", "folio", "asunto"]
+        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "gestor", "categoria", "folio", "asunto"]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "sentido": forms.Select(attrs={"x-model": "sentido"}),
         }
         labels = {"direccion": "Dirección que registra"}
 
-    def __init__(self, *args, direcciones=None, gestores=None, **kwargs):
+    def __init__(self, *args, direcciones=None, gestores=None, categorias=None, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields["categoria"].queryset = categorias if categorias is not None else Categoria.objects.none()
+        self.fields["categoria"].required = False
+        self.fields["categoria"].empty_label = "Sin categoría"
         self.fields["direccion"].queryset = (
             direcciones if direcciones is not None else Direccion.objects.none()
         )
@@ -121,14 +129,18 @@ class FiltroDocumentosForm(forms.Form):
     estado = forms.ChoiceField(label="Estado", required=False, choices=[("", "Todos")] + Documento.Estado.choices)
     direccion = forms.ModelChoiceField(label="Dirección", required=False, queryset=Direccion.objects.none())
     gestor = forms.ChoiceField(label="Gestor", required=False)
+    categoria = forms.ChoiceField(label="Categoría", required=False)
     tab = forms.CharField(required=False, widget=forms.HiddenInput)
     desde = forms.DateField(label="Desde", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
     hasta = forms.DateField(label="Hasta", required=False, widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
 
-    def __init__(self, *args, direcciones=None, gestores=(), **kwargs):
+    def __init__(self, *args, direcciones=None, gestores=(), categorias=(), **kwargs):
         super().__init__(*args, **kwargs)
         if direcciones is not None:
             self.fields["direccion"].queryset = direcciones
+        self.fields["categoria"].choices = [("", "Todas las categorías"), ("sin", "Sin categoría")] + [
+            (str(c.pk), c.nombre) for c in categorias
+        ]
         self.fields["gestor"].choices = [("", "Todos los gestores"), ("sin", "Sin gestor")] + [
             (str(g.pk), g.nombre) for g in gestores
         ]
@@ -202,6 +214,7 @@ class DocumentoEdicionForm(forms.Form):
     )
 
     gestor = forms.ModelChoiceField(label="Gestor", required=False, queryset=Gestor.objects.none(), empty_label="Sin asignar")
+    categoria = forms.ModelChoiceField(label="Categoría", required=False, queryset=Categoria.objects.none(), empty_label="Sin categoría")
 
     def clean(self):
         datos = super().clean()
@@ -211,12 +224,15 @@ class DocumentoEdicionForm(forms.Form):
     def __init__(self, *args, documento, **kwargs):
         super().__init__(*args, **kwargs)
         self.documento = documento
+        self.fields["categoria"].queryset = Categoria.objects.filter(
+            Q(is_active=True, is_deleted=False) | Q(pk=documento.categoria_id), direccion=documento.direccion
+        )
         _agregar_contraparte(
             self, "Dirección destinataria" if documento.sentido == "enviado" else "Dirección remitente"
         )
         if documento.contraparte_dependencia_uuid:
             self.initial.setdefault("contraparte_dependencia", str(documento.contraparte_dependencia_uuid))
-        self.order_fields(["contraparte_dependencia", "contraparte", "asunto", "fecha", "folio", "gestor", "motivo"])
+        self.order_fields(["contraparte_dependencia", "contraparte", "asunto", "fecha", "folio", "categoria", "gestor", "motivo"])
         if documento.sentido == "enviado":
             if not documento.folio_manual:
                 self.fields.pop("folio")
@@ -260,3 +276,26 @@ class FiltroBusquedaForm(FiltroDocumentosForm):
         for sobrante in ("estado", "gestor", "tab"):
             self.fields.pop(sobrante)
         self.fields["q"].widget.attrs["placeholder"] = "Palabra o frase dentro de los documentos, folio, asunto…"
+
+
+class CategoriaForm(forms.ModelForm):
+    class Meta:
+        model = Categoria
+        fields = ["nombre"]
+
+    def __init__(self, *args, direccion=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.direccion = direccion or getattr(self.instance, "direccion", None)
+        self.fields["nombre"].widget.attrs.setdefault(
+            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+        )
+
+    def clean_nombre(self):
+        nombre = " ".join(self.cleaned_data["nombre"].split())
+        repetida = Categoria.objects.filter(direccion=self.direccion, nombre__iexact=nombre).exclude(pk=self.instance.pk)
+        if repetida.exists() or any(
+            c.nombre.casefold() == nombre.casefold()
+            for c in Categoria.objects.filter(direccion=self.direccion).exclude(pk=self.instance.pk)
+        ):
+            raise forms.ValidationError("Ya existe una categoría con ese nombre en esta dirección.")
+        return nombre

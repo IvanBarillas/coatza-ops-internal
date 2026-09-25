@@ -22,6 +22,13 @@ def _validar_gestor(gestor, direccion, sentido):
         raise ValidationError("El gestor no pertenece a la dirección o está inactivo.")
 
 
+def _validar_categoria(categoria, direccion, actual=None):
+    if categoria is None or categoria == actual:
+        return
+    if categoria.direccion_id != direccion.pk or not categoria.is_active or categoria.is_deleted:
+        raise ValidationError("La categoría no pertenece a la dirección o está inactiva.")
+
+
 def _folio_capturado(direccion, folio):
     folio = (folio or "").strip()
     if not folio:
@@ -55,8 +62,10 @@ def _siguiente_folio(direccion, clase, anio):
 
 @transaction.atomic
 def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, fecha,
-                    folio="", director_nombre="", gestor=None, contraparte_dependencia_uuid=None):
+                    folio="", director_nombre="", gestor=None, contraparte_dependencia_uuid=None,
+                    categoria=None):
     _validar_gestor(gestor, direccion, sentido)
+    _validar_categoria(categoria, direccion)
     anio = consecutivo = None
     nomenclatura, folio_manual = None, False
     if sentido == Documento.Sentido.ENVIADO and direccion.folio_manual:
@@ -77,7 +86,7 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
         anio=anio, consecutivo=consecutivo, creado_por=usuario, folio_manual=folio_manual,
         estado=(Documento.Estado.GENERADO if sentido == Documento.Sentido.ENVIADO else Documento.Estado.REGISTRADO),
         director_nombre=director_nombre or director_de_dependencia(direccion.dependencia_uuid),
-        gestor=gestor,
+        gestor=gestor, categoria=categoria,
     )
     if folio_manual and consecutivo:
         sincronizar_contador(nomenclatura, anio, consecutivo)
@@ -89,6 +98,7 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
             "direccion": documento.direccion_nombre, "director": documento.director_nombre,
             "contraparte": contraparte, "asunto": asunto, "fecha": fecha.isoformat(),
             "gestor": gestor.nombre if gestor else None,
+            "categoria": categoria.nombre if categoria else None,
         },
     )
     return documento
@@ -248,9 +258,9 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
     if documento.estado == Documento.Estado.CANCELADO:
         raise ValidationError("Un documento cancelado no se puede editar.")
     if documento.sentido == Documento.Sentido.RECIBIDO:
-        permitidos = CAMPOS_EDITABLES + ("folio",)
+        permitidos = CAMPOS_EDITABLES + ("folio", "categoria")
     else:
-        permitidos = CAMPOS_EDITABLES + ("gestor",) + (("folio",) if documento.folio_manual else ())
+        permitidos = CAMPOS_EDITABLES + ("gestor", "categoria") + (("folio",) if documento.folio_manual else ())
     diferencias = {}
     for campo, nuevo in cambios.items():
         if campo not in permitidos:
@@ -261,6 +271,8 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         if nuevo != actual:
             if campo == "gestor":
                 _validar_gestor(nuevo, documento.direccion, documento.sentido)
+            if campo == "categoria":
+                _validar_categoria(nuevo, documento.direccion, actual)
             if campo == "folio" and documento.sentido == Documento.Sentido.ENVIADO:
                 if not nuevo:
                     raise ValidationError("El folio de un oficio enviado no puede quedar vacío.")

@@ -23,6 +23,7 @@
     <nav class="flex flex-wrap justify-center gap-2 text-xs font-black uppercase">
         <a href="#nomenclaturas" class="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-black uppercase tracking-widest text-gray-600">Nomenclaturas</a>
         <a href="#gestores" class="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-black uppercase tracking-widest text-gray-600">Gestores</a>
+        <a href="#categorias" class="rounded-full border border-gray-200 bg-white px-4 py-1.5 text-xs font-black uppercase tracking-widest text-gray-600">Categorías</a>
     </nav>
     {% endif %}
 
@@ -81,6 +82,33 @@
         <form method="post" action="{% url 'seguimientos_oficios:gestor_crear' direccion.pk %}" class="mt-5 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
             {% csrf_token %}
             <input type="text" name="nombre" placeholder="Nombre del gestor" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Agregar</button>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if direccion %}
+    <section id="categorias" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
+        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Categorías</h2>
+        <p class="mb-4 text-xs text-gray-400">Temas con los que esta dirección clasifica sus documentos (p. ej. panteones, escuelas). Es opcional al registrar y sirve para filtrar y buscar.</p>
+        <ul class="space-y-3 text-xs">
+            {% for g in categorias %}
+            <li class="flex flex-wrap items-center gap-3 {% if not g.is_active %}opacity-60{% endif %}">
+                <form method="post" action="{% url 'seguimientos_oficios:categoria_actualizar' g.pk %}" class="flex flex-1 flex-wrap items-center gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="nombre" value="{{ g.nombre }}" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                    <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Guardar</button>
+                </form>
+                <form method="post" action="{% url 'seguimientos_oficios:categoria_actualizar' g.pk %}">
+                    {% csrf_token %}<input type="hidden" name="accion" value="estado">
+                    <button type="submit" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white font-bold {% if g.is_active %}text-red-600{% else %}text-emerald-700{% endif %}">{% if g.is_active %}Desactivar{% else %}Activar{% endif %}</button>
+                </form>
+            </li>
+            {% empty %}<li class="text-gray-500">Sin categorías registradas.</li>{% endfor %}
+        </ul>
+        <form method="post" action="{% url 'seguimientos_oficios:categoria_crear' direccion.pk %}" class="mt-5 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+            {% csrf_token %}
+            <input type="text" name="nombre" placeholder="Nombre de la categoría" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
             <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Agregar</button>
         </form>
     </section>
