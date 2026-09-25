@@ -14,7 +14,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista
 from .selectors import (
     color_semaforo, semaforo_umbrales,
@@ -361,22 +361,30 @@ def gestor_actualizar_view(request, pk):
 @login_required
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def busqueda_view(request):
+    direcciones = direcciones_visibles(request)
+    form = FiltroBusquedaForm(request.GET or None, direcciones=direcciones)
+    limpio = form.cleaned_data if form.is_valid() else {}
     consulta = request.GET.get("q", "").strip()[:200]
     sentido = request.GET.get("sentido", "")
     if sentido not in Documento.Sentido.values:
         sentido = ""
+    filtros = {c: limpio[c] for c in ("clase", "direccion", "desde", "hasta") if limpio.get(c)}
+    if sentido:
+        filtros["sentido"] = sentido
     paginador, resultados = (None, [])
     if consulta:
         paginador, resultados = buscar_con_coincidencias(
-            request, consulta, request.GET.get("pagina"), sentido=sentido
+            request, consulta, request.GET.get("pagina"), filtros=filtros
         )
-    parametros = {"q": consulta, **({"sentido": sentido} if sentido else {})}
     contexto = {
-        "consulta": consulta, "paginador": paginador, "resultados": resultados, "sentido": sentido,
-        "query_sin_pagina": urlencode(parametros),
+        "form": form, "consulta": consulta, "paginador": paginador, "resultados": resultados, "sentido": sentido,
+        "query_sin_pagina": _query(request),
+        "filtros_activos": any(request.GET.get(c) for c in ("clase", "direccion", "desde", "hasta")),
+        "query_limpiar": urlencode({"q": consulta, **({"sentido": sentido} if sentido else {})}),
+        "varias_direcciones": direcciones.count() > 1,
         "ambitos": [
             {"clave": clave, "nombre": nombre, "activo": sentido == clave,
-             "query": urlencode({"q": consulta, **({"sentido": clave} if clave else {})})}
+             "query": _query(request, quitar=("sentido",), **({"sentido": clave} if clave else {}))}
             for clave, nombre in (("", "Todos"), ("recibido", "Recibidos"), ("enviado", "Enviados"))
         ],
     }

@@ -65,7 +65,7 @@ completo en español con índice GIN sobre esa copia; SQLite, coincidencia por s
 **evidencia** (acuse) repite el firmado con el sello de recepción y no pasa por OCR. Los enviados importados del
 histórico se guardan como firmado, así que sí se procesan y se pueden buscar.
 
-**Búsqueda en documentos** (menú *Búsqueda*, con selector *Buscar en*: Todos, Recibidos o Enviados): lista los documentos que contienen la consulta en sus datos o en el
+**Búsqueda en documentos** (menú *Búsqueda*, con selector *Buscar en*: Todos, Recibidos o Enviados, y un panel plegable de filtros por clase, dirección y rango de fechas que se combinan con el texto): lista los documentos que contienen la consulta en sus datos o en el
 OCR, sin importar acentos ni mayúsculas, con la página y un fragmento resaltado. Al elegir un resultado, el PDF se
 abre a la derecha en esa página (iframe del visor del navegador: `#page=N` funciona en todos; el resaltado de la
 palabra lo aplica el visor de Firefox, no el de Chrome). Los PDF nuevos aparecen cuando termina su OCR.
