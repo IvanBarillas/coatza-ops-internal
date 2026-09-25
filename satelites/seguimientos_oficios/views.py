@@ -362,12 +362,23 @@ def gestor_actualizar_view(request, pk):
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def busqueda_view(request):
     consulta = request.GET.get("q", "").strip()[:200]
+    sentido = request.GET.get("sentido", "")
+    if sentido not in Documento.Sentido.values:
+        sentido = ""
     paginador, resultados = (None, [])
     if consulta:
-        paginador, resultados = buscar_con_coincidencias(request, consulta, request.GET.get("pagina"))
+        paginador, resultados = buscar_con_coincidencias(
+            request, consulta, request.GET.get("pagina"), sentido=sentido
+        )
+    parametros = {"q": consulta, **({"sentido": sentido} if sentido else {})}
     contexto = {
-        "consulta": consulta, "paginador": paginador, "resultados": resultados,
-        "query_sin_pagina": urlencode({"q": consulta}),
+        "consulta": consulta, "paginador": paginador, "resultados": resultados, "sentido": sentido,
+        "query_sin_pagina": urlencode(parametros),
+        "ambitos": [
+            {"clave": clave, "nombre": nombre, "activo": sentido == clave,
+             "query": urlencode({"q": consulta, **({"sentido": clave} if clave else {})})}
+            for clave, nombre in (("", "Todos"), ("recibido", "Recibidos"), ("enviado", "Enviados"))
+        ],
     }
     return _render(request, "busqueda", contexto)
 

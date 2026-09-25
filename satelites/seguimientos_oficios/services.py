@@ -203,7 +203,8 @@ def registrar_adjunto(documento, *, rol, contenido, nombre, usuario, origen, con
         sha256=sha256, tamano=len(contenido), subido_por=usuario,
         subido_por_nombre=nombre_de_usuario(usuario) if usuario_nombre is None else usuario_nombre,
     )
-    _preparar_ocr(adjunto, encolar=encolar)
+    if rol in Adjunto.ROLES_CON_OCR:
+        _preparar_ocr(adjunto, encolar=encolar)
     datos = {"adjunto": nombre, "origen": origen, "rol": rol, "sha256": sha256, "tamano": len(contenido)}
     if duplicado:
         datos["duplicado_de"] = duplicado.documento.folio or str(duplicado.documento_id)

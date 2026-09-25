@@ -3,12 +3,22 @@
 {% url 'seguimientos_oficios:busqueda' as busqueda_url %}
 <div class="mb-4">{% include "components/list_header.html" with module_label="Oficios" title="Búsqueda" description="Encuentra una palabra dentro de los PDF (OCR) y en los datos de cada documento, con la página donde aparece." icon="search" %}</div>
 <form method="get" action="{{ busqueda_url }}" hx-get="{{ busqueda_url }}" hx-target="#page-content" hx-push-url="true" class="mb-4 flex flex-wrap gap-2">
+    {% if sentido %}<input type="hidden" name="sentido" value="{{ sentido }}">{% endif %}
     <input type="search" name="q" value="{{ consulta }}" placeholder="Palabra o frase dentro de los documentos, folio, asunto…" aria-label="Buscar" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white" autofocus>
     <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
 </form>
 
+<div class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+    <span class="font-bold uppercase text-gray-500">Buscar en:</span>
+    {% for a in ambitos %}
+    <a href="{{ busqueda_url }}?{{ a.query }}" hx-get="{{ busqueda_url }}?{{ a.query }}" hx-target="#page-content" hx-push-url="true"
+       {% if a.activo %}aria-current="true"{% endif %}
+       class="rounded-full border px-4 py-1.5 font-black uppercase tracking-widest {% if a.activo %}border-brand-primary bg-brand-primary text-white{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50{% endif %}">{{ a.nombre }}</a>
+    {% endfor %}
+</div>
+
 {% if not consulta %}
-<p class="text-xs text-gray-500">Escribe una palabra para buscarla en el texto de todos los PDF (OCR), sin importar acentos ni mayúsculas, y en los datos de cada documento. Al elegir un resultado, el PDF se abre a la derecha en la hoja donde aparece.</p>
+<p class="text-xs text-gray-500">Escribe una palabra para buscarla en el texto de los PDF recibidos y de los oficios enviados firmados (OCR), sin importar acentos ni mayúsculas, y en los datos de cada documento. Los acuses no se procesan: repiten el oficio firmado. Al elegir un resultado, el PDF se abre a la derecha en la hoja donde aparece.</p>
 {% else %}
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <section>

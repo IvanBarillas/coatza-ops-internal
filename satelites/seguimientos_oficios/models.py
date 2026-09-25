@@ -291,6 +291,8 @@ class Adjunto(models.Model):
         FIRMADO = "firmado", "Documento firmado"
         EVIDENCIA = "evidencia", "Evidencia de entrega"
 
+    ROLES_CON_OCR = ("original", "firmado")  # el acuse repite el firmado con el sello de recepción: no se procesa
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     documento = models.ForeignKey(Documento, on_delete=models.PROTECT, related_name="adjuntos")
     rol = models.CharField(max_length=10, choices=Rol.choices)
