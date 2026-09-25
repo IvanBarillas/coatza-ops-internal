@@ -165,6 +165,14 @@ Documento enviado con folio automático de su **nomenclatura** (editable por dir
 - **Dictamen de alta** (`dictamen_alta`): carta con solicitud, justificación y dictamen dirigida al departamento al que se le
   entregó el bien, para que lo solicite en Ingresos. **No crea el bien** en el catálogo.
 
+- **Resguardo de equipos** (`resguardo`): equipo de cómputo que se entrega a un empleado de un departamento. Lleva siempre los cuatro
+  componentes del formato (equipo, monitor, teclado y ratón; los que no se entregan quedan en blanco) con serie, marca y modelo e
+  información técnica, más la fecha de entrega, el empleado, quien entrega (técnico) y quien autoriza. Cada componente puede ligarse a
+  un bien del catálogo: solo deja su movimiento en la bitácora (a quién y en qué departamento), no cambia su estado. La impresión
+  trae el texto de responsabilidad fijo y una segunda hoja en blanco para el **anexo fotográfico**. Sigue el mismo flujo que los
+  demás: se imprime, lo firma el director y se sube como *Documento firmado*; después la evidencia es ese mismo documento firmado
+  de recibido y sellado. Tiene gestor opcional, folio automático por su nomenclatura y se puede corregir como los otros.
+
 El ticket de la mesa de ayuda es texto libre. Las impresiones (HTML con CSS de carta, logotipos en
 `static/seguimientos_oficios/formatos/`) se guardan como PDF desde el navegador; el documento se firma, se escanea y se sube
 como *Documento firmado* (con OCR y búsqueda). **Corregir:** los diagnósticos, dictámenes y vales emitidos se pueden corregir (botón *Corregir* en su detalle) mientras no

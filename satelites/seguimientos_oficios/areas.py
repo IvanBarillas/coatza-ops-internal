@@ -11,7 +11,7 @@ RUTAS_DE_PRESTAMOS = {
     "vale_editar", "bienes", "bien_crear", "bien_detalle", "bien_editar",
 }
 RUTAS_DE_SOPORTE = {
-    "soporte", "soporte_crear_diagnostico", "soporte_crear_baja", "soporte_crear_alta", "soporte_imprimir", "soporte_editar",
+    "soporte", "soporte_crear_diagnostico", "soporte_crear_baja", "soporte_crear_alta", "soporte_crear_resguardo", "soporte_imprimir", "soporte_editar",
 }
 
 

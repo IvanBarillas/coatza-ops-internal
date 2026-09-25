@@ -19,6 +19,7 @@ urlpatterns = [
     path("soporte/diagnostico/nuevo/", soporte_views.crear_diagnostico_view, name="soporte_crear_diagnostico"),
     path("soporte/baja/nueva/", soporte_views.crear_baja_view, name="soporte_crear_baja"),
     path("soporte/alta/nueva/", soporte_views.crear_alta_view, name="soporte_crear_alta"),
+    path("soporte/resguardo/nuevo/", soporte_views.crear_resguardo_view, name="soporte_crear_resguardo"),
     path("soporte/<uuid:pk>/editar/", soporte_views.editar_view, name="soporte_editar"),
     path("soporte/<uuid:pk>/imprimir/", soporte_views.imprimir_view, name="soporte_imprimir"),
     path("bienes/", prestamos_views.bienes_view, name="bienes"),

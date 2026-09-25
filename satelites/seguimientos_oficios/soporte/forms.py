@@ -5,9 +5,9 @@ from ..forms import _agregar_contraparte, _resolver_contraparte
 from ..integracion import director_de_dependencia
 from ..models import Gestor
 from ..prestamos.forms import CLASE
-from .services import CLASIFICACIONES, DISPOSICIONES, RECOMENDACIONES
+from .services import CLASIFICACIONES, COMPONENTES, DISPOSICIONES, RECOMENDACIONES
 
-CAMPOS_EQUIPO = ("equipo", "marca_modelo", "serie", "folio_inventario", "departamento")
+CAMPOS_EQUIPO = ("equipo", "marca_modelo", "serie", "folio_inventario", "departamento", "info_tecnica")
 CARGO_TECNICO = "Técnico de Soporte en TI"
 
 
@@ -20,7 +20,7 @@ def leer_equipos(post, bienes):
     indices = sorted({int(k.split("-")[1]) for k in post if k.startswith("eq-") and k.split("-")[1].isdigit()})
     equipos, errores = [], []
     for i in indices:
-        fila = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:150] for c in CAMPOS_EQUIPO}
+        fila = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:150] for c in CAMPOS_EQUIPO if c != "info_tecnica"}
         bien_id = post.get(f"eq-{i}-bien") or ""
         if not any(fila.values()) and not bien_id:
             continue
@@ -41,6 +41,29 @@ def leer_equipos(post, bienes):
     return equipos, errores
 
 
+def leer_componentes(post, bienes):
+    """Los cuatro componentes del resguardo (`eq-N-campo`, N = 0 a 3), siempre en el mismo orden; los vacíos quedan en blanco.
+
+    Si el componente trae un bien del catálogo (`eq-N-bien`) y sus datos vienen vacíos, se toman del bien."""
+    permitidos = {str(b.pk): b for b in bienes}
+    filas, errores = [], []
+    for i, (tipo, nombre) in enumerate(COMPONENTES):
+        fila = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:150] for c in ("marca_modelo", "serie", "folio_inventario")}
+        fila.update(equipo=nombre, tipo=tipo, departamento="", info_tecnica=(post.get(f"eq-{i}-info_tecnica") or "").strip()[:1000])
+        bien_id = post.get(f"eq-{i}-bien") or ""
+        if bien_id:
+            bien = permitidos.get(bien_id)
+            if bien is None:
+                errores.append(f"El bien elegido para {nombre.lower()} ya no está disponible.")
+            else:
+                fila["bien"] = bien
+                fila["marca_modelo"] = fila["marca_modelo"] or bien.marca_modelo
+                fila["serie"] = fila["serie"] or bien.identificador
+                fila["folio_inventario"] = fila["folio_inventario"] or bien.folio_inventario
+        filas.append(fila)
+    return filas, errores
+
+
 def leer_equipos_edicion(post):
     """Renglones de una edición (`eq-N-id` + textos): {id: textos}. No se agregan ni quitan renglones."""
     indices = sorted({int(k.split("-")[1]) for k in post if k.startswith("eq-") and k.split("-")[1].isdigit()})
@@ -48,7 +71,7 @@ def leer_equipos_edicion(post):
     for i in indices:
         identificador = post.get(f"eq-{i}-id")
         if identificador:
-            equipos[identificador] = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:150] for c in CAMPOS_EQUIPO}
+            equipos[identificador] = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:1000 if c == "info_tecnica" else 150] for c in CAMPOS_EQUIPO}
     return equipos
 
 
@@ -167,6 +190,28 @@ class AltaForm(SoporteBase, _ConAutoriza):
         _agregar_contraparte(self, "Dirección o departamento al que se dirige")
         self.fields["contraparte_dependencia"].widget.attrs.setdefault("class", CLASE)
         self.fields["contraparte"].widget.attrs.setdefault("class", CLASE)
+        self._agregar_autoriza(direcciones)
+
+    def clean(self):
+        datos = super().clean()
+        _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
+        return datos
+
+
+class ResguardoForm(SoporteBase, _ConAutoriza):
+    contraparte = forms.CharField(max_length=200, required=False)
+    fecha_entrega = _fecha()
+    empleado = forms.CharField(label="Empleado a quien se le asigna el equipo", max_length=200)
+
+    def __init__(self, *args, direcciones, **kwargs):
+        super().__init__(*args, direcciones=direcciones, **kwargs)
+        _agregar_contraparte(self, "Departamento")
+        self.fields["fecha_entrega"].label = "Fecha de entrega"
+        self.fields["fecha_entrega"].initial = timezone.localdate()
+        self.fields["fecha_entrega"].widget.attrs.setdefault("class", CLASE)
+        self.fields["contraparte_dependencia"].widget.attrs.setdefault("class", CLASE)
+        self.fields["contraparte"].widget.attrs.setdefault("class", CLASE)
+        self.fields["ticket"].label = "Ticket de la mesa de ayuda (opcional)"
         self._agregar_autoriza(direcciones)
 
     def clean(self):

@@ -63,5 +63,6 @@ class SeguimientosOficiosPermissions:
         ["clipboard-plus", "Nuevo diagnóstico", "seguimientos_oficios:soporte_crear_diagnostico", 12, "can_manage_support"],
         ["file-minus", "Nuevo dictamen de baja", "seguimientos_oficios:soporte_crear_baja", 13, "can_manage_support"],
         ["file-check", "Nuevo dictamen de alta", "seguimientos_oficios:soporte_crear_alta", 14, "can_manage_support"],
+        ["laptop", "Nuevo resguardo", "seguimientos_oficios:soporte_crear_resguardo", 15, "can_manage_support"],
         ["layers", "Catálogos", "seguimientos_oficios:catalogos", 10, "can_manage_catalogs"],
     ]

@@ -10,9 +10,10 @@ from ..models import ClaseDocumento, Direccion, Documento, Gestor
 from ..selectors import APP_SLUG, gestores_asignables, permitido
 from ..views import _query, _render
 from . import selectors as sel
-from .forms import AltaForm, BajaForm, DiagnosticoForm, leer_equipos, leer_equipos_edicion
+from .forms import AltaForm, BajaForm, DiagnosticoForm, ResguardoForm, leer_componentes, leer_equipos, leer_equipos_edicion
 from .services import (
-    CLASIFICACIONES, DISPOSICIONES, RECOMENDACIONES, edicion_exige_motivo, editar_dictamen, emitir_alta, emitir_baja, emitir_diagnostico,
+    CLASIFICACIONES, COMPONENTES, DISPOSICIONES, RECOMENDACIONES, edicion_exige_motivo, editar_dictamen, emitir_alta, emitir_baja,
+    emitir_diagnostico, emitir_resguardo,
 )
 
 TABS = (
@@ -20,6 +21,7 @@ TABS = (
     ("diagnosticos", "Diagnósticos", ClaseDocumento.DIAGNOSTICO_TECNICO),
     ("bajas", "Bajas", ClaseDocumento.DICTAMEN_BAJA),
     ("altas", "Altas", ClaseDocumento.DICTAMEN_ALTA),
+    ("resguardos", "Resguardos", ClaseDocumento.RESGUARDO),
 )
 
 
@@ -52,6 +54,10 @@ def _datos_diagnostico(d):
 
 def _datos_baja(d):
     return {"diagnostico": d["diagnostico"], "clasificacion": d["clasificacion"], "disposicion": d["disposicion"], "solicito": d["solicitante"]}
+
+
+def _datos_resguardo(d):
+    return {"empleado": d["empleado"], "fecha_entrega": d["fecha_entrega"].isoformat()}
 
 
 def _datos_alta(d):
@@ -168,14 +174,55 @@ def crear_alta_view(request):
     return _render(request, "soporte_form", _contexto_form(request, form, "alta", titulo, ayuda))
 
 
+def _filas_de_componentes(filas=None):
+    """Los cuatro renglones fijos del resguardo, con lo ya capturado (por tipo) o en blanco."""
+    por_tipo = {f.get("tipo"): f for f in filas or []}
+    return [
+        {"id": por_tipo.get(t, {}).get("id", ""), "tipo": t, "equipo": nombre, "marca_modelo": por_tipo.get(t, {}).get("marca_modelo", ""),
+         "serie": por_tipo.get(t, {}).get("serie", ""), "folio_inventario": por_tipo.get(t, {}).get("folio_inventario", ""),
+         "info_tecnica": por_tipo.get(t, {}).get("info_tecnica", ""), "departamento": "", "bien": por_tipo.get(t, {}).get("bien", "")}
+        for t, nombre in COMPONENTES
+    ]
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_manage_support")
+def crear_resguardo_view(request):
+    direcciones = sel.direcciones_con_soporte(request, "can_manage_support")
+    titulo, ayuda = "Nuevo resguardo de equipo", "Equipo de cómputo que se entrega a un empleado, con su monitor, teclado y ratón."
+    if not direcciones.exists():
+        return _render(request, "soporte_form", _contexto_form(request, None, "resguardo", titulo, ayuda))
+    form = ResguardoForm(request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request))
+    filas, errores = _filas_de_componentes(), []
+    if request.method == "POST":
+        componentes, errores = leer_componentes(request.POST, sel.bienes_catalogo(request))
+        filas = _filas_de_componentes([{**c, "bien": c["bien"].pk if c.get("bien") else ""} for c in componentes])
+        if form.is_valid() and not errores:
+            datos = form.cleaned_data
+            try:
+                documento, _ = emitir_resguardo(
+                    **_base_kwargs(request, datos), contraparte=datos["contraparte"],
+                    contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"], equipos=componentes,
+                    autoriza_nombre=datos["autoriza_nombre"], autoriza_cargo=datos["autoriza_cargo"],
+                    fecha=datos["fecha_entrega"], datos=_datos_resguardo(datos),
+                )
+            except ValidationError as error:
+                form.add_error(None, error)
+            else:
+                return _terminar(request, documento)
+    return _render(request, "soporte_form", _contexto_form(request, form, "resguardo", titulo, ayuda, filas, False, errores))
+
+
 @login_required
 @proteger_vista(APP_SLUG, "can_view_support")
 def imprimir_view(request, pk):
     dictamen = get_object_or_404(sel.dictamenes_visibles(request), documento_id=pk)
     d = dictamen.datos
+    equipos = list(dictamen.equipos.all())
     return render(request, "seguimientos_oficios/soporte_imprimir.html", {
-        "dictamen": dictamen, "documento": dictamen.documento, "equipos": list(dictamen.equipos.all()), "d": d,
+        "dictamen": dictamen, "documento": dictamen.documento, "equipos": equipos, "d": d,
         "clase": dictamen.documento.clase,
+        "componentes": [(nombre, next((e for e in equipos if e.tipo == tipo), None)) for tipo, nombre in COMPONENTES],
         "recomendaciones": RECOMENDACIONES, "clasificaciones": CLASIFICACIONES, "disposiciones": DISPOSICIONES,
         "recomendacion_actual": d.get("recomendacion"), "clasificacion_actual": d.get("clasificacion"),
         "disposicion_actual": d.get("disposicion"),
@@ -186,6 +233,7 @@ FORMULARIOS = {
     ClaseDocumento.DIAGNOSTICO_TECNICO: (DiagnosticoForm, "diagnostico", _datos_diagnostico),
     ClaseDocumento.DICTAMEN_BAJA: (BajaForm, "baja", _datos_baja),
     ClaseDocumento.DICTAMEN_ALTA: (AltaForm, "alta", _datos_alta),
+    ClaseDocumento.RESGUARDO: (ResguardoForm, "resguardo", _datos_resguardo),
 }
 
 
@@ -197,6 +245,8 @@ def _inicial(dictamen):
         "solicitante": d.get("solicito", documento.contraparte), "fecha_recibido": d.get("fecha_recibido"),
         **{k: v for k, v in d.items() if k not in ("solicito", "fecha_recibido")},
     }
+    if documento.clase == ClaseDocumento.RESGUARDO:
+        inicial["fecha_entrega"] = d.get("fecha_entrega")
     if documento.clase == ClaseDocumento.DIAGNOSTICO_TECNICO:
         inicial["solicitante"] = documento.contraparte
     elif documento.contraparte_dependencia_uuid:
@@ -217,7 +267,8 @@ def editar_view(request, pk):
                         gestores=Gestor.objects.filter(Q(pk__in=gestores_asignables(request).values("pk")) | Q(pk=documento.gestor_id)))
     filas = [
         {"id": str(r.pk), "equipo": r.equipo, "marca_modelo": r.marca_modelo, "serie": r.serie,
-         "folio_inventario": r.folio_inventario, "departamento": r.departamento, "bien": str(r.bien_id or "")}
+         "folio_inventario": r.folio_inventario, "departamento": r.departamento, "bien": str(r.bien_id or ""),
+         "tipo": r.tipo, "info_tecnica": r.info_tecnica}
         for r in dictamen.equipos.all()
     ]
     errores = []

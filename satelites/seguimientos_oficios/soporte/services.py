@@ -1,3 +1,5 @@
+import datetime
+
 from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
@@ -19,7 +21,10 @@ DISPOSICIONES = (
     ("enajenacion", "Enajenación onerosa"), ("donacion", "Donación"), ("destruccion", "Destrucción"),
     ("otro", "Otro (bienes de control temporal y posterior destrucción)"),
 )
-CLASES_DE_SOPORTE = (ClaseDocumento.DIAGNOSTICO_TECNICO, ClaseDocumento.DICTAMEN_ALTA, ClaseDocumento.DICTAMEN_BAJA)
+CLASES_DE_SOPORTE = (
+    ClaseDocumento.DIAGNOSTICO_TECNICO, ClaseDocumento.DICTAMEN_ALTA, ClaseDocumento.DICTAMEN_BAJA, ClaseDocumento.RESGUARDO,
+)
+COMPONENTES = (("equipo", "Equipo"), ("monitor", "Monitor"), ("teclado", "Teclado"), ("raton", "Ratón"))
 ETIQUETAS = dict(RECOMENDACIONES) | dict(CLASIFICACIONES) | dict(DISPOSICIONES)
 
 
@@ -40,7 +45,8 @@ def _emitir(*, clase, usuario, direccion, contraparte, asunto, ticket, elaboro_n
     )
     DictamenBien.objects.bulk_create([
         DictamenBien(dictamen=dictamen, orden=i, bien=e.get("bien"), equipo=e["equipo"], marca_modelo=e.get("marca_modelo", ""),
-                     serie=e.get("serie", ""), folio_inventario=e.get("folio_inventario", ""), departamento=e.get("departamento", ""))
+                     serie=e.get("serie", ""), folio_inventario=e.get("folio_inventario", ""), departamento=e.get("departamento", ""),
+                     tipo=e.get("tipo", ""), info_tecnica=e.get("info_tecnica", ""))
         for i, e in enumerate(equipos)
     ])
     _historial(documento, HistorialDocumento.Accion.EDITADO, usuario, {
@@ -49,8 +55,10 @@ def _emitir(*, clase, usuario, direccion, contraparte, asunto, ticket, elaboro_n
     return documento, dictamen
 
 
-def asunto_de(clase, contraparte, equipos):
+def asunto_de(clase, contraparte, equipos, datos=None):
     nombres = "; ".join(e["equipo"] for e in equipos)
+    if clase == ClaseDocumento.RESGUARDO:
+        return f"Resguardo de equipo de cómputo: {(datos or {}).get('empleado', '')} ({contraparte})"
     if clase == ClaseDocumento.DIAGNOSTICO_TECNICO:
         return f"Diagnóstico técnico: {nombres}"
     if clase == ClaseDocumento.DICTAMEN_BAJA:
@@ -142,16 +150,17 @@ def emitir_alta(*, usuario, direccion, contraparte, ticket, datos, elaboro_nombr
 
 
 ETIQUETAS_CAMPOS = {
+    "empleado": "Empleado que recibe",
     "ticket": "Ticket", "elaboro_cargo": "Cargo de quien elabora", "autoriza_nombre": "Autoriza (nombre)",
     "autoriza_cargo": "Autoriza (cargo)", "contraparte": "Solicitante / dirigido a", "fecha_recibido": "Fecha de recibido",
     "tipo_bien": "Tipo de bien", "fallo": "Fallo", "causa": "Causa", "solucion": "Solución", "observaciones": "Observaciones",
     "recomendacion": "Recomendación", "solicito": "Solicitó", "diagnostico": "Diagnóstico", "clasificacion": "Clasificación",
     "disposicion": "Disposición final", "solicitud": "Solicitud", "justificacion": "Justificación", "dictamen": "Dictamen",
 }
-CAMPOS_EQUIPO = ("equipo", "marca_modelo", "serie", "folio_inventario", "departamento")
+CAMPOS_EQUIPO = ("equipo", "marca_modelo", "serie", "folio_inventario", "departamento", "info_tecnica")
 ETIQUETAS_EQUIPO = {
     "equipo": "equipo", "marca_modelo": "marca y modelo", "serie": "serie", "folio_inventario": "folio de inventario",
-    "departamento": "departamento",
+    "departamento": "departamento", "info_tecnica": "información técnica",
 }
 
 
@@ -232,6 +241,11 @@ def editar_dictamen(dictamen, *, usuario, campos, datos, equipos, contraparte=No
         anotar(ETIQUETAS_CAMPOS.get(clave, clave), dictamen.datos.get(clave), nuevo)
         nuevos_datos[clave] = nuevo
     dictamen.datos = nuevos_datos
+    if clase == ClaseDocumento.RESGUARDO and datos.get("fecha_entrega"):
+        nueva = datetime.date.fromisoformat(datos["fecha_entrega"])
+        if documento.anio and nueva.year != documento.anio:
+            raise ValidationError(f"La fecha debe seguir en {documento.anio}, el año del folio {documento.folio}.")
+        documento.fecha = nueva
     for indice, (pk, renglon) in enumerate(renglones.items(), start=1):
         for campo in CAMPOS_EQUIPO:
             nuevo = (nuevos[pk].get(campo) or "").strip()
@@ -247,7 +261,45 @@ def editar_dictamen(dictamen, *, usuario, campos, datos, equipos, contraparte=No
     dictamen.save()
     for renglon in renglones.values():
         renglon.save()
-    documento.asunto = asunto_de(clase, documento.contraparte, [{"equipo": r.equipo} for r in renglones.values()])[:300]
+    documento.asunto = asunto_de(clase, documento.contraparte, [{"equipo": r.equipo} for r in renglones.values()], combinado)[:300]
     documento.save()
     _historial(documento, HistorialDocumento.Accion.EDITADO, usuario, {"cambios": cambios, "motivo": (motivo or "").strip()})
+    return documento, dictamen
+
+
+@transaction.atomic
+def emitir_resguardo(*, usuario, direccion, contraparte, ticket, datos, equipos, fecha, elaboro_nombre, elaboro_cargo,
+                     autoriza_nombre, autoriza_cargo, contraparte_dependencia_uuid=None, gestor=None):
+    """Resguardo de equipo de cómputo: siempre los cuatro componentes (equipo, monitor, teclado y ratón; los que no
+    se entregan quedan en blanco). Los que son del catálogo dejan su movimiento en la bitácora del bien."""
+    if not (datos.get("empleado") or "").strip():
+        raise ValidationError("Escriba el nombre del empleado que recibe el equipo.")
+    if [e.get("tipo") for e in equipos] != [t for t, _ in COMPONENTES]:
+        raise ValidationError("El resguardo lleva los cuatro componentes: equipo, monitor, teclado y ratón.")
+    if not any((equipos[0].get(c) or "").strip() for c in ("serie", "marca_modelo")):
+        raise ValidationError("Capture al menos la serie o la marca y modelo del equipo.")
+    ligados = [e["bien"] for e in equipos if e.get("bien")]
+    if len({b.pk for b in ligados}) != len(ligados):
+        raise ValidationError("Un mismo bien no puede repetirse en el resguardo.")
+    for bien in Bien.objects.select_for_update().filter(pk__in=[b.pk for b in ligados]):
+        if bien.direccion_id != direccion.pk:
+            raise ValidationError(f"El bien {bien} no pertenece a esta dirección.")
+        if bien.estado == Bien.Estado.BAJA:
+            raise ValidationError(f"El bien {bien} está dado de baja.")
+        if PrestamoBien.objects.filter(bien=bien, abierto=True).exists():
+            raise ValidationError(f"El bien {bien} está prestado: registre primero la devolución del vale.")
+    documento, dictamen = _emitir(
+        clase=ClaseDocumento.RESGUARDO, usuario=usuario, direccion=direccion, contraparte=contraparte,
+        contraparte_dependencia_uuid=contraparte_dependencia_uuid, fecha=fecha,
+        asunto=asunto_de(ClaseDocumento.RESGUARDO, contraparte, equipos, datos), ticket=ticket,
+        elaboro_nombre=elaboro_nombre, elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre,
+        autoriza_cargo=autoriza_cargo, datos=datos, equipos=equipos, gestor=gestor,
+    )
+    etiquetas = dict(COMPONENTES)
+    for fila in equipos:
+        if fila.get("bien"):
+            bitacora.registrar(fila["bien"], HistorialBien.Accion.RESGUARDO, usuario, {
+                "folio": documento.folio, "empleado": datos["empleado"], "departamento": contraparte,
+                "componente": etiquetas[fila["tipo"]],
+            })
     return documento, dictamen
