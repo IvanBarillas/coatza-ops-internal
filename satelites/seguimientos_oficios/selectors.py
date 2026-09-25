@@ -150,11 +150,10 @@ def gestores_visibles(request):
     ).select_related("direccion")
 
 
-def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15, sentido=""):
+def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15, filtros=None):
     """Documentos que contienen la consulta, con la página y el fragmento del OCR donde aparece."""
-    documentos = con_texto(documentos_visibles(request), consulta).order_by("-fecha", "-created_at")
-    if sentido in Documento.Sentido.values:
-        documentos = documentos.filter(sentido=sentido)
+    documentos = buscar_documentos(documentos_visibles(request), {**(filtros or {}), "q": consulta})
+    documentos = documentos.order_by("-fecha", "-created_at")
     paginador = Paginator(documentos, por_pagina).get_page(pagina)
     ids = [d.pk for d in paginador]
     encontrados = defaultdict(list)

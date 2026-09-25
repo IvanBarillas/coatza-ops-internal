@@ -2,10 +2,25 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:busqueda' as busqueda_url %}
 <div class="mb-4">{% include "components/list_header.html" with module_label="Oficios" title="Búsqueda" description="Encuentra una palabra dentro de los PDF (OCR) y en los datos de cada documento, con la página donde aparece." icon="search" %}</div>
-<form method="get" action="{{ busqueda_url }}" hx-get="{{ busqueda_url }}" hx-target="#page-content" hx-push-url="true" class="mb-4 flex flex-wrap gap-2">
+<form method="get" action="{{ busqueda_url }}" hx-get="{{ busqueda_url }}" hx-target="#page-content" hx-push-url="true"
+      x-data="{ abierto: {{ filtros_activos|yesno:'true,false' }} }"
+      class="mb-4 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm">
     {% if sentido %}<input type="hidden" name="sentido" value="{{ sentido }}">{% endif %}
-    <input type="search" name="q" value="{{ consulta }}" placeholder="Palabra o frase dentro de los documentos, folio, asunto…" aria-label="Buscar" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white" autofocus>
-    <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
+    <div class="flex flex-wrap items-center gap-2">
+        <div class="min-w-0 flex-1">{{ form.q }}</div>
+        <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
+        <button type="button" @click="abierto = !abierto" :aria-expanded="abierto"
+                class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">
+            <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>Filtros
+        </button>
+        {% if filtros_activos %}<a href="{{ busqueda_url }}?{{ query_limpiar }}" hx-get="{{ busqueda_url }}?{{ query_limpiar }}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600">Limpiar</a>{% endif %}
+    </div>
+    <div x-show="abierto" x-cloak class="mt-3 grid grid-cols-1 gap-3 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.clase.id_for_label }}">Clase de documento</label>{{ form.clase }}</div>
+        {% if varias_direcciones %}<div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.direccion.id_for_label }}">Dirección</label>{{ form.direccion }}</div>{% endif %}
+        <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.desde.id_for_label }}">Desde</label>{{ form.desde }}</div>
+        <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.hasta.id_for_label }}">Hasta</label>{{ form.hasta }}</div>
+    </div>
 </form>
 
 <div class="mb-4 flex flex-wrap items-center gap-2 text-xs">

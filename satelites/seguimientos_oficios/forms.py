@@ -250,3 +250,13 @@ class GestorForm(forms.ModelForm):
             raise forms.ValidationError("Ya existe un gestor con ese nombre en esta dirección.")
         return nombre
 
+
+
+class FiltroBusquedaForm(FiltroDocumentosForm):
+    """Filtros de la vista de búsqueda: el texto manda; el resto acota (sentido, clase, dirección, fechas)."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for sobrante in ("estado", "gestor", "tab"):
+            self.fields.pop(sobrante)
+        self.fields["q"].widget.attrs["placeholder"] = "Palabra o frase dentro de los documentos, folio, asunto…"
