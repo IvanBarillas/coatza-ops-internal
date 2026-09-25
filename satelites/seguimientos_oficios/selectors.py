@@ -72,11 +72,13 @@ def _coincidencias_ocr(termino):
         from django.contrib.postgres.search import SearchQuery, SearchVector
 
         return (
-            AdjuntoOCR.objects.filter(adjunto__eliminado=False)
+            AdjuntoOCR.objects.filter(adjunto__eliminado=False, adjunto__rol__in=Adjunto.ROLES_CON_OCR)
             .annotate(vector=SearchVector("texto_normalizado", config="spanish"))
             .filter(vector=SearchQuery(termino, config="spanish", search_type="websearch"))
         )
-    return AdjuntoOCR.objects.filter(adjunto__eliminado=False, texto_normalizado__contains=termino)
+    return AdjuntoOCR.objects.filter(
+        adjunto__eliminado=False, adjunto__rol__in=Adjunto.ROLES_CON_OCR, texto_normalizado__contains=termino
+    )
 
 
 def buscar_documentos(queryset, filtros):
@@ -148,13 +150,16 @@ def gestores_visibles(request):
     ).select_related("direccion")
 
 
-def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15):
+def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15, sentido=""):
     """Documentos que contienen la consulta, con la página y el fragmento del OCR donde aparece."""
     documentos = con_texto(documentos_visibles(request), consulta).order_by("-fecha", "-created_at")
+    if sentido in Documento.Sentido.values:
+        documentos = documentos.filter(sentido=sentido)
     paginador = Paginator(documentos, por_pagina).get_page(pagina)
     ids = [d.pk for d in paginador]
     encontrados = defaultdict(list)
-    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, adjunto__eliminado=False, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
+    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, adjunto__eliminado=False,
+        adjunto__rol__in=Adjunto.ROLES_CON_OCR, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
     for ocr in ocrs.order_by("adjunto__created_at"):
         for numero, fragmento in coincidencias(ocr.texto, ocr.texto_normalizado, consulta):
             encontrados[ocr.adjunto.documento_id].append({"adjunto": ocr.adjunto, "pagina": numero, "fragmento": fragmento})

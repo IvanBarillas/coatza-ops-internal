@@ -57,6 +57,8 @@ class ImportacionTests(BaseAdjuntos):
         folios = set(Documento.objects.values_list("folio", flat=True))
         self.assertEqual(folios, {"IN-045/2025", "IN-002/2025"})
         self.assertEqual(Documento.objects.get(folio="IN-045/2025").estado, "concluido")
+        adjunto = Documento.objects.get(folio="IN-045/2025").adjuntos.get()
+        self.assertEqual((adjunto.rol, adjunto.ocr.estado), ("firmado", "pendiente"))
         self.assertEqual(ConsecutivoFolio.objects.get(anio=2025).ultimo, 45)
         siguiente = crear_documento(
             usuario=None, direccion=self.direccion, sentido="enviado", clase="oficio",

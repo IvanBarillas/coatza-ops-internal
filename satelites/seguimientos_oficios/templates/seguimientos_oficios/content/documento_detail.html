@@ -30,7 +30,7 @@
             {% for a in adjuntos %}
             <li class="flex flex-wrap items-center justify-between gap-2">
                 <a class="font-bold text-brand-primary underline" target="_blank" rel="noopener" href="{% url 'seguimientos_oficios:adjunto_descargar' documento.pk a.pk %}">{{ a.nombre_original }}</a>
-                <span class="text-xs text-gray-400">{{ a.get_rol_display }} · {{ a.tamano|filesizeformat }} · {{ a.subido_por_nombre|default:"—" }} · {{ a.created_at|date:"d/m/Y H:i" }} · {{ a.sha256|slice:":8" }} · OCR: {{ a.ocr.get_estado_display|default:"—" }}</span>
+                <span class="text-xs text-gray-400">{{ a.get_rol_display }} · {{ a.tamano|filesizeformat }} · {{ a.subido_por_nombre|default:"—" }} · {{ a.created_at|date:"d/m/Y H:i" }} · {{ a.sha256|slice:":8" }} · {% if a.rol == "evidencia" %}Acuse: sin OCR{% else %}OCR: {{ a.ocr.get_estado_display|default:"—" }}{% endif %}</span>
                 {% if a.ocr.estado == 'error' %}<p class="w-full text-xs text-red-600">{{ a.ocr.error|truncatechars:200 }}</p>{% endif %}
                 {% if puede_quitar_archivos %}
                 <details class="w-full">

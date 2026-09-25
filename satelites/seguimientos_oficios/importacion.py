@@ -95,7 +95,7 @@ def _crear(direccion, nombre, contenido, datos):
         "direccion": direccion.nombre, "director": datos["director"], "contraparte": datos["contraparte"],
         "asunto": datos["asunto"], "fecha": datos["fecha"].isoformat(),
     }, USUARIO_NOMBRE)
-    rol = Adjunto.Rol.EVIDENCIA if enviado else Adjunto.Rol.ORIGINAL
+    rol = Adjunto.Rol.FIRMADO if enviado else Adjunto.Rol.ORIGINAL
     registrar_adjunto(documento, rol=rol, contenido=contenido, nombre=nombre, usuario=None,
                       origen=ORIGEN, encolar=False, usuario_nombre=USUARIO_NOMBRE)
     if enviado and datos["nomenclatura"] and datos["consecutivo"]:
