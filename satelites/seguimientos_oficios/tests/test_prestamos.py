@@ -12,7 +12,7 @@ from satelites.seguimientos_oficios.permissions import SeguimientosOficiosPermis
 from satelites.seguimientos_oficios.prestamos.services import crear_vale, editar_vale, registrar_devolucion
 from satelites.seguimientos_oficios.services import cancelar_documento, crear_documento
 
-from .base import BaseAdjuntos
+from .base import SOLO_OFICIOS, BaseAdjuntos
 
 HOY = datetime.date(2026, 9, 20)
 
@@ -243,7 +243,7 @@ class VistasPrestamosTests(PrestamosBase):
         self.assertEqual([b.nombre for b in self.client.get(reverse("seguimientos_oficios:bienes"), {"q": "lt-77"}).context["pagina"]], ["Laptop"])
 
     def test_solo_el_rol_de_prestamos_ve_el_menu_y_las_pantallas(self):
-        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
+        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=SOLO_OFICIOS)
         for nombre in ("prestamos", "vales", "bienes", "vale_crear", "bien_crear"):
             self.assertIn(self.client.get(reverse(f"seguimientos_oficios:{nombre}")).status_code, (302, 403), nombre)
         menu = self.client.get(reverse("seguimientos_oficios:documento_list"))
