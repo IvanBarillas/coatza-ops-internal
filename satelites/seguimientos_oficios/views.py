@@ -2,6 +2,7 @@ import uuid
 from collections import Counter
 
 from django.contrib import messages
+from django.core.exceptions import PermissionDenied
 from django.core.paginator import Paginator
 from django.http import FileResponse, Http404
 from django.shortcuts import get_object_or_404
@@ -14,16 +15,16 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
-from .integracion import proteger_vista
+from .forms import AdjuntoForm, GestorEntregaForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
+from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
     color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
-    categorias_visibles, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
+    categorias_visibles, documentos_de_gestor, gestores_asignables, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
 from .models import Adjunto, AdjuntoOCR, Categoria, Direccion, Documento, Gestor, Nomenclatura
 from .storage import almacen
-from .services import quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
+from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
 
 POR_PAGINA = 25
@@ -102,7 +103,7 @@ def documento_list_view(request):
 def documento_create_view(request):
     direcciones = direcciones_visibles(request)
     form = DocumentoForm(
-        request.POST or None, direcciones=direcciones, gestores=gestores_visibles(request),
+        request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request),
         categorias=categorias_visibles(request),
     )
     if request.method == "POST" and form.is_valid():
@@ -265,7 +266,8 @@ def direccion_editar_view(request, pk=None):
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
             nomenclatura_form=NomenclaturaForm(direccion=direccion),
-            gestores=direccion.gestores.order_by("nombre"),
+            gestores=direccion.gestores.select_related("usuario").order_by("nombre"),
+            usuarios=usuarios_con_acceso(APP_SLUG),
             categorias=direccion.categorias.order_by("nombre"),
         )
     return _render(request, "direccion_form", contexto)
@@ -543,3 +545,56 @@ def categoria_actualizar_view(request, pk):
                 for error in errores:
                     messages.error(request, error)
     return _volver_a_direccion(categoria.direccion_id)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "has_access_module")
+def inicio_view(request):
+    """Entrada del módulo (la que abre el Hub): lleva a cada persona a la vista que su rol permite."""
+    for llave, destino in (
+        ("can_view_oficios", "documento_list"), ("can_view_tracking", "seguimiento"), ("can_view_own_pendings", "gestor"),
+    ):
+        if permitido(request, llave):
+            return redirect(f"seguimientos_oficios:{destino}")
+    raise PermissionDenied
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_own_pendings")
+def gestor_view(request):
+    """Vista pensada para el celular del gestor: sus pendientes, con la entrega y el acuse a un paso."""
+    vinculado = Gestor.objects.filter(usuario=request.user, is_active=True, is_deleted=False).exists()
+    documentos = list(documentos_de_gestor(request))
+    for documento in documentos:
+        documento.dias = documento.dias_pendiente
+        documento.color = color_semaforo(documento.dias)
+    documentos.sort(key=lambda d: -d.dias)
+    return _render(request, "gestor", {
+        "documentos": documentos, "vinculado": vinculado, "entrega_form": GestorEntregaForm(),
+        "puede_registrar": _permitido(request, "can_register_own_delivery"),
+    })
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_register_own_delivery")
+def gestor_entrega_view(request, pk):
+    documento = get_object_or_404(documentos_de_gestor(request), pk=pk)
+    form = GestorEntregaForm(request.POST, request.FILES)
+    if form.is_valid():
+        try:
+            resultado = registrar_entrega_gestor(
+                documento, usuario=request.user, fecha_entrega=form.cleaned_data["fecha_entrega"],
+                receptor=form.cleaned_data["receptor"], archivo=form.cleaned_data["archivo"],
+            )
+        except ValidationError as error:
+            messages.error(request, "; ".join(error.messages))
+        else:
+            messages.success(
+                request,
+                "Listo: el oficio quedó concluido." if resultado.estado == Documento.Estado.CONCLUIDO
+                else "Entrega registrada. Falta subir el acuse.",
+            )
+    else:
+        messages.error(request, "Revise los datos de la entrega.")
+    return redirect("seguimientos_oficios:gestor")

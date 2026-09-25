@@ -86,8 +86,8 @@ histórico se guardan como firmado, así que sí se procesan y se pueden buscar.
 
 **Búsqueda en documentos** (menú *Búsqueda*, con selector *Buscar en*: Todos, Recibidos o Enviados, y un panel plegable de filtros por clase, dirección y rango de fechas que se combinan con el texto): lista los documentos que contienen la consulta en sus datos o en el
 OCR, sin importar acentos ni mayúsculas, con la página y un fragmento resaltado. Al elegir un resultado, el PDF se
-abre a la derecha en esa página (iframe del visor del navegador: `#page=N` funciona en todos; el resaltado de la
-palabra lo aplica el visor de Firefox, no el de Chrome). Los PDF nuevos aparecen cuando termina su OCR.
+abre a la derecha en esa página, con las palabras resaltadas (visor PDF.js propio, ver arriba). Los PDF nuevos
+aparecen cuando termina su OCR.
 
 ## Importar histórico ya digitalizado
 
@@ -120,6 +120,9 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   motivo. Cancelar un Concluido exige `can_cancel_concluded`. Los documentos no se eliminan.
 - Director, dirección, folio (en enviados), clase y sentido quedan congelados al registrar; el historial es
   solo de escritura.
+- La lista de Documentos es compacta: Fecha, Folio (con clase y sentido debajo), Asunto (con remitente o destinatario
+  debajo), Gestor y Estado; la Dirección solo aparece si el usuario ve más de una. Los días de espera y la categoría
+  no van en la tabla (los días viven en Seguimiento; la categoría en el detalle y como filtro).
 - Seguimiento: la lista abre en **Pendientes** (enviados Generado o Entregado, del más antiguo al más nuevo,
   con los días transcurridos desde la entrega o el registro); las demás pestañas son Concluidos (incluye los
   recibidos registrados), Cancelados y Todos. Buscar texto sin elegir pestaña busca en Todos. Sobre los pendientes
@@ -128,8 +131,12 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   escuelas). Catálogo por dirección en Catálogos, elegible al registrar y al editar (con rastro en el historial),
   visible en lista, detalle y búsqueda, y filtrable en ambas. Las categorías no se borran: se desactivan, y un
   documento ya clasificado conserva la suya aunque se desactive.
-- Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es un catálogo por dirección (en Catálogos),
-  solo aplica a enviados, se asigna al registrar y se reasigna al editar, con rastro en el historial.
+- Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es siempre un **usuario existente** con
+  membresía en el módulo: en Catálogos (por dirección) se elige el usuario y el nombre sale de su cuenta (si dos
+  comparten nombre se distinguen por correo); los roles se siguen asignando en Seguridad. Solo aplica a enviados, se
+  asigna al registrar y se reasigna al editar, con rastro en el historial. Solo se pueden asignar gestores con usuario;
+  los que quedaron sin usuario de versiones anteriores se marcan como tales, no se pueden asignar y los oficios que ya
+  los tenían los conservan.
 - **Seguimiento** (menú *Seguimiento*, permiso `can_view_tracking`, rol `seguimiento` de solo consulta): tablero de los
   oficios enviados pendientes, en dos columnas (*Por entregar* = Generado y *Entregados sin evidencia*) con semáforo
   por antigüedad (verde, ámbar desde 7 días, rojo desde 15; ajustable con `OFICIOS_SEMAFORO_AMBAR` y

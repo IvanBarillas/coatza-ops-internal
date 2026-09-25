@@ -61,29 +61,39 @@
     {% endif %}
 
     {% if direccion %}
-    <section id="gestores" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
+    <section id="gestores" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
         <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Gestores</h2>
-        <p class="mb-4 text-xs text-gray-400">Quienes llevan los oficios a las dependencias y traen la evidencia. Se asignan al registrar un oficio enviado y aparecen en el seguimiento.</p>
+        <p class="mb-4 text-xs text-gray-400">Quienes llevan los oficios a las dependencias y traen el acuse. Cada gestor es un usuario existente (con membresía en el módulo): entra desde su celular a “Mis pendientes”. Se asignan al registrar un oficio enviado.</p>
         <ul class="space-y-3 text-xs">
             {% for g in gestores %}
             <li class="flex flex-wrap items-center gap-3 {% if not g.is_active %}opacity-60{% endif %}">
-                <form method="post" action="{% url 'seguimientos_oficios:gestor_actualizar' g.pk %}" class="flex flex-1 flex-wrap items-center gap-2">
+                <span class="min-w-0 flex-1 font-bold text-gray-800">{{ g.nombre }}
+                    {% if not g.usuario_id %}<span class="ml-2 rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black uppercase text-amber-700">Sin usuario: no se puede asignar</span>{% else %}<span class="ml-2 font-normal text-gray-400">{{ g.usuario.email }}</span>{% endif %}
+                </span>
+                <form method="post" action="{% url 'seguimientos_oficios:gestor_actualizar' g.pk %}" class="flex flex-wrap items-center gap-2">
                     {% csrf_token %}
-                    <input type="text" name="nombre" value="{{ g.nombre }}" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                    <select name="usuario" required class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700" aria-label="Usuario del gestor">
+                        <option value="" {% if not g.usuario_id %}selected{% endif %}>Elija un usuario</option>
+                        {% for u in usuarios %}<option value="{{ u.pk }}" {% if g.usuario_id == u.pk %}selected{% endif %}>{{ u.full_name|default:u.email }} ({{ u.email }})</option>{% endfor %}
+                    </select>
                     <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Guardar</button>
                 </form>
                 <form method="post" action="{% url 'seguimientos_oficios:gestor_actualizar' g.pk %}">
                     {% csrf_token %}<input type="hidden" name="accion" value="estado">
-                    <button type="submit" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white font-bold {% if g.is_active %}text-red-600{% else %}text-emerald-700{% endif %}">{% if g.is_active %}Desactivar{% else %}Activar{% endif %}</button>
+                    <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest {% if g.is_active %}text-red-600{% else %}text-emerald-700{% endif %}">{% if g.is_active %}Desactivar{% else %}Activar{% endif %}</button>
                 </form>
             </li>
-            {% empty %}<li class="text-gray-500">Sin gestores registrados.</li>{% endfor %}
+            {% empty %}<li class="text-gray-400">Sin gestores registrados.</li>{% endfor %}
         </ul>
         <form method="post" action="{% url 'seguimientos_oficios:gestor_crear' direccion.pk %}" class="mt-5 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
             {% csrf_token %}
-            <input type="text" name="nombre" placeholder="Nombre del gestor" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
-            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Agregar</button>
+            <select name="usuario" required class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700" aria-label="Usuario">
+                <option value="">Elija el usuario que será gestor</option>
+                {% for u in usuarios %}<option value="{{ u.pk }}">{{ u.full_name|default:u.email }} ({{ u.email }})</option>{% endfor %}
+            </select>
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Agregar gestor</button>
         </form>
+        <p class="mt-2 text-xs text-gray-400">¿No aparece la persona? Primero debe existir su usuario y tener membresía en este módulo (Seguridad).</p>
     </section>
     {% endif %}
 

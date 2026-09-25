@@ -33,7 +33,7 @@
                 <h2 class="text-xs font-black uppercase tracking-widest text-gray-700">{{ c.titulo }} <span class="ml-1 rounded-md bg-gray-950 px-2 py-0.5 text-white">{{ c.documentos|length }}</span></h2>
                 <p class="mt-1 text-xs text-gray-400">{{ c.ayuda }}</p>
             </header>
-            <ul class="space-y-2">
+            <ul class="max-h-[65vh] space-y-2 overflow-y-auto pr-1">
                 {% for d in c.documentos %}
                 <li class="rounded-xl border bg-white p-3 shadow-sm {% if d.color == 'rojo' %}border-l-4 border-red-200 border-l-red-500{% elif d.color == 'ambar' %}border-l-4 border-amber-200 border-l-amber-500{% else %}border-l-4 border-emerald-200 border-l-emerald-500{% endif %}">
                     <div class="flex items-center justify-between gap-2">

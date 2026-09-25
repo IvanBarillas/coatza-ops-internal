@@ -1,0 +1,53 @@
+{% include "seguimientos_oficios/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-xl space-y-4 font-mono">
+    {% include "components/list_header.html" with module_label="Oficios" status_label="Gestor" title="Mis pendientes" description="Oficios que llevas a entregar. Registra la entrega y sube la foto o el PDF del acuse desde aquí." icon="clipboard-list" %}
+    {% include "seguimientos_oficios/content/_mensajes.html" %}
+
+    {% if not vinculado %}
+    <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">Tu usuario no está vinculado a un gestor. Pide a un administrador que lo vincule en Catálogos para ver aquí tus oficios.</p>
+    {% else %}
+    <p class="text-xs text-gray-500">{{ documentos|length }} oficio{{ documentos|length|pluralize }} pendiente{{ documentos|length|pluralize }}.</p>
+    <ul class="space-y-3">
+        {% for d in documentos %}
+        <li class="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm {% if d.color == 'rojo' %}border-l-4 border-l-red-500{% elif d.color == 'ambar' %}border-l-4 border-l-amber-500{% else %}border-l-4 border-l-emerald-500{% endif %}">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="text-xs font-black uppercase tracking-widest text-gray-500">{{ d.folio|default:"Sin folio" }}</div>
+                    <div class="mt-1 text-xs font-bold text-gray-800">{{ d.asunto|truncatechars:110 }}</div>
+                </div>
+                <span class="shrink-0 rounded-md px-2 py-0.5 text-xs font-black uppercase {% if d.color == 'rojo' %}bg-red-100 text-red-700{% elif d.color == 'ambar' %}bg-amber-100 text-amber-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">{{ d.dias }} día{{ d.dias|pluralize }}</span>
+            </div>
+            <div class="mt-2 text-xs text-gray-500">Para: {{ d.contraparte }}</div>
+            <div class="mt-1 text-xs font-bold {% if d.estado == 'entregado' %}text-blue-700{% else %}text-gray-600{% endif %}">
+                {% if d.estado == 'entregado' %}Entregado el {{ d.fecha_entrega|date:"d/m/Y" }}{% if d.receptor_entrega %} a {{ d.receptor_entrega }}{% endif %} · falta el acuse{% else %}Por entregar{% endif %}
+            </div>
+
+            {% if puede_registrar %}
+            <details class="mt-3 rounded-xl border border-gray-200 bg-gray-50/60" {% if d.estado == 'entregado' %}open{% endif %}>
+                <summary class="flex min-h-11 cursor-pointer list-none items-center justify-center rounded-xl bg-brand-primary px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
+                    {% if d.estado == 'entregado' %}Subir el acuse{% else %}Registrar entrega{% endif %}
+                </summary>
+                <form method="post" enctype="multipart/form-data" action="{% url 'seguimientos_oficios:gestor_entrega' d.pk %}" class="space-y-3 p-3">
+                    {% csrf_token %}
+                    {% if d.estado == 'generado' %}
+                    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="fecha-{{ d.pk }}">Fecha de entrega</label>
+                        <input type="date" name="fecha_entrega" id="fecha-{{ d.pk }}" value="{% now 'Y-m-d' %}" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs font-mono font-medium text-gray-700"></div>
+                    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="receptor-{{ d.pk }}">Quién recibió</label>
+                        <input type="text" name="receptor" id="receptor-{{ d.pk }}" required maxlength="200" placeholder="Nombre de quien recibió" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs font-mono font-medium text-gray-700"></div>
+                    {% endif %}
+                    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="archivo-{{ d.pk }}">{% if d.estado == 'generado' %}Foto o PDF del acuse (opcional){% else %}Foto o PDF del acuse{% endif %}</label>
+                        <input type="file" name="archivo" id="archivo-{{ d.pk }}" accept="image/*,application/pdf" {% if d.estado == 'entregado' %}required{% endif %} class="w-full cursor-pointer rounded-xl border border-gray-200 bg-white text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-3 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white"></div>
+                    <button type="submit" class="min-h-11 w-full rounded-xl bg-gray-950 px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
+                        {% if d.estado == 'generado' %}Guardar entrega{% else %}Guardar acuse{% endif %}
+                    </button>
+                    {% if d.estado == 'generado' %}<p class="text-xs text-gray-400">Con la foto del acuse el oficio queda concluido; sin ella, queda entregado y podrás subirla después.</p>{% endif %}
+                </form>
+            </details>
+            {% endif %}
+        </li>
+        {% empty %}
+        <li class="rounded-2xl border border-dashed border-gray-300 p-8 text-center text-xs text-gray-400">No tienes oficios pendientes.</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>

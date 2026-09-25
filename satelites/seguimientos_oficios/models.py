@@ -135,6 +135,10 @@ class Gestor(BaseOficios):
 
     direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="gestores")
     nombre = models.CharField("Nombre", max_length=150)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+        verbose_name="Usuario", help_text="Si el gestor tiene cuenta, entra desde el celular a sus pendientes.",
+    )
 
     class Meta:
         db_table = "oficios_gestor"
@@ -143,10 +147,26 @@ class Gestor(BaseOficios):
         verbose_name_plural = "Gestores"
         constraints = [
             models.UniqueConstraint(fields=["direccion", "nombre"], name="oficios_gestor_unico"),
+            models.UniqueConstraint(
+                fields=["direccion", "usuario"], condition=Q(usuario__isnull=False),
+                name="oficios_gestor_usuario_unico",
+            ),
         ]
 
     def __str__(self):
         return self.nombre
+
+    def nombre_desde_usuario(self):
+        from .integracion import nombre_de_usuario
+
+        base = nombre_de_usuario(self.usuario)
+        repetido = Gestor.objects.filter(direccion=self.direccion, nombre__iexact=base).exclude(pk=self.pk).exists()
+        return f"{base} ({self.usuario.email})" if repetido else base
+
+    def save(self, *args, **kwargs):
+        if self.usuario_id:
+            self.nombre = self.nombre_desde_usuario()
+        super().save(*args, **kwargs)
 
 
 class Categoria(BaseOficios):

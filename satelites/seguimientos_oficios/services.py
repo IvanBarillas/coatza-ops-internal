@@ -1,7 +1,10 @@
 import hashlib
+import io
+from pathlib import Path
 
 from django.core.exceptions import ValidationError
 from django.core.files.base import ContentFile
+from PIL import Image, ImageOps
 from django.db import transaction
 from django.utils import timezone
 
@@ -13,13 +16,15 @@ from .tasks import TAREA_OCR, TIMEOUT_TAREA
 MOTIVO_MINIMO = 10
 
 
-def _validar_gestor(gestor, direccion, sentido):
+def _validar_gestor(gestor, direccion, sentido, actual=None):
     if gestor is None:
         return
     if sentido != Documento.Sentido.ENVIADO:
         raise ValidationError("Solo los documentos enviados llevan gestor.")
     if gestor.direccion_id != direccion.pk or not gestor.is_active or gestor.is_deleted:
         raise ValidationError("El gestor no pertenece a la dirección o está inactivo.")
+    if gestor.usuario_id is None and gestor != actual:
+        raise ValidationError("El gestor no tiene un usuario vinculado; vincúlelo en Catálogos.")
 
 
 def _validar_categoria(categoria, direccion, actual=None):
@@ -153,15 +158,35 @@ def cancelar_documento(documento, *, usuario, motivo, puede_cancelar_concluido=F
 TAMANO_MAXIMO = 25 * 1024 * 1024
 
 
+FIRMAS_DE_IMAGEN = (b"\xff\xd8\xff", b"\x89PNG\r\n\x1a\n")
+LADO_MAXIMO_FOTO = 3508  # A4 a 300 dpi
+
+
+def _foto_a_pdf(contenido):
+    """Convierte una foto (JPG/PNG) en un PDF de una página, respetando la orientación de la cámara."""
+    try:
+        with Image.open(io.BytesIO(contenido)) as imagen:
+            imagen = ImageOps.exif_transpose(imagen).convert("RGB")
+            imagen.thumbnail((LADO_MAXIMO_FOTO, LADO_MAXIMO_FOTO))
+            salida = io.BytesIO()
+            imagen.save(salida, "PDF", resolution=300.0, quality=85)
+    except (OSError, ValueError, Image.DecompressionBombError) as error:
+        raise ValidationError("La imagen no es válida.") from error
+    return salida.getvalue()
+
+
 def _leer_pdf(archivo):
+    """(contenido_pdf, nombre): acepta PDF o foto (JPG/PNG); las fotos se guardan como PDF."""
     if archivo is None:
-        raise ValidationError("Seleccione un archivo PDF.")
+        raise ValidationError("Seleccione un archivo PDF o una foto.")
     if archivo.size > TAMANO_MAXIMO:
         raise ValidationError("El archivo excede el tamaño máximo de 25 MB.")
     contenido = archivo.read()
-    if not contenido.startswith(b"%PDF-"):
-        raise ValidationError("El archivo no es un PDF válido.")
-    return contenido
+    if contenido.startswith(b"%PDF-"):
+        return contenido, archivo.name
+    if contenido.startswith(FIRMAS_DE_IMAGEN):
+        return _foto_a_pdf(contenido), Path(archivo.name).stem + ".pdf"
+    raise ValidationError("El archivo debe ser un PDF o una foto (JPG o PNG).")
 
 
 def roles_permitidos(documento):
@@ -192,9 +217,9 @@ def adjuntar_pdf(documento, *, usuario, archivo, origen="subida", rol=None):
     """Agrega el PDF con el tipo indicado (o el habitual del estado). Devuelve (adjunto, duplicado)."""
     documento = Documento.objects.select_for_update().get(pk=documento.pk)
     rol = _elegir_rol(documento, rol)
-    contenido = _leer_pdf(archivo)
+    contenido, nombre = _leer_pdf(archivo)
     return registrar_adjunto(
-        documento, rol=rol, contenido=contenido, nombre=archivo.name, usuario=usuario,
+        documento, rol=rol, contenido=contenido, nombre=nombre, usuario=usuario,
         origen=origen, concluir=True,
     )
 
@@ -270,7 +295,7 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
             nuevo = nuevo.strip()
         if nuevo != actual:
             if campo == "gestor":
-                _validar_gestor(nuevo, documento.direccion, documento.sentido)
+                _validar_gestor(nuevo, documento.direccion, documento.sentido, actual)
             if campo == "categoria":
                 _validar_categoria(nuevo, documento.direccion, actual)
             if campo == "folio" and documento.sentido == Documento.Sentido.ENVIADO:
@@ -324,3 +349,25 @@ def quitar_adjunto(adjunto, *, usuario, motivo):
         datos.update(estado_anterior=Documento.Estado.CONCLUIDO, estado_nuevo=documento.estado)
     _historial(documento, HistorialDocumento.Accion.QUITADO, usuario, datos)
     return Adjunto.objects.get(pk=adjunto.pk)
+
+
+@transaction.atomic
+def registrar_entrega_gestor(documento, *, usuario, fecha_entrega=None, receptor="", archivo=None):
+    """Lo que hace el gestor desde el celular: marcar la entrega y/o subir el acuse (foto o PDF)."""
+    documento = Documento.objects.select_for_update().select_related("gestor").get(pk=documento.pk)
+    if documento.gestor is None or documento.gestor.usuario_id != usuario.pk:
+        raise ValidationError("Este documento no está asignado a usted.")
+    if documento.sentido != Documento.Sentido.ENVIADO or documento.estado not in (
+        Documento.Estado.GENERADO, Documento.Estado.ENTREGADO
+    ):
+        raise ValidationError("Este documento ya no está pendiente.")
+    if documento.estado == Documento.Estado.GENERADO:
+        fecha = fecha_entrega or timezone.localdate()
+        if fecha > timezone.localdate():
+            raise ValidationError("La fecha de entrega no puede ser futura.")
+        marcar_entregado(documento, usuario=usuario, fecha_entrega=fecha, receptor=receptor)
+    elif archivo is None:
+        raise ValidationError("Adjunte la foto o el PDF del acuse.")
+    if archivo is not None:
+        adjuntar_pdf(documento, usuario=usuario, archivo=archivo, origen="movil")
+    return Documento.objects.get(pk=documento.pk)

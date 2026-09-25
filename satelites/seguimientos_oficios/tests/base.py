@@ -8,7 +8,7 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from apps.security.models import AppModule, AreaOperativa, Dependencia, Sede, UserAppRole, UserProfile
-from satelites.seguimientos_oficios.models import Adjunto, Direccion, Nomenclatura
+from satelites.seguimientos_oficios.models import Adjunto, Direccion, Gestor, Nomenclatura
 from satelites.seguimientos_oficios.permissions import SeguimientosOficiosPermissions as P
 from satelites.seguimientos_oficios.services import adjuntar_pdf, crear_documento, marcar_entregado
 
@@ -43,6 +43,14 @@ class BaseAdjuntos(TestCase):
         self.override = override_settings(OFICIOS_ARCHIVOS_ROOT=self._tmp.name)
         self.override.enable()
         self.addCleanup(self.override.disable)
+
+    def gestor(self, nombre, direccion=None):
+        """Gestor de prueba: un usuario real con membresía y rol `gestor`, vinculado a la dirección."""
+        usuario = get_user_model().objects.create_user(
+            email=f"{nombre.lower().replace(' ', '.')}@gestores.test", first_name=nombre
+        )
+        UserAppRole.objects.create(user=usuario, app=self.app, role="gestor", permissions_list=P.ROLE_MAPPING["gestor"])
+        return Gestor.objects.create(direccion=direccion or self.direccion, usuario=usuario)
 
     def documento(self, sentido="enviado"):
         return crear_documento(

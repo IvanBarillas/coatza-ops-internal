@@ -1,0 +1,4 @@
+{% extends "shell/workbench.html" %}
+{% block title %}Mis pendientes | {{ tenant.app_name }}{% endblock %}
+{% block module_sidebar %}{% include "seguimientos_oficios/contextual/oficios_sidebar.html" %}{% endblock %}
+{% block page_content %}{% include "seguimientos_oficios/content/gestor.html" %}{% endblock %}

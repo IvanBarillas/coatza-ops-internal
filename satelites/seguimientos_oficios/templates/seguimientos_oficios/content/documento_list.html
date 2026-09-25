@@ -52,24 +52,27 @@
 </form>
 
 <p class="mb-2 text-xs text-gray-500">{{ total }} documento{{ total|pluralize }}</p>
-<div class="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+<div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
     <table class="min-w-full text-xs">
-        <thead class="text-left text-xs font-black uppercase tracking-widest text-gray-500">
-            <tr><th class="px-4 py-3">Fecha</th><th class="px-4 py-3">Folio</th><th class="px-4 py-3">Sentido</th><th class="px-4 py-3">Clase</th><th class="px-4 py-3">Categoría</th><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Gestor</th><th class="px-4 py-3">Estado</th>{% if tab == "pendientes" %}<th class="px-4 py-3">Días</th>{% endif %}<th class="px-4 py-3">Asunto</th></tr>
+        <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
+            <tr>
+                <th class="whitespace-nowrap px-3 py-3">Fecha</th><th class="px-3 py-3">Folio</th>
+                <th class="px-3 py-3">Asunto</th><th class="px-3 py-3">Gestor</th><th class="px-3 py-3">Estado</th>
+                {% if varias_direcciones %}<th class="px-3 py-3">Dirección</th>{% endif %}
+            </tr>
         </thead>
         <tbody>
         {% for d in pagina %}
-            <tr class="border-t border-gray-100">
-                <td class="px-4 py-3">{{ d.fecha|date:"d/m/Y" }}</td>
-                <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.folio|default:"s/f" }}</a></td>
-                <td class="px-4 py-3">{{ d.get_sentido_display }}</td><td class="px-4 py-3">{{ d.get_clase_display }}</td><td class="px-4 py-3">{{ d.categoria|default:"—" }}</td><td class="px-4 py-3">{{ d.direccion }}</td>
-                <td class="px-4 py-3">{{ d.gestor|default:"—" }}</td>
-                <td class="px-4 py-3">{% include "seguimientos_oficios/content/_estado_badge.html" with documento=d %}</td>
-                {% if tab == "pendientes" %}<td class="px-4 py-3 font-bold {% if d.dias_pendiente >= 15 %}text-red-600{% elif d.dias_pendiente >= 7 %}text-amber-600{% endif %}">{{ d.dias_pendiente }}</td>{% endif %}
-                <td class="px-4 py-3">{{ d.asunto }}</td>
+            <tr class="border-t border-gray-100 align-top">
+                <td class="whitespace-nowrap px-3 py-3">{{ d.fecha|date:"d/m/y" }}</td>
+                <td class="px-3 py-3"><a class="whitespace-nowrap font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.folio|default:"s/f" }}</a><div class="mt-0.5 text-gray-400">{{ d.get_clase_display }} · {{ d.get_sentido_display }}</div></td>
+                <td class="px-3 py-3"><div class="text-gray-800">{{ d.asunto }}</div><div class="mt-0.5 text-gray-400">{% if d.sentido == "enviado" %}Para{% else %}De{% endif %}: {{ d.contraparte }}</div></td>
+                <td class="px-3 py-3">{{ d.gestor|default:"—" }}</td>
+                <td class="px-3 py-3">{% include "seguimientos_oficios/content/_estado_badge.html" with documento=d %}</td>
+                {% if varias_direcciones %}<td class="px-3 py-3">{{ d.direccion }}</td>{% endif %}
             </tr>
         {% empty %}
-            <tr><td colspan="10" class="px-4 py-8 text-center text-gray-500">{% if tab == "pendientes" %}No hay documentos pendientes.{% else %}Sin documentos.{% endif %}</td></tr>
+            <tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">{% if tab == "pendientes" %}No hay documentos pendientes.{% else %}Sin documentos.{% endif %}</td></tr>
         {% endfor %}
         </tbody>
     </table>
