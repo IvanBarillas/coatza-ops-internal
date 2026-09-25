@@ -424,6 +424,21 @@ shell/base.html
     └── page-content
 ```
 
+### Sidebar contextual contraíble
+
+El shell ya incluye el botón de contraer/expandir del `module-sidebar`
+(`data-axentra-sidebar-toggle`, `static/js/axentra-sidebar-collapse.js`). Contraído
+mide 5.5rem y solo muestra iconos. El estado vive en `<html data-module-sidebar>` y
+en `localStorage` (`axentra.moduleSidebar`), no en el bloque, porque `#workbench` se
+re-renderiza en cada swap de HTMX. Un contextual (Core o satélite) se adapta sin JS:
+
+- enlaces: un icono `<i data-lucide>` y el texto en un `<span>` o suelto; el título
+  nativo (tooltip) se agrega solo desde su texto;
+- cabeceras, tarjetas de estado, párrafos y pies que no tengan sentido con solo
+  iconos llevan la clase `ax-sb-hide` (se ocultan al contraer).
+
+Un sidebar que ignore esa clase sigue funcionando, pero desbordaría al contraerse.
+
 Cambio de módulo:
 
 ```html

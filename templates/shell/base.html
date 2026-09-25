@@ -9,6 +9,14 @@
 
     <link rel="stylesheet" href="{% static 'css/tailwind.css' %}">
 
+    <script>
+        try {
+            if (localStorage.getItem("axentra.moduleSidebar") === "collapsed") {
+                document.documentElement.dataset.moduleSidebar = "collapsed";
+            }
+        } catch (_error) { /* almacenamiento bloqueado: se queda expandido */ }
+    </script>
+
     <style>
         /* Tipografía y espaciado fluido (independientes de Tailwind @theme:
            no reemplazan la escala de tamaños nativa de Tailwind). */
@@ -80,6 +88,22 @@
             background-color: rgb(255 255 255 / 0.1) !important;
             color: #ffffff !important;
         }
+        /* Sidebar contextual contraíble: solo iconos. Los elementos marcados con
+           .ax-sb-hide (cabeceras, tarjetas, textos) se ocultan. En los enlaces, el
+           texto suelto se oculta con font-size:0 y los <span> con display:none; los
+           iconos conservan tamaño por las clases h-*/w-*. */
+        #module-sidebar { transition: width .2s ease; }
+        html[data-module-sidebar="collapsed"] #module-sidebar { width: 5.5rem; }
+        html[data-module-sidebar="collapsed"] #module-sidebar .ax-sb-hide { display: none !important; }
+        html[data-module-sidebar="collapsed"] #module-sidebar a {
+            font-size: 0;
+            gap: 0;
+            justify-content: center;
+        }
+        /* Muchos <span> traen su propio text-xs y no heredan el font-size:0. */
+        html[data-module-sidebar="collapsed"] #module-sidebar a span { display: none; }
+        html[data-module-sidebar="collapsed"] [data-axentra-sidebar-toggle] svg { transform: rotate(180deg); }
+        @media (prefers-reduced-motion: reduce) { #module-sidebar { transition: none; } }
         .animate-pop-up { animation: popUp .16s ease-out; transform-origin: var(--modules-x, 37.5vw) bottom; }
         @keyframes popUp {
             from { opacity: 0; transform: translateY(10px) scale(.96); }
@@ -166,6 +190,7 @@
     <script src="{% static 'js/vendor/mermaid.min.js' %}" defer></script>
     <script src="{% static 'js/axentra-workflows.js' %}" defer></script>
     <script src="{% static 'js/axentra-secondary-sidebar.js' %}" defer></script>
+    <script src="{% static 'js/axentra-sidebar-collapse.js' %}" defer></script>
     <script src="{% static 'js/axentra-bottom-nav.js' %}" defer></script>
 
     <script>
