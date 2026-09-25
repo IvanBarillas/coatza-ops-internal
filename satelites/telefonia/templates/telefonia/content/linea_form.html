@@ -1,4 +1,8 @@
+{% load static %}
 {% include "telefonia/contextual/_menu_movil.html" %}
+<link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
+<script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'telefonia/mapa.js' %}"></script>
 <div class="mx-auto w-full max-w-2xl space-y-4 font-mono">
     {% url 'telefonia:lineas' as volver_url %}
     {% if linea %}{% include "components/form_header.html" with module_label="Telefonía" mode_label="Línea" title=linea.identificador description="Corrija los datos de la línea o su ubicación." icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}
@@ -15,6 +19,11 @@
                 {% for e in campo.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
             </div>
             {% endfor %}
+        </div>
+        <div class="mt-6">
+            <span class="mb-1 block text-xs font-bold uppercase text-gray-500">Ubicación en el mapa</span>
+            <p class="mb-2 text-xs text-gray-400">Haga clic en el mapa donde está el sitio (o arrastre el marcador): se llenan la latitud y la longitud. También puede escribirlas o pegar el enlace de Google Maps arriba.</p>
+            <div data-tel-selector data-lat-input="id_latitud" data-lng-input="id_longitud" data-tiles="{{ mapa_config.tiles }}" data-atribucion="{{ mapa_config.atribucion }}" class="h-72 w-full overflow-hidden rounded-xl border border-gray-200"></div>
         </div>
         <div class="mt-6 flex justify-center"><button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Guardar</button></div>
     </form>

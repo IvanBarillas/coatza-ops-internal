@@ -17,7 +17,7 @@ Después: `migrate`, `check_axentra_modules --persist`, activar el módulo en el
 |---|---|---|
 | `TEL_ARCHIVOS_ROOT` | Almacén de fotos y capturas de los reportes | `MEDIA_ROOT/telefonia` |
 | `TEL_SEMAFORO_AMBAR` / `TEL_SEMAFORO_ROJO` | Días abierto desde los que un reporte pasa a ámbar y a rojo | `3` / `7` |
-| `TEL_MAPA_TILES_URL` / `TEL_MAPA_ATRIBUCION` | Proveedor de mosaicos del mapa (plantilla Leaflet, p. ej. `https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png`) y su atribución. Sirve para cambiar de proveedor si el actual bloquea la IP de la institución | OpenStreetMap |
+| `TEL_MAPA_TILES_URL` / `TEL_MAPA_ATRIBUCION` | Proveedor de mosaicos del mapa (URL con `{z}/{x}/{y}` de Leaflet, incluida su llave si la pide) y su atribución. Sirve para cambiar de proveedor si OpenStreetMap limita la IP de la institución. Los proveedores alternativos gratuitos piden llave (p. ej. MapTiler o Stadia Maps); los mosaicos de CARTO sin llave salen con la marca «API KEY REQUIRED» | OpenStreetMap |
 
 ## Cómo se trabaja
 
@@ -43,8 +43,9 @@ Catálogo (*Líneas*): número o circuito (único; ignora espacios y mayúsculas
 dedicado, otro), paquete o velocidad, municipio, dirección y coordenadas. Para ubicarlas basta pegar el **enlace largo de Google
 Maps** (o «latitud, longitud»): se llenan solas; los enlaces cortos (`maps.app.goo.gl`) no se pueden leer sin internet desde el
 servidor. El mapa (*Mapa*) usa Leaflet con OpenStreetMap (incluido en `static/telefonia/leaflet/`, ver `PROCEDENCIA.md`, sin CDN;
-solo los mosaicos se piden a openstreetmap.org, enviando el dominio como `Referer` como exige su política de uso; si «Access blocked» aparece en el mapa es que OSM está limitando la IP, y se cambia de proveedor con las variables `TEL_MAPA_*`) y colorea cada línea por su reporte abierto más antiguo. Cada línea tiene
-«Abrir en Google Maps».
+solo los mosaicos se piden a openstreetmap.org, enviando el dominio como `Referer` como exige su política de uso; «Access blocked» en el mapa es que faltaba el `Referer` (ya se envía) o que OSM limita la IP de la red: en ese caso se cambia de proveedor con `TEL_MAPA_*`) y colorea cada línea por su reporte abierto más antiguo. Cada línea tiene
+«Abrir en Google Maps». Al dar de alta o editar una línea, basta **hacer clic en el mapa** (o arrastrar el marcador) para llenar la
+latitud y la longitud; también se pueden escribir o pegar desde Google Maps.
 
 **Importar lo que ya tienen los compañeros de campo:**
 
