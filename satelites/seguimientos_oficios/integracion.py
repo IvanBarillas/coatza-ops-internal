@@ -9,7 +9,6 @@ from apps.shared.module_sdk.data_access import authorized_departments
 from apps.shared.notifications.services import enqueue_email
 
 __all__ = [
-    "usuarios_con_acceso",
     "dependencias_del_core",
     "valor_entorno",
     "ModuleManifest",
@@ -82,13 +81,3 @@ def dependencias_del_core():
     )
 
 
-def usuarios_con_acceso(app_slug):
-    """Usuarios activos con membresía vigente en el módulo (candidatos a vincular con un gestor)."""
-    from django.contrib.auth import get_user_model
-
-    from apps.security.models import UserAppRole
-
-    miembros = UserAppRole.objects.filter(
-        app__slug=app_slug, is_active=True, is_deleted=False
-    ).values("user_id")
-    return get_user_model().objects.filter(pk__in=miembros, is_active=True, is_deleted=False).order_by("email")

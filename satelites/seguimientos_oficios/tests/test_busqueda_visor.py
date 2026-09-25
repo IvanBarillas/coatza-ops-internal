@@ -74,8 +74,8 @@ class BusquedaVisorTests(BaseAdjuntos):
         respuesta = self.client.get(reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk]))
         self.assertEqual(respuesta["X-Frame-Options"], "SAMEORIGIN")
 
-    def test_gestor_sin_permiso_de_lectura_general_no_busca(self):
-        UserAppRole.objects.filter(user=self.user).update(role="gestor", permissions_list=P.ROLE_MAPPING["gestor"])
+    def test_rol_de_seguimiento_no_busca_en_los_documentos(self):
+        UserAppRole.objects.filter(user=self.user).update(role="seguimiento", permissions_list=P.ROLE_MAPPING["seguimiento"])
         self.assertIn(self.buscar(q="rack").status_code, (302, 403))
 
     def test_paginacion_conserva_la_consulta(self):

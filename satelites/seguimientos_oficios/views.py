@@ -1,3 +1,6 @@
+import uuid
+from collections import Counter
+
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import FileResponse, Http404
@@ -12,12 +15,13 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .forms import AdjuntoForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
-from .integracion import proteger_vista, usuarios_con_acceso
+from .integracion import proteger_vista
 from .selectors import (
+    color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
-    documentos_de_gestor, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
+    documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from .models import Adjunto, Direccion, Gestor, Nomenclatura
+from .models import Adjunto, Direccion, Documento, Gestor, Nomenclatura
 from .storage import almacen
 from .services import quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
@@ -247,8 +251,7 @@ def direccion_editar_view(request, pk=None):
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
             nomenclatura_form=NomenclaturaForm(direccion=direccion),
-            gestores=direccion.gestores.select_related("usuario").order_by("nombre"),
-            usuarios=usuarios_con_acceso(APP_SLUG),
+            gestores=direccion.gestores.order_by("nombre"),
         )
     return _render(request, "direccion_form", contexto)
 
@@ -356,16 +359,6 @@ def gestor_actualizar_view(request, pk):
 
 
 @login_required
-@proteger_vista(APP_SLUG, "can_view_own_pendings")
-def mis_pendientes_view(request):
-    from .models import Gestor
-
-    vinculado = Gestor.objects.filter(usuario=request.user, is_active=True, is_deleted=False).exists()
-    documentos = documentos_de_gestor(request).order_by("created_at")
-    return _render(request, "mis_pendientes", {"documentos": documentos, "vinculado": vinculado})
-
-
-@login_required
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def busqueda_view(request):
     consulta = request.GET.get("q", "").strip()[:200]
@@ -409,3 +402,51 @@ def adjunto_quitar_view(request, pk, adjunto_pk):
     else:
         messages.success(request, "Archivo quitado. Queda registrado en el historial.")
     return redirect("seguimientos_oficios:documento_detail", pk=pk)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_tracking")
+def seguimiento_view(request):
+    todos = documentos_seguimiento(request)
+    filtrados = todos
+    gestor = request.GET.get("gestor", "")
+    if gestor == "sin":
+        filtrados = todos.filter(gestor__isnull=True)
+    elif gestor:
+        try:
+            filtrados = todos.filter(gestor_id=uuid.UUID(gestor))
+        except ValueError:
+            gestor = ""
+    documentos = list(filtrados)
+    for documento in documentos:
+        documento.dias = documento.dias_pendiente
+        documento.color = color_semaforo(documento.dias)
+    conteos = Counter(d.color for d in documentos)
+    semaforo = request.GET.get("semaforo", "")
+    if semaforo in ("verde", "ambar", "rojo"):
+        documentos = [d for d in documentos if d.color == semaforo]
+    else:
+        semaforo = ""
+    documentos.sort(key=lambda d: -d.dias)
+    ambar, rojo = semaforo_umbrales()
+    contexto = {
+        "semaforos": [
+            {"clave": c, "nombre": n, "total": conteos.get(c, 0), "activo": semaforo == c,
+             "query": _query(request, quitar=("semaforo",)) if semaforo == c else _query(request, semaforo=c)}
+            for c, n in (("rojo", "Rojo"), ("ambar", "Ámbar"), ("verde", "Verde"))
+        ],
+        "columnas": [
+            {"titulo": "Por entregar", "ayuda": "Generados: ya tienen folio y aún no se entregan.",
+             "documentos": [d for d in documentos if d.estado == Documento.Estado.GENERADO]},
+            {"titulo": "Entregados sin evidencia", "ayuda": "Ya se entregaron; falta subir la evidencia.",
+             "documentos": [d for d in documentos if d.estado == Documento.Estado.ENTREGADO]},
+        ],
+        "gestores_resumen": [
+            {"nombre": nombre, "total": total, "query": _query(request, gestor=gestor_id or "sin"),
+             "activo": (gestor_id and str(gestor_id) == gestor) or (gestor_id is None and gestor == "sin")}
+            for gestor_id, nombre, total in resumen_gestores(todos)
+        ],
+        "filtrado": bool(gestor or semaforo), "query_limpiar": "",
+        "umbral_ambar": ambar, "umbral_rojo": rojo, "total": len(documentos),
+    }
+    return _render(request, "seguimiento", contexto)

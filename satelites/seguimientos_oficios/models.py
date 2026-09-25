@@ -134,10 +134,6 @@ class Gestor(BaseOficios):
 
     direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="gestores")
     nombre = models.CharField("Nombre", max_length=150)
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
-        verbose_name="Usuario", help_text="Si el gestor tiene cuenta, ve sus pendientes en 'Mis pendientes'.",
-    )
 
     class Meta:
         db_table = "oficios_gestor"
@@ -146,10 +142,6 @@ class Gestor(BaseOficios):
         verbose_name_plural = "Gestores"
         constraints = [
             models.UniqueConstraint(fields=["direccion", "nombre"], name="oficios_gestor_unico"),
-            models.UniqueConstraint(
-                fields=["direccion", "usuario"], condition=Q(usuario__isnull=False),
-                name="oficios_gestor_usuario_unico",
-            ),
         ]
 
     def __str__(self):

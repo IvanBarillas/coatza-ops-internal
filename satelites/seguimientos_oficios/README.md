@@ -19,6 +19,7 @@ membresía a los usuarios.
 |---|---|---|
 | `OFICIOS_ARCHIVOS_ROOT` | Almacén de PDF adjuntos, por contenido (`AAAA/MM/xx/<sha256>.pdf`) | `MEDIA_ROOT/oficios` |
 | `OFICIOS_BANDEJA_RAIZ` | Carpeta base desde la que el comando `oficios_importar_historico` lee los PDF (solo importación; la subida normal usa el selector de archivos del navegador) | vacío |
+| `OFICIOS_SEMAFORO_AMBAR` / `OFICIOS_SEMAFORO_ROJO` | Días pendientes desde los que un oficio pasa a ámbar y a rojo en el seguimiento | `7` / `15` |
 | `OFICIOS_OCR_COMANDO` | Ejecutable de OCR | `ocrmypdf` |
 | `OFICIOS_OCR_IDIOMA` | Idioma de Tesseract | `spa` |
 | `OFICIOS_OCR_TIMEOUT` | Segundos máximos por documento | `900` |
@@ -102,10 +103,12 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   se ve el resumen por gestor y se puede filtrar por gestor o por "sin gestor".
 - Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es un catálogo por dirección (en Catálogos),
   solo aplica a enviados, se asigna al registrar y se reasigna al editar, con rastro en el historial.
-  Un gestor puede vincularse (opcional) a un usuario con membresía en el módulo; ese usuario ve sus pendientes
-  (Generado o Entregado) en **Mis pendientes**. El rol `gestor` solo tiene `has_access_module` y
-  `can_view_own_pendings`: no ve la lista general ni puede ejecutar acciones; sí abre el detalle y los archivos
-  de sus propios pendientes. Al concluir o cancelar un documento deja de verlo.
+- **Seguimiento** (menú *Seguimiento*, permiso `can_view_tracking`, rol `seguimiento` de solo consulta): tablero de los
+  oficios enviados pendientes, en dos columnas (*Por entregar* = Generado y *Entregados sin evidencia*) con semáforo
+  por antigüedad (verde, ámbar desde 7 días, rojo desde 15; ajustable con `OFICIOS_SEMAFORO_AMBAR` y
+  `OFICIOS_SEMAFORO_ROJO`), quién trae cada uno y filtros por color y por gestor. Quien tiene este permiso ve todos
+  los pendientes de las direcciones a las que tiene alcance, abre su detalle y sus archivos, pero no puede actuar
+  ni ve el resto de documentos. Los concluidos, cancelados y recibidos no aparecen.
 - Editar (`can_edit_oficio`): asunto, remitente o destinatario y fecha (en enviados, dentro del año del
   folio); en recibidos también el folio del remitente. Un cancelado no se edita. Cada cambio guarda el valor
   anterior, el nuevo, quién y el motivo opcional.
