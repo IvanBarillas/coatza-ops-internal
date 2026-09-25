@@ -38,8 +38,9 @@ si es público) y se apunta `OFICIOS_BANDEJA_RAIZ` a esa carpeta.
 
 `deploy/oficios/` contiene lo propio de este repo (no se toca el Dockerfile ni el compose del Core):
 
-- `Containerfile`: capa con `ocrmypdf` y `tesseract-ocr-spa` sobre la imagen base. Verificado: se construye
-  y `ocrmypdf --language spa --force-ocr --sidecar` extrae el texto de un PDF de prueba dentro del contenedor.
+- `Containerfile`: capa con `ocrmypdf`, `tesseract-ocr-spa` y el static del satélite (visor PDF.js) sobre la imagen
+  base. Verificado: la imagen se construye completa (base y capa), incluye el static con su manifiesto y `tesseract`
+  con español, y `ocrmypdf --language spa --force-ocr --sidecar` extrae el texto de un PDF de prueba.
 - `build.sh`: construye la base y la capa de OCR (`localhost/axentra-ops-internal:latest`).
 - `docker-compose.oficios.yml`: override de `docker-compose.prod.yml` (misma imagen para `web` y `worker`, el
   worker monta el mismo volumen `media_data` para leer los PDF). **No se ha levantado
@@ -60,6 +61,16 @@ python manage.py oficios_reprocesar_ocr
 El PDF original nunca se modifica; solo se guarda el texto extraído, con un salto de página (`\f`) entre hojas,
 y una copia normalizada (minúsculas, sin acentos, misma longitud) sobre la que se busca. PostgreSQL usa texto
 completo en español con índice GIN sobre esa copia; SQLite, coincidencia por subcadena.
+
+**Visor de PDF.** Los resultados de la búsqueda abren el PDF en un visor propio basado en PDF.js (incluido en
+`static/seguimientos_oficios/pdfjs/`, Apache-2.0; ver `PROCEDENCIA.md` para versión, hash y cómo actualizarlo, sin
+CDN). Abre en la página encontrada, resalta las palabras buscadas (sin distinguir acentos ni mayúsculas) y tiene
+contador y botones para saltar entre coincidencias; funciona igual en todos los navegadores. Un original escaneado es
+solo imagen y no tiene texto que resaltar, así que el OCR conserva además una **copia con capa de texto**
+(`..._buscable.pdf`, junto al original) que usa solo el visor; la descarga y el archivo firmado siguen siendo el
+original intacto. Esa copia duplica aproximadamente el espacio de los PDF con OCR. Para generarla en adjuntos ya
+procesados: `python manage.py oficios_reprocesar_ocr --buscables`. La imagen de despliegue recolecta el static del
+satélite (`deploy/oficios/Containerfile`).
 
 **Alcance del OCR:** solo se procesan el **original** de los recibidos y el **documento firmado** de los enviados. La
 **evidencia** (acuse) repite el firmado con el sello de recepción y no pasa por OCR. Los enviados importados del

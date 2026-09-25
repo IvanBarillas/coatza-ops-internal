@@ -13,3 +13,7 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends ocrmypdf tesseract-ocr-spa ghostscript \
     && rm -rf /var/lib/apt/lists/*
 USER ${RUNTIME_USER}
+# El visor PDF.js del módulo vive en el static del satélite: hay que recolectarlo con el satélite instalado
+# (la base solo recolectó el Core).
+RUN AXENTRA_EXTRA_APPS=satelites.seguimientos_oficios DJANGO_ENV=build \
+    DJANGO_SETTINGS_MODULE=core.settings.development uv run python manage.py collectstatic --noinput

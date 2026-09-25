@@ -9,11 +9,14 @@ from django.test import override_settings
 from satelites.seguimientos_oficios import ocr, tasks
 from satelites.seguimientos_oficios.models import AdjuntoOCR
 from satelites.seguimientos_oficios.services import adjuntar_pdf
+from satelites.seguimientos_oficios.storage import almacen
 
 from .base import BaseAdjuntos, pdf
 
 FALSO_OCRMYPDF = """#!/bin/sh
 case "$*" in *--force-ocr*) ;; *) echo "falta --force-ocr" >&2; exit 1 ;; esac
+for ultimo; do :; done
+echo "pdf con capa de texto" > "$ultimo"
 while [ "$#" -gt 0 ]; do
   [ "$1" = "--sidecar" ] && { shift; echo "Texto reconocido del oficio" > "$1"; }
   shift
@@ -94,3 +97,66 @@ class OcrTests(BaseAdjuntos):
             script.chmod(script.stat().st_mode | stat.S_IEXEC)
             with override_settings(OFICIOS_OCR_COMANDO=str(script)):
                 self.assertIn("Texto reconocido", ocr.extraer_texto(Path(tmp) / "entrada.pdf"))
+
+
+    def test_el_motor_deja_la_copia_con_texto_donde_se_le_pide(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = Path(tmp) / "falso-ocrmypdf"
+            script.write_text(FALSO_OCRMYPDF)
+            script.chmod(script.stat().st_mode | stat.S_IEXEC)
+            destino = Path(tmp) / "carpeta" / "nueva" / "copia.pdf"
+            with override_settings(OFICIOS_OCR_COMANDO=str(script)):
+                ocr.extraer_texto(Path(tmp) / "entrada.pdf", destino)
+            self.assertEqual(destino.read_text().strip(), "pdf con capa de texto")
+
+    def test_la_tarea_registra_la_copia_solo_si_se_genero(self):
+        adjunto = self.adjunto()
+
+        def motor_que_escribe(ruta, salida=None):
+            Path(salida).parent.mkdir(parents=True, exist_ok=True)
+            Path(salida).write_bytes(b"%PDF copia")
+            return "texto"
+
+        with mock.patch.object(ocr, "extraer_texto", side_effect=motor_que_escribe):
+            tasks.procesar_ocr(adjunto.pk)
+        adjunto.ocr.refresh_from_db()
+        self.assertTrue(adjunto.ocr.ruta_buscable.endswith("__buscable.pdf"))
+        self.assertTrue(almacen().exists(adjunto.ocr.ruta_buscable))
+
+        with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
+            otro, _ = adjuntar_pdf(self.documento("recibido"), usuario=self.user, archivo=pdf("distinto.pdf", b"%PDF-1.4 distinto"))
+        with mock.patch.object(ocr, "extraer_texto", return_value="solo texto"):
+            tasks.procesar_ocr(otro.pk)
+        otro.ocr.refresh_from_db()
+        self.assertEqual(otro.ocr.ruta_buscable, "")
+
+    def test_reprocesar_con_buscables_rehace_lo_ya_procesado_sin_copia(self):
+        adjunto = self.adjunto()
+        AdjuntoOCR.objects.filter(adjunto=adjunto).update(estado="listo", texto="viejo", ruta_buscable="")
+
+        def motor(ruta, salida=None):
+            Path(salida).parent.mkdir(parents=True, exist_ok=True)
+            Path(salida).write_bytes(b"%PDF copia")
+            return "nuevo"
+
+        with mock.patch.object(ocr, "extraer_texto", side_effect=motor):
+            call_command("oficios_reprocesar_ocr", stdout=mock.MagicMock())
+            self.assertEqual(AdjuntoOCR.objects.get(adjunto=adjunto).texto, "viejo")
+            call_command("oficios_reprocesar_ocr", "--buscables", stdout=mock.MagicMock())
+        registro = AdjuntoOCR.objects.get(adjunto=adjunto)
+        self.assertEqual((registro.texto, bool(registro.ruta_buscable)), ("nuevo", True))
+
+    def test_un_archivo_igual_reutiliza_tambien_la_copia_con_texto(self):
+        primero = self.adjunto()
+
+        def motor(ruta, salida=None):
+            Path(salida).parent.mkdir(parents=True, exist_ok=True)
+            Path(salida).write_bytes(b"%PDF copia")
+            return "texto"
+
+        with mock.patch.object(ocr, "extraer_texto", side_effect=motor):
+            tasks.procesar_ocr(primero.pk)
+        primero.ocr.refresh_from_db()
+        with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
+            segundo, _ = adjuntar_pdf(self.documento("recibido"), usuario=self.user, archivo=pdf("copia.pdf"))
+        self.assertEqual(segundo.ocr.ruta_buscable, primero.ocr.ruta_buscable)
