@@ -15,6 +15,7 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
+from .prestamos.forms import DevolucionForm
 from .forms import AdjuntoForm, GestorEntregaForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
@@ -22,7 +23,7 @@ from .selectors import (
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
     categorias_visibles, documentos_de_gestor, gestores_asignables, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from .models import Adjunto, AdjuntoOCR, Categoria, Direccion, Documento, Gestor, Nomenclatura
+from .models import Adjunto, AdjuntoOCR, Categoria, Direccion, Prestamo, Documento, Gestor, Nomenclatura
 from .storage import almacen
 from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
@@ -131,6 +132,9 @@ _permitido = permitido
 @proteger_vista(APP_SLUG, "has_access_module")
 def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None):
     documento = documento_visible(request, pk)
+    prestamo = Prestamo.objects.filter(documento=documento).prefetch_related("renglones__bien").first() if (
+        _permitido(request, "can_view_loans") or _permitido(request, "can_view_oficios")
+    ) else None
     contexto = {
         "documento": documento,
         "historial": documento.historial.all(),
@@ -142,6 +146,9 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "adjuntos_quitados": documento.adjuntos.filter(eliminado=True).order_by("eliminado_en"),
         "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
+        "prestamo": prestamo,
+        "puede_devolver": bool(prestamo and prestamo.abierto and _permitido(request, "can_manage_loans")),
+        "devolucion_form": DevolucionForm(),
         "roles_adjuntables": (
             [(r, Adjunto.Rol(r).label) for r in roles_permitidos(documento)]
             if _permitido(request, "can_upload_files") else []

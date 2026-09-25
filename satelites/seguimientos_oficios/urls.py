@@ -1,12 +1,20 @@
 from django.urls import path
 
 from . import views
+from .prestamos import views as prestamos_views
 
 app_name = "seguimientos_oficios"
 
 urlpatterns = [
     path("documentos/", views.documento_list_view, name="documento_list"),
     path("buscar/", views.busqueda_view, name="busqueda"),
+    path("prestamos/", prestamos_views.prestamos_view, name="prestamos"),
+    path("prestamos/nuevo/", prestamos_views.vale_crear_view, name="vale_crear"),
+    path("prestamos/<uuid:pk>/imprimir/", prestamos_views.vale_imprimir_view, name="vale_imprimir"),
+    path("prestamos/<uuid:pk>/devolucion/", prestamos_views.devolucion_view, name="vale_devolucion"),
+    path("bienes/", prestamos_views.bienes_view, name="bienes"),
+    path("bienes/nuevo/", prestamos_views.bien_form_view, name="bien_crear"),
+    path("bienes/<uuid:pk>/", prestamos_views.bien_form_view, name="bien_editar"),
     path("<uuid:pk>/visor/<uuid:adjunto_pk>/", views.visor_view, name="visor"),
     path("<uuid:pk>/lector/<uuid:adjunto_pk>/", views.lector_pdf_view, name="lector"),
     path("", views.inicio_view, name="inicio"),

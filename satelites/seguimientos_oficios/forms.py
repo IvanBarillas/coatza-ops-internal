@@ -156,8 +156,8 @@ class DireccionForm(forms.ModelForm):
 
     class Meta:
         model = Direccion
-        fields = ["nombre", "folio_manual", "is_active"]
-        labels = {"is_active": "Activa", "folio_manual": "Folio manual"}
+        fields = ["nombre", "folio_manual", "vales_habilitados", "is_active"]
+        labels = {"is_active": "Activa", "folio_manual": "Folio manual", "vales_habilitados": "Vales de préstamo"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -167,7 +167,7 @@ class DireccionForm(forms.ModelForm):
         if self.instance.dependencia_uuid:
             self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
         for nombre, campo in self.fields.items():
-            if nombre not in ("is_active", "folio_manual"):
+            if nombre not in ("is_active", "folio_manual", "vales_habilitados"):
                 campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def save(self, commit=True):
