@@ -10,7 +10,7 @@ from django.test import override_settings
 from satelites.seguimientos_oficios import ocr, tasks
 from satelites.seguimientos_oficios.models import AdjuntoOCR
 from satelites.seguimientos_oficios.services import adjuntar_pdf
-from satelites.seguimientos_oficios.storage import almacen
+from satelites.seguimientos_oficios.storage import almacen, ruta_copia_ocr
 
 from .base import BaseAdjuntos, pdf
 
@@ -130,7 +130,7 @@ class OcrTests(BaseAdjuntos):
         with mock.patch.object(ocr, "extraer_texto", side_effect=motor_que_escribe):
             tasks.procesar_ocr(adjunto.pk)
         adjunto.ocr.refresh_from_db()
-        self.assertTrue(adjunto.ocr.ruta_buscable.endswith("__buscable.pdf"))
+        self.assertIn("/ocr/", adjunto.ocr.ruta_buscable)
         self.assertTrue(almacen().exists(adjunto.ocr.ruta_buscable))
 
         with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
@@ -202,13 +202,13 @@ class OcrTests(BaseAdjuntos):
 
     def test_reprocesar_buscables_rehace_las_copias_que_pesan_mas_del_doble(self):
         adjunto = self.adjunto()
-        almacen().save(adjunto.ruta.removesuffix(".pdf") + "__buscable.pdf", ContentFile(b"%PDF-1.4 " + b"x" * 5000))
-        AdjuntoOCR.objects.filter(adjunto=adjunto).update(
-            estado="listo", texto="viejo", ruta_buscable=adjunto.ruta.removesuffix(".pdf") + "__buscable.pdf"
-        )
-        ligera = almacen().path(adjunto.ruta.removesuffix(".pdf") + "__buscable.pdf")
+        copia = ruta_copia_ocr(adjunto.ruta)
+        almacen().save(copia, ContentFile(b"%PDF-1.4 " + b"x" * 5000))
+        AdjuntoOCR.objects.filter(adjunto=adjunto).update(estado="listo", texto="viejo", ruta_buscable=copia)
+        ligera = almacen().path(copia)
 
         def motor(ruta, salida=None):
+            Path(salida).parent.mkdir(parents=True, exist_ok=True)
             Path(salida).write_bytes(b"%PDF-1.4 ligera")
             return "nuevo"
 

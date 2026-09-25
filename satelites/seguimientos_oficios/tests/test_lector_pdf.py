@@ -6,7 +6,7 @@ from django.urls import reverse
 
 from satelites.seguimientos_oficios.models import AdjuntoOCR, Direccion, Documento
 from satelites.seguimientos_oficios.services import adjuntar_pdf, quitar_adjunto
-from satelites.seguimientos_oficios.storage import almacen
+from satelites.seguimientos_oficios.storage import almacen, ruta_copia_ocr
 
 from .base import PDF, BaseAdjuntos, pdf
 
@@ -26,7 +26,7 @@ class LectorPdfTests(BaseAdjuntos):
             self.adjunto, _ = adjuntar_pdf(self.documento_, usuario=self.user, archivo=pdf("scan.pdf"))
 
     def dar_copia_buscable(self):
-        ruta = self.adjunto.ruta.removesuffix(".pdf") + "__buscable.pdf"
+        ruta = ruta_copia_ocr(self.adjunto.ruta)
         almacen().save(ruta, __import__("django.core.files.base", fromlist=["ContentFile"]).ContentFile(BUSCABLE))
         AdjuntoOCR.objects.filter(adjunto=self.adjunto).update(estado="listo", ruta_buscable=ruta)
         return ruta

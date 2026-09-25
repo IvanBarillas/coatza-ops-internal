@@ -67,13 +67,18 @@ completo en español con índice GIN sobre esa copia; SQLite, coincidencia por s
 CDN). Abre en la página encontrada, resalta las palabras buscadas (sin distinguir acentos ni mayúsculas) y tiene
 contador y botones para saltar entre coincidencias; funciona igual en todos los navegadores. Un original escaneado es
 solo imagen y no tiene texto que resaltar, así que el OCR conserva además una **copia con capa de texto**
-(`..._buscable.pdf`, junto al original) que usa solo el visor; la descarga y el archivo firmado siguen siendo el
+(en la subcarpeta `ocr/` de la misma carpeta del original, con el mismo nombre) que usa solo el visor; la descarga y el archivo firmado siguen siendo el
 original intacto. La copia se genera con `--skip-text`, que conserva las imágenes tal cual, y pesa casi lo mismo que el original (unos
 KB más por la capa de texto), así que un PDF con OCR ocupa el doble en disco (original + copia). Solo si alguna
 página ya traía texto digital se rehace con `--force-ocr`, que es más pesado. Para generar o aligerar las copias de
 adjuntos ya procesados: `python manage.py oficios_reprocesar_ocr --buscables` (rehace las que faltan o pesan más
 del doble que el original). La imagen de despliegue recolecta el static del
 satélite (`deploy/oficios/Containerfile`).
+
+**Orden del almacén:** `AAAA/<dirección>/<recibidos|enviados>/` contiene solo los originales; las copias con texto
+del OCR viven en `AAAA/<dirección>/<recibidos|enviados>/ocr/`. Para entregar los originales (p. ej. en una auditoría)
+basta copiar la carpeta sin la subcarpeta `ocr/`. Las copias se pueden regenerar en cualquier momento
+(`oficios_reprocesar_ocr --buscables`), así que nunca son la única versión de nada.
 
 **Alcance del OCR:** solo se procesan el **original** de los recibidos y el **documento firmado** de los enviados. La
 **evidencia** (acuse) repite el firmado con el sello de recepción y no pasa por OCR. Los enviados importados del
