@@ -40,6 +40,10 @@ class Direccion(BaseOficios):
         "Carpeta de archivos", max_length=160, unique=True, null=True, editable=False,
         help_text="Nombre de carpeta en el almacén; se fija al crear la dirección y no cambia si se renombra.",
     )
+    vales_habilitados = models.BooleanField(
+        "Vales de préstamo", default=False,
+        help_text="Activo: la dirección presta bienes con vale (catálogo de bienes y seguimiento de préstamos).",
+    )
     folio_manual = models.BooleanField(
         "Folio manual", default=True,
         help_text="Activo: quien registra un oficio enviado escribe su folio. Inactivo: se genera con la nomenclatura.",
@@ -299,6 +303,7 @@ class HistorialDocumento(models.Model):
         CREADO = "creado", "Creado"
         EDITADO = "editado", "Editado"
         ADJUNTADO = "adjuntado", "Adjunto agregado"
+        PRESTAMO = "prestamo", "Préstamo"
         QUITADO = "quitado", "Archivo quitado"
         ELIMINADO = "eliminado", "Eliminado"
 
@@ -395,3 +400,90 @@ class AdjuntoOCR(models.Model):
     def save(self, *args, **kwargs):
         self.texto_normalizado = normalizar(self.texto)
         super().save(*args, **kwargs)
+
+
+class Bien(BaseOficios):
+    """Bien (activo) que una dirección puede prestar. `prestado` no se guarda: sale de los préstamos abiertos."""
+
+    class Estado(models.TextChoices):
+        DISPONIBLE = "disponible", "Disponible"
+        EN_REPARACION = "en_reparacion", "En reparación"
+        BAJA = "baja", "Baja"
+
+    direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="bienes")
+    nombre = models.CharField("Bien", max_length=150)
+    identificador = models.CharField("Número de serie o etiqueta", max_length=120, blank=True)
+    folio_inventario = models.CharField("Folio de inventario", max_length=60, blank=True)
+    descripcion = models.TextField("Descripción", blank=True)
+    estado = models.CharField("Estado", max_length=15, choices=Estado.choices, default=Estado.DISPONIBLE, db_index=True)
+
+    class Meta:
+        db_table = "oficios_bien"
+        ordering = ["nombre", "identificador"]
+        verbose_name = "Bien"
+        verbose_name_plural = "Bienes"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["direccion", "folio_inventario"], condition=~Q(folio_inventario=""),
+                name="oficios_bien_folio_inventario_unico",
+            )
+        ]
+
+    def __str__(self):
+        return f"{self.nombre} · {self.identificador}" if self.identificador else self.nombre
+
+    @property
+    def asignacion_abierta(self):
+        return self.asignaciones.filter(abierto=True).select_related("prestamo__documento").first()
+
+
+class Prestamo(BaseOficios):
+    """Datos de préstamo de un documento de clase vale de préstamo (uno a uno)."""
+
+    documento = models.OneToOneField(Documento, on_delete=models.PROTECT, related_name="prestamo")
+    fecha_entrega = models.DateField("Fecha de entrega")
+    fecha_limite = models.DateField("Devolución límite")
+    fecha_devolucion = models.DateField("Devuelto el", null=True, blank=True)
+    observaciones = models.TextField("Observaciones", blank=True)
+    observaciones_devolucion = models.TextField("Observaciones de la devolución", blank=True)
+
+    class Meta:
+        db_table = "oficios_prestamo"
+        ordering = ["-fecha_entrega"]
+
+    @property
+    def abierto(self):
+        return self.fecha_devolucion is None and self.documento.estado != Documento.Estado.CANCELADO
+
+    @property
+    def situacion(self):
+        """devuelto | cancelado | vencido | por_vencer | vigente."""
+        from datetime import timedelta
+
+        if self.documento.estado == Documento.Estado.CANCELADO:
+            return "cancelado"
+        if self.fecha_devolucion:
+            return "devuelto"
+        hoy = timezone.localdate()
+        if self.fecha_limite < hoy:
+            return "vencido"
+        return "por_vencer" if self.fecha_limite - hoy <= timedelta(days=3) else "vigente"
+
+    @property
+    def dias_de_retraso(self):
+        return max(0, (timezone.localdate() - self.fecha_limite).days) if self.fecha_devolucion is None else 0
+
+
+class PrestamoBien(models.Model):
+    prestamo = models.ForeignKey(Prestamo, on_delete=models.PROTECT, related_name="renglones")
+    bien = models.ForeignKey(Bien, on_delete=models.PROTECT, related_name="asignaciones")
+    abierto = models.BooleanField(default=True, db_index=True)
+
+    class Meta:
+        db_table = "oficios_prestamo_bien"
+        constraints = [
+            models.UniqueConstraint(fields=["prestamo", "bien"], name="oficios_prestamo_bien_unico"),
+            models.UniqueConstraint(
+                fields=["bien"], condition=Q(abierto=True), name="oficios_bien_en_un_solo_prestamo_abierto"
+            ),
+        ]

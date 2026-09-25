@@ -25,6 +25,9 @@
         {% if documento.motivo_cancelacion %}<div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-red-600">Motivo de cancelación</dt><dd>{{ documento.motivo_cancelacion }}</dd></div>{% endif %}
     </dl>
 
+    {% if prestamo %}{% include "seguimientos_oficios/content/_panel_prestamo.html" %}{% endif %}
+
+
     <section class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
         <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Archivos</h2>
         <ul class="space-y-2 text-xs">
@@ -97,7 +100,7 @@
             <li class="border-l-4 border-gray-200 pl-3">
                 <div class="font-bold text-gray-700">{{ h.get_accion_display }} · {{ h.usuario_nombre|default:"—" }}</div>
                 <div class="text-xs text-gray-400">{{ h.created_at|date:"d/m/Y H:i" }}</div>
-                {% if h.datos.adjunto %}<div class="text-xs text-gray-500">{{ h.datos.adjunto }}{% if h.datos.duplicado_de %} · duplicado de {{ h.datos.duplicado_de }}{% endif %}</div>{% endif %}{% for campo, cambio in h.datos.cambios.items %}<div class="text-xs text-gray-500"><b>{{ campo }}</b>: {{ cambio.antes|default:"—" }} → {{ cambio.despues|default:"—" }}</div>{% endfor %}{% if h.datos.motivo and not h.datos.estado_nuevo %}<div class="text-xs text-gray-500">Motivo: {{ h.datos.motivo }}</div>{% endif %}{% if h.datos.estado_nuevo %}<div class="text-xs text-gray-500">{{ h.datos.estado_anterior }} → {{ h.datos.estado_nuevo }}{% if h.datos.motivo %} · {{ h.datos.motivo }}{% endif %}</div>{% endif %}
+                {% if h.datos.resumen %}<div class="text-xs text-gray-500">{{ h.datos.resumen }}{% if h.datos.observaciones %} · {{ h.datos.observaciones }}{% endif %}</div>{% endif %}{% if h.datos.bienes_liberados %}<div class="text-xs text-gray-500">Bienes liberados: {{ h.datos.bienes_liberados|join:", " }}</div>{% endif %}{% if h.datos.adjunto %}<div class="text-xs text-gray-500">{{ h.datos.adjunto }}{% if h.datos.duplicado_de %} · duplicado de {{ h.datos.duplicado_de }}{% endif %}</div>{% endif %}{% for campo, cambio in h.datos.cambios.items %}<div class="text-xs text-gray-500"><b>{{ campo }}</b>: {{ cambio.antes|default:"—" }} → {{ cambio.despues|default:"—" }}</div>{% endfor %}{% if h.datos.motivo and not h.datos.estado_nuevo %}<div class="text-xs text-gray-500">Motivo: {{ h.datos.motivo }}</div>{% endif %}{% if h.datos.estado_nuevo %}<div class="text-xs text-gray-500">{{ h.datos.estado_anterior }} → {{ h.datos.estado_nuevo }}{% if h.datos.motivo %} · {{ h.datos.motivo }}{% endif %}</div>{% endif %}
             </li>
             {% endfor %}
         </ol>

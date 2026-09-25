@@ -1,0 +1,38 @@
+{% include "seguimientos_oficios/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-3xl space-y-4 font-mono" x-data="{ dependencia: '{{ form.contraparte_dependencia.value|default:'' }}' }">
+    {% url 'seguimientos_oficios:prestamos' as volver_url %}
+    {% include "components/form_header.html" with module_label="Oficios" mode_label="Nuevo vale" title="Vale de préstamo" description="Elige los bienes, quién los recibe y la fecha límite. El sistema genera el folio y el documento para imprimir y firmar." icon="hand-coins" back_url=volver_url back_label="Volver a préstamos" %}
+    {% if not form %}
+    <p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">Ninguna de tus direcciones tiene habilitados los vales de préstamo. Actívalos en Catálogos → dirección.</p>
+    {% else %}
+    <form method="post" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm sm:p-6">
+        {% csrf_token %}
+        {% for e in form.non_field_errors %}<p class="mb-3 text-xs text-red-600">{{ e }}</p>{% endfor %}
+        {% if not form.mostrar_direccion %}{{ form.direccion }}{% endif %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% if form.mostrar_direccion %}<div class="sm:col-span-2"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.direccion.id_for_label }}">{{ form.direccion.label }}</label>{{ form.direccion }}{% for e in form.direccion.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>{% endif %}
+            <div class="sm:col-span-2">
+                <label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.contraparte_dependencia.id_for_label }}">{{ form.contraparte_dependencia.label }}</label>
+                <select name="contraparte_dependencia" id="{{ form.contraparte_dependencia.id_for_label }}" x-model="dependencia" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                    {% for valor, nombre in form.contraparte_dependencia.field.choices %}<option value="{{ valor }}">{{ nombre }}</option>{% endfor %}
+                </select>
+                {% for e in form.contraparte_dependencia.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+            <div class="sm:col-span-2" x-show="dependencia === ''"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.contraparte.id_for_label }}">{{ form.contraparte.label }}</label>{{ form.contraparte }}{% for e in form.contraparte.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.fecha_entrega.id_for_label }}">{{ form.fecha_entrega.label }}</label>{{ form.fecha_entrega }}{% for e in form.fecha_entrega.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.fecha_limite.id_for_label }}">{{ form.fecha_limite.label }}</label>{{ form.fecha_limite }}{% for e in form.fecha_limite.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div class="sm:col-span-2">
+                <span class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ form.bienes.label }}</span>
+                {% if sin_bienes %}<p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">No hay bienes disponibles. Da de alta bienes en la sección Bienes o registra la devolución de los que están prestados.</p>{% endif %}
+                <div class="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-xs">
+                    {% for opcion in form.bienes %}<label class="flex items-center gap-2 py-1">{{ opcion.tag }}<span>{{ opcion.choice_label }}</span></label>{% endfor %}
+                </div>
+                {% for e in form.bienes.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.gestor.id_for_label }}">{{ form.gestor.label }}</label>{{ form.gestor }}{% for e in form.gestor.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.observaciones.id_for_label }}">{{ form.observaciones.label }}</label>{{ form.observaciones }}</div>
+        </div>
+        <div class="mt-6 flex justify-center"><button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Generar vale</button></div>
+    </form>
+    {% endif %}
+</div>

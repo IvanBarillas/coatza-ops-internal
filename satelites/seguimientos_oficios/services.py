@@ -9,7 +9,9 @@ from django.db import transaction
 from django.utils import timezone
 
 from .integracion import director_de_dependencia, encolar_tarea, nombre_de_usuario
-from .models import Adjunto, AdjuntoOCR, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
+from .models import (
+    Adjunto, AdjuntoOCR, ClaseDocumento, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura, PrestamoBien,
+)
 from .storage import almacen, ruta_del_adjunto
 from .tasks import TAREA_OCR, TIMEOUT_TAREA
 
@@ -68,12 +70,14 @@ def _siguiente_folio(direccion, clase, anio):
 @transaction.atomic
 def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, fecha,
                     folio="", director_nombre="", gestor=None, contraparte_dependencia_uuid=None,
-                    categoria=None):
+                    categoria=None, folio_automatico=False, desde_vale=False):
+    if clase == ClaseDocumento.VALE_PRESTAMO and direccion.vales_habilitados and not desde_vale:
+        raise ValidationError("Los vales de préstamo de esta dirección se generan desde Préstamos.")
     _validar_gestor(gestor, direccion, sentido)
     _validar_categoria(categoria, direccion)
     anio = consecutivo = None
     nomenclatura, folio_manual = None, False
-    if sentido == Documento.Sentido.ENVIADO and direccion.folio_manual:
+    if sentido == Documento.Sentido.ENVIADO and direccion.folio_manual and not folio_automatico:
         folio, folio_manual = _folio_capturado(direccion, folio), True
         nomenclatura = Nomenclatura.objects.filter(
             direccion=direccion, clase=clase, is_active=True, is_deleted=False
@@ -148,10 +152,17 @@ def cancelar_documento(documento, *, usuario, motivo, puede_cancelar_concluido=F
     documento.estado = Documento.Estado.CANCELADO
     documento.motivo_cancelacion = motivo
     documento.save()
-    _historial(documento, HistorialDocumento.Accion.ELIMINADO, usuario, {
+    datos = {
         "estado_anterior": anterior, "estado_nuevo": documento.estado, "motivo": motivo,
         "cancelado_en": timezone.now().isoformat(),
-    })
+    }
+    liberados = [
+        str(r.bien) for r in PrestamoBien.objects.filter(prestamo__documento=documento, abierto=True).select_related("bien")
+    ]
+    if liberados:
+        PrestamoBien.objects.filter(prestamo__documento=documento, abierto=True).update(abierto=False)
+        datos["bienes_liberados"] = liberados
+    _historial(documento, HistorialDocumento.Accion.ELIMINADO, usuario, datos)
     return documento
 
 
