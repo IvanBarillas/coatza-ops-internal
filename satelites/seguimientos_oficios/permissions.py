@@ -33,6 +33,8 @@ class SeguimientosOficiosPermissions:
             "has_access_module", "can_view_oficios", "can_create_oficio",
             "can_update_status", "can_upload_files", "can_edit_oficio", "can_cancel_oficio",
             "can_view_tracking", "can_remove_files", "can_view_own_pendings", "can_register_own_delivery",
+            # El editor (director, subdirector, jefe) hace todo el flujo de su dirección: oficios, préstamos y soporte técnico.
+            "can_view_loans", "can_manage_loans", "can_view_support", "can_manage_support",
         ],
         "viewer": ["has_access_module", "can_view_oficios", "can_view_tracking"],
         "seguimiento": ["has_access_module", "can_view_tracking"],

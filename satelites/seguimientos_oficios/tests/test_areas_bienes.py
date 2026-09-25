@@ -12,6 +12,7 @@ from satelites.seguimientos_oficios.prestamos.services import (
 )
 from satelites.seguimientos_oficios.services import cancelar_documento
 
+from .base import SOLO_OFICIOS
 from .test_prestamos import HOY, PrestamosBase
 
 
@@ -37,7 +38,7 @@ class AreasDelMenuTests(PrestamosBase):
         self.assertEqual(detalle.context["area_actual"]["clave"], "prestamos")
 
     def test_quien_solo_tiene_un_area_no_ve_selector(self):
-        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
+        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=SOLO_OFICIOS)
         pagina = self.menu("documento_list")
         self.assertEqual(pagina.context["sidebar_areas"], [])
         self.assertEqual(pagina.context["area_actual"]["clave"], "oficios")
@@ -86,7 +87,7 @@ class PanelDeInicioTests(PrestamosBase):
         self.assertFalse(pagina.context["show_module_sidebar"])
 
     def test_con_una_sola_area_entra_directo(self):
-        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
+        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=SOLO_OFICIOS)
         self.assertRedirects(self.inicio(), reverse("seguimientos_oficios:documento_list"), fetch_redirect_response=False)
 
     def test_las_cifras_reflejan_lo_que_requiere_atencion(self):

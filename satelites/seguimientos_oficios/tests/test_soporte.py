@@ -9,7 +9,7 @@ import datetime
 
 from satelites.seguimientos_oficios.soporte import services as svc
 
-from .base import BaseAdjuntos
+from .base import SOLO_OFICIOS, BaseAdjuntos
 
 
 class SoporteBase(BaseAdjuntos):
@@ -249,7 +249,7 @@ class RegistroManualPorPermisoTests(SoporteBase):
     def test_solo_quien_gestiona_soporte_puede_registrar_diagnosticos_y_dictamenes(self):
         UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
         self.assertIn("dictamen_baja", self.clases())
-        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
+        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=SOLO_OFICIOS)
         clases = self.clases()
         self.assertIn("oficio", clases)
         for reservada in ("diagnostico_tecnico", "dictamen_alta", "dictamen_baja", "resguardo"):
