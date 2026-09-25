@@ -9,7 +9,7 @@ from django.urls import reverse
 from apps.security.models import Dependencia, UserAppRole
 from satelites.seguimientos_oficios.models import Bien, Direccion, Documento, Nomenclatura, Prestamo, PrestamoBien
 from satelites.seguimientos_oficios.permissions import SeguimientosOficiosPermissions as P
-from satelites.seguimientos_oficios.prestamos.services import crear_vale, registrar_devolucion
+from satelites.seguimientos_oficios.prestamos.services import crear_vale, editar_vale, registrar_devolucion
 from satelites.seguimientos_oficios.services import cancelar_documento, crear_documento
 
 from .base import BaseAdjuntos
@@ -263,3 +263,44 @@ class VistasPrestamosTests(PrestamosBase):
         prestamo.refresh_from_db()
         self.assertIsNone(prestamo.fecha_devolucion)
         self.assertNotContains(self.client.get(reverse("seguimientos_oficios:documento_detail", args=[documento.pk])), "Registrar devolución")
+
+
+class EditarValeTests(PrestamosBase):
+    def test_corregir_fechas_recibe_y_observaciones_deja_historial(self):
+        documento, prestamo = self.vale()
+        nueva = HOY + datetime.timedelta(days=10)
+        editar_vale(prestamo, usuario=self.user, fecha_entrega=HOY, fecha_limite=nueva, observaciones="Con cargador",
+                    contraparte="Tesorería", contraparte_dependencia_uuid=None)
+        prestamo.refresh_from_db()
+        documento.refresh_from_db()
+        self.assertEqual((prestamo.fecha_limite, prestamo.observaciones, documento.contraparte), (nueva, "Con cargador", "Tesorería"))
+        cambios = documento.historial.filter(accion="editado").get().datos["cambios"]
+        self.assertEqual(sorted(cambios), ["Devolución límite", "Observaciones", "Recibe"])
+
+    def test_validaciones_y_motivo_si_ya_se_entrego(self):
+        documento, prestamo = self.vale()
+        base = dict(usuario=self.user, fecha_entrega=HOY, fecha_limite=HOY + datetime.timedelta(days=9), observaciones="",
+                    contraparte=self.egresos.nombre, contraparte_dependencia_uuid=self.egresos.pk)
+        with self.assertRaises(ValidationError):
+            editar_vale(prestamo, **{**base, "fecha_limite": HOY - datetime.timedelta(days=1)})
+        with self.assertRaises(ValidationError):
+            editar_vale(prestamo, **{**base, "fecha_entrega": datetime.date(2025, 12, 31), "fecha_limite": datetime.date(2026, 1, 5)})
+        Documento.objects.filter(pk=documento.pk).update(estado="entregado")
+        with self.assertRaises(ValidationError):
+            editar_vale(prestamo, **base)
+        editar_vale(prestamo, **base, motivo="Se corrigió la fecha pactada")
+        Documento.objects.filter(pk=documento.pk).update(estado="cancelado")
+        with self.assertRaises(ValidationError):
+            editar_vale(prestamo, **{**base, "fecha_limite": HOY + datetime.timedelta(days=12)}, motivo="Motivo suficiente")
+
+    def test_vista_de_correccion_del_vale(self):
+        documento, prestamo = self.vale()
+        url = reverse("seguimientos_oficios:vale_editar", args=[documento.pk])
+        self.assertEqual(self.client.get(url).status_code, 200)
+        r = self.client.post(url, {
+            "fecha_entrega": HOY.isoformat(), "fecha_limite": (HOY + datetime.timedelta(days=3)).isoformat(),
+            "contraparte_dependencia": str(self.egresos.pk), "contraparte": "", "observaciones": "Ok", "motivo": "",
+        })
+        self.assertRedirects(r, reverse("seguimientos_oficios:documento_detail", args=[documento.pk]))
+        prestamo.refresh_from_db()
+        self.assertEqual(prestamo.observaciones, "Ok")

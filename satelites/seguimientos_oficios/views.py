@@ -130,6 +130,8 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
     )
     contexto = {
         "documento": documento, "dictamen": dictamen,
+        "puede_editar_dictamen": bool(dictamen and documento.estado != documento.Estado.CANCELADO and _permitido(request, "can_manage_support")),
+        "puede_editar_vale": bool(prestamo and documento.estado != documento.Estado.CANCELADO and _permitido(request, "can_manage_loans")),
         "historial": documento.historial.all(),
         "entrega_form": entrega_form or EntregaForm(),
         "cancelacion_form": cancelacion_form or CancelacionForm(),

@@ -167,5 +167,9 @@ Documento enviado con folio automático de su **nomenclatura** (editable por dir
 
 El ticket de la mesa de ayuda es texto libre. Las impresiones (HTML con CSS de carta, logotipos en
 `static/seguimientos_oficios/formatos/`) se guardan como PDF desde el navegador; el documento se firma, se escanea y se sube
-como *Documento firmado* (con OCR y búsqueda). Un documento emitido no se edita: se cancela y se emite otro. Los formatos de
+como *Documento firmado* (con OCR y búsqueda). **Corregir:** los diagnósticos, dictámenes y vales emitidos se pueden corregir (botón *Corregir* en su detalle) mientras no
+estén cancelados: ticket, textos, firmantes, y en los equipos su descripción, marca, serie, folio de inventario y departamento
+(en el vale, fechas, quién recibe y observaciones). Cada corrección guarda el valor anterior y el nuevo en el historial; si el
+documento ya se firmó (hay archivo firmado) o se entregó, además exige un motivo. No cambian el folio, la dirección ni *qué
+bienes* ampara: si el bien es otro, se cancela y se emite uno nuevo. La serie o el nombre de un bien se corrigen en el propio bien. Los formatos de
 referencia (Word) viven en `formatos_referencia/`, fuera de git.

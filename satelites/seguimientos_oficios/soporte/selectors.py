@@ -14,11 +14,11 @@ def direcciones_con_soporte(request, permiso="can_view_support"):
     return base.filter(dependencia_uuid__in=ids)
 
 
-def dictamenes_visibles(request):
+def dictamenes_visibles(request, permiso="can_view_support"):
     return (
         Dictamen.objects.filter(
             is_deleted=False, documento__clase__in=CLASES_DE_SOPORTE,
-            documento__direccion__in=direcciones_con_soporte(request),
+            documento__direccion__in=direcciones_con_soporte(request, permiso),
         )
         .select_related("documento", "documento__direccion")
         .prefetch_related("equipos")

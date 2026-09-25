@@ -40,6 +40,17 @@ def leer_equipos(post, bienes):
     return equipos, errores
 
 
+def leer_equipos_edicion(post):
+    """Renglones de una edición (`eq-N-id` + textos): {id: textos}. No se agregan ni quitan renglones."""
+    indices = sorted({int(k.split("-")[1]) for k in post if k.startswith("eq-") and k.split("-")[1].isdigit()})
+    equipos = {}
+    for i in indices:
+        identificador = post.get(f"eq-{i}-id")
+        if identificador:
+            equipos[identificador] = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:150] for c in CAMPOS_EQUIPO}
+    return equipos
+
+
 def _fecha():
     return forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
 
@@ -61,13 +72,20 @@ class SoporteBase(forms.Form):
             "firmas": [c for c in campos if c.name in self.FIRMAS],
         }
 
-    def __init__(self, *args, direcciones, **kwargs):
+    def __init__(self, *args, direcciones, edicion=False, **kwargs):
         super().__init__(*args, **kwargs)
+        self.edicion = edicion
         self.fields["direccion"].queryset = direcciones
         self.mostrar_direccion = direcciones.count() != 1
         if not self.mostrar_direccion:
             self.fields["direccion"].initial = direcciones.first().pk
             self.fields["direccion"].widget = forms.HiddenInput()
+        if edicion:
+            self.fields["motivo"] = forms.CharField(
+                label="Motivo de la corrección", required=False, max_length=300,
+                help_text="Obligatorio si el documento ya se firmó o entregó.",
+            )
+            self.FIRMAS = self.FIRMAS + ("motivo",)
         for nombre, campo in self.fields.items():
             if nombre not in self.OCULTOS or (nombre == "direccion" and self.mostrar_direccion):
                 campo.widget.attrs.setdefault("class", CLASE)

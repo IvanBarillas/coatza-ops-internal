@@ -8,10 +8,10 @@ AREAS = (
 )
 RUTAS_DE_PRESTAMOS = {
     "prestamos", "vales", "vale_crear", "vale_imprimir", "vale_devolucion",
-    "bienes", "bien_crear", "bien_detalle", "bien_editar",
+    "vale_editar", "bienes", "bien_crear", "bien_detalle", "bien_editar",
 }
 RUTAS_DE_SOPORTE = {
-    "soporte", "soporte_crear_diagnostico", "soporte_crear_baja", "soporte_crear_alta", "soporte_imprimir",
+    "soporte", "soporte_crear_diagnostico", "soporte_crear_baja", "soporte_crear_alta", "soporte_imprimir", "soporte_editar",
 }
 
 

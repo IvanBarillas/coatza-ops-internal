@@ -2,8 +2,8 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
-from ..models import Bien, ClaseDocumento, Dictamen, DictamenBien, Documento, HistorialBien, HistorialDocumento, PrestamoBien
-from ..services import _historial, crear_documento
+from ..models import Adjunto, Bien, ClaseDocumento, Dictamen, DictamenBien, Documento, HistorialBien, HistorialDocumento, PrestamoBien
+from ..services import MOTIVO_MINIMO, _historial, crear_documento
 from ..prestamos import bitacora
 
 RECOMENDACIONES = (("mantenimiento", "Mantenimiento"), ("reasignacion", "Reasignación"), ("baja", "Baja"))
@@ -49,6 +49,15 @@ def _emitir(*, clase, usuario, direccion, contraparte, asunto, ticket, elaboro_n
     return documento, dictamen
 
 
+def asunto_de(clase, contraparte, equipos):
+    nombres = "; ".join(e["equipo"] for e in equipos)
+    if clase == ClaseDocumento.DIAGNOSTICO_TECNICO:
+        return f"Diagnóstico técnico: {nombres}"
+    if clase == ClaseDocumento.DICTAMEN_BAJA:
+        return f"Dictamen de baja de {len(equipos)} bien(es): {nombres}"
+    return f"Dictamen de alta para {contraparte}"
+
+
 def _validar_equipos(equipos, minimo=1):
     if len(equipos) < minimo:
         raise ValidationError("Agregue al menos un equipo.")
@@ -65,7 +74,7 @@ def emitir_diagnostico(*, usuario, direccion, solicitante, ticket, equipo, datos
         raise ValidationError("Elija la recomendación sobre el bien.")
     documento, dictamen = _emitir(
         clase=ClaseDocumento.DIAGNOSTICO_TECNICO, usuario=usuario, direccion=direccion, contraparte=solicitante,
-        asunto=f"Diagnóstico técnico: {equipo['equipo']}", ticket=ticket, elaboro_nombre=elaboro_nombre,
+        asunto=asunto_de(ClaseDocumento.DIAGNOSTICO_TECNICO, solicitante, [equipo]), ticket=ticket, elaboro_nombre=elaboro_nombre,
         elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre, autoriza_cargo=autoriza_cargo, datos=datos,
         equipos=[equipo],
     )
@@ -101,7 +110,7 @@ def emitir_baja(*, usuario, direccion, contraparte, ticket, equipos, datos, elab
     documento, dictamen = _emitir(
         clase=ClaseDocumento.DICTAMEN_BAJA, usuario=usuario, direccion=direccion, contraparte=contraparte,
         contraparte_dependencia_uuid=contraparte_dependencia_uuid,
-        asunto=f"Dictamen de baja de {len(equipos)} bien(es): {'; '.join(e['equipo'] for e in equipos)}",
+        asunto=asunto_de(ClaseDocumento.DICTAMEN_BAJA, contraparte, equipos),
         ticket=ticket, elaboro_nombre=elaboro_nombre, elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre,
         autoriza_cargo=autoriza_cargo, datos=datos, equipos=equipos,
     )
@@ -126,7 +135,111 @@ def emitir_alta(*, usuario, direccion, contraparte, ticket, datos, elaboro_nombr
             raise ValidationError(f"Escriba {nombre}.")
     return _emitir(
         clase=ClaseDocumento.DICTAMEN_ALTA, usuario=usuario, direccion=direccion, contraparte=contraparte,
-        contraparte_dependencia_uuid=contraparte_dependencia_uuid, asunto=f"Dictamen de alta para {contraparte}",
+        contraparte_dependencia_uuid=contraparte_dependencia_uuid, asunto=asunto_de(ClaseDocumento.DICTAMEN_ALTA, contraparte, []),
         ticket=ticket, elaboro_nombre=elaboro_nombre, elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre,
         autoriza_cargo=autoriza_cargo, datos=datos, equipos=[],
     )
+
+
+ETIQUETAS_CAMPOS = {
+    "ticket": "Ticket", "elaboro_cargo": "Cargo de quien elabora", "autoriza_nombre": "Autoriza (nombre)",
+    "autoriza_cargo": "Autoriza (cargo)", "contraparte": "Solicitante / dirigido a", "fecha_recibido": "Fecha de recibido",
+    "tipo_bien": "Tipo de bien", "fallo": "Fallo", "causa": "Causa", "solucion": "Solución", "observaciones": "Observaciones",
+    "recomendacion": "Recomendación", "solicito": "Solicitó", "diagnostico": "Diagnóstico", "clasificacion": "Clasificación",
+    "disposicion": "Disposición final", "solicitud": "Solicitud", "justificacion": "Justificación", "dictamen": "Dictamen",
+}
+CAMPOS_EQUIPO = ("equipo", "marca_modelo", "serie", "folio_inventario", "departamento")
+ETIQUETAS_EQUIPO = {
+    "equipo": "equipo", "marca_modelo": "marca y modelo", "serie": "serie", "folio_inventario": "folio de inventario",
+    "departamento": "departamento",
+}
+
+
+def edicion_exige_motivo(documento):
+    """Con el documento ya firmado (archivo firmado, entregado o concluido) toda corrección necesita motivo."""
+    return (
+        documento.estado in (Documento.Estado.ENTREGADO, Documento.Estado.CONCLUIDO)
+        or documento.adjuntos.filter(rol=Adjunto.Rol.FIRMADO, eliminado=False).exists()
+    )
+
+
+def exigir_motivo_de_edicion(documento, motivo):
+    if edicion_exige_motivo(documento) and len((motivo or "").strip()) < MOTIVO_MINIMO:
+        raise ValidationError(
+            f"El documento ya se firmó o entregó: indique el motivo de la corrección (mínimo {MOTIVO_MINIMO} caracteres)."
+        )
+
+
+def _legible(valor):
+    return ETIQUETAS.get(valor, valor)
+
+
+@transaction.atomic
+def editar_dictamen(dictamen, *, usuario, campos, datos, equipos, contraparte=None, contraparte_dependencia_uuid=None, motivo=""):
+    """Corrige un diagnóstico o dictamen ya emitido y deja en el historial cada valor anterior y nuevo.
+
+    No cambia el folio, la dirección, la clase ni qué bienes ampara (la baja ya movió su estado): para eso se cancela
+    y se emite otro. `equipos` es {id del renglón: textos nuevos}; debe traer exactamente los renglones existentes.
+    """
+    dictamen = Dictamen.objects.select_for_update().select_related("documento").get(pk=dictamen.pk)
+    documento = dictamen.documento
+    if documento.estado == Documento.Estado.CANCELADO:
+        raise ValidationError("Un documento cancelado no se puede editar.")
+    clase = documento.clase
+    renglones = {str(r.pk): r for r in dictamen.equipos.all()}
+    if set(str(k) for k in equipos) != set(renglones):
+        raise ValidationError("Los equipos del documento no se pueden agregar ni quitar: cancele y emita otro.")
+    nuevos = {str(k): v for k, v in equipos.items()}
+    for fila in nuevos.values():
+        if not (fila.get("equipo") or "").strip():
+            raise ValidationError("Cada equipo necesita al menos su descripción.")
+    combinado = {**dictamen.datos, **datos}
+    if clase == ClaseDocumento.DIAGNOSTICO_TECNICO and combinado.get("recomendacion") not in dict(RECOMENDACIONES):
+        raise ValidationError("Elija la recomendación sobre el bien.")
+    if clase == ClaseDocumento.DICTAMEN_BAJA:
+        if combinado.get("clasificacion") not in dict(CLASIFICACIONES):
+            raise ValidationError("Elija la clasificación de no utilidad.")
+        if combinado.get("disposicion") not in dict(DISPOSICIONES):
+            raise ValidationError("Elija la recomendación de disposición final.")
+    if clase == ClaseDocumento.DICTAMEN_ALTA:
+        for campo, nombre in (("solicitud", "la solicitud"), ("justificacion", "la justificación"), ("dictamen", "el dictamen")):
+            if not (combinado.get(campo) or "").strip():
+                raise ValidationError(f"Escriba {nombre}.")
+    cambios = {}
+
+    def anotar(nombre, antes, despues):
+        if (antes or "") != (despues or ""):
+            cambios[nombre] = {"antes": _legible(antes) or "", "despues": _legible(despues) or ""}
+
+    for campo, nuevo in campos.items():
+        nuevo = (nuevo or "").strip()
+        anotar(ETIQUETAS_CAMPOS[campo], getattr(dictamen, campo), nuevo)
+        setattr(dictamen, campo, nuevo)
+    if contraparte is not None and clase != ClaseDocumento.DIAGNOSTICO_TECNICO:
+        anotar(ETIQUETAS_CAMPOS["contraparte"], documento.contraparte, contraparte)
+        documento.contraparte = contraparte
+        documento.contraparte_dependencia_uuid = contraparte_dependencia_uuid
+    if clase == ClaseDocumento.DIAGNOSTICO_TECNICO and contraparte is not None:
+        anotar(ETIQUETAS_CAMPOS["contraparte"], documento.contraparte, contraparte)
+        documento.contraparte = contraparte
+    nuevos_datos = dict(dictamen.datos)
+    for clave, nuevo in datos.items():
+        nuevo = (nuevo or "").strip() if isinstance(nuevo, str) else nuevo
+        anotar(ETIQUETAS_CAMPOS.get(clave, clave), dictamen.datos.get(clave), nuevo)
+        nuevos_datos[clave] = nuevo
+    dictamen.datos = nuevos_datos
+    for indice, (pk, renglon) in enumerate(renglones.items(), start=1):
+        for campo in CAMPOS_EQUIPO:
+            nuevo = (nuevos[pk].get(campo) or "").strip()
+            anotar(f"Equipo {indice}: {ETIQUETAS_EQUIPO[campo]}", getattr(renglon, campo), nuevo)
+            setattr(renglon, campo, nuevo)
+    if not cambios:
+        raise ValidationError("No hay cambios que guardar.")
+    exigir_motivo_de_edicion(documento, motivo)
+    dictamen.save()
+    for renglon in renglones.values():
+        renglon.save()
+    documento.asunto = asunto_de(clase, documento.contraparte, [{"equipo": r.equipo} for r in renglones.values()])[:300]
+    documento.save()
+    _historial(documento, HistorialDocumento.Accion.EDITADO, usuario, {"cambios": cambios, "motivo": (motivo or "").strip()})
+    return documento, dictamen

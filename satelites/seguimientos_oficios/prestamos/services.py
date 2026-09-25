@@ -5,7 +5,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from ..models import Bien, ClaseDocumento, Documento, HistorialBien, HistorialDocumento, Prestamo, PrestamoBien
-from ..services import _historial, crear_documento
+from ..services import MOTIVO_MINIMO as MOTIVO_DE_EDICION, _historial, crear_documento
 from . import bitacora
 
 
@@ -121,3 +121,51 @@ def registrar_cambios_bien(bien, antes, *, usuario, motivo=""):
     exigir_motivo_de_estado(antes["estado"], bien.estado, motivo)
     accion = HistorialBien.Accion.ESTADO if "estado" in cambios else HistorialBien.Accion.EDITADO
     return bitacora.registrar(bien, accion, usuario, {"cambios": cambios, "motivo": (motivo or "").strip()})
+
+
+@transaction.atomic
+def editar_vale(prestamo, *, usuario, fecha_entrega, fecha_limite, observaciones, contraparte,
+                contraparte_dependencia_uuid=None, motivo=""):
+    """Corrige fechas, quién recibe y observaciones de un vale. Los bienes no cambian: se cancela y se emite otro.
+
+    La serie o el nombre de un bien se corrigen en el propio bien, y el vale los muestra al imprimirse.
+    """
+    from ..soporte.services import edicion_exige_motivo
+
+    prestamo = Prestamo.objects.select_for_update().select_related("documento").get(pk=prestamo.pk)
+    documento = prestamo.documento
+    if documento.estado == Documento.Estado.CANCELADO:
+        raise ValidationError("Un vale cancelado no se puede editar.")
+    if fecha_limite < fecha_entrega:
+        raise ValidationError("La devolución límite no puede ser anterior a la entrega.")
+    if documento.anio and fecha_entrega.year != documento.anio:
+        raise ValidationError(f"La entrega debe seguir en {documento.anio}, el año del folio {documento.folio}.")
+    if prestamo.fecha_devolucion and fecha_entrega > prestamo.fecha_devolucion:
+        raise ValidationError("La entrega no puede ser posterior a la devolución ya registrada.")
+    contraparte = (contraparte or "").strip()
+    if not contraparte:
+        raise ValidationError("Indique quién recibe.")
+    cambios = {}
+    for nombre, antes, despues in (
+        ("Fecha de entrega", prestamo.fecha_entrega, fecha_entrega), ("Devolución límite", prestamo.fecha_limite, fecha_limite),
+        ("Recibe", documento.contraparte, contraparte), ("Observaciones", prestamo.observaciones, (observaciones or "").strip()),
+    ):
+        if antes != despues:
+            cambios[nombre] = {
+                "antes": _fecha(antes) if isinstance(antes, datetime.date) else antes,
+                "despues": _fecha(despues) if isinstance(despues, datetime.date) else despues,
+            }
+    if not cambios:
+        raise ValidationError("No hay cambios que guardar.")
+    if edicion_exige_motivo(documento) and len((motivo or "").strip()) < MOTIVO_DE_EDICION:
+        raise ValidationError(
+            f"El vale ya se firmó o entregó: indique el motivo de la corrección (mínimo {MOTIVO_DE_EDICION} caracteres)."
+        )
+    prestamo.fecha_entrega, prestamo.fecha_limite = fecha_entrega, fecha_limite
+    prestamo.observaciones = (observaciones or "").strip()
+    prestamo.save()
+    documento.fecha, documento.contraparte = fecha_entrega, contraparte
+    documento.contraparte_dependencia_uuid = contraparte_dependencia_uuid
+    documento.save()
+    _historial(documento, HistorialDocumento.Accion.EDITADO, usuario, {"cambios": cambios, "motivo": (motivo or "").strip()})
+    return prestamo

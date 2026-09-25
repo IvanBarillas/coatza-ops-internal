@@ -151,3 +151,89 @@ class VistasDeSoporteTests(SoporteBase):
         UserAppRole.objects.filter(user=self.user).update(role="viewer", permissions_list=P.ROLE_MAPPING["viewer"])
         for nombre in ("soporte", "soporte_crear_baja"):
             self.assertIn(self.client.get(reverse(f"seguimientos_oficios:{nombre}")).status_code, (302, 403), nombre)
+
+
+class EdicionDeDictamenesTests(SoporteBase):
+    def cambios(self, documento):
+        return documento.historial.filter(accion="editado").order_by("created_at").last().datos
+
+    def test_corregir_la_serie_de_un_equipo_deja_historial_y_no_toca_el_bien(self):
+        documento, dictamen = self.baja()
+        renglon = dictamen.equipos.get()
+        svc.editar_dictamen(dictamen, usuario=self.user, campos={"ticket": "1234"}, datos={}, equipos={
+            str(renglon.pk): {"equipo": "Laptop", "serie": "LT-01", "marca_modelo": "", "folio_inventario": "", "departamento": ""},
+        })
+        renglon.refresh_from_db()
+        self.assertEqual(renglon.serie, "LT-01")
+        datos = self.cambios(documento)
+        self.assertEqual(datos["cambios"]["Equipo 1: serie"], {"antes": "LT-1", "despues": "LT-01"})
+        documento.refresh_from_db()
+        self.assertEqual(documento.folio, f"DIB-STI-TM001-{documento.fecha:%y}")
+        self.laptop.refresh_from_db()
+        self.assertEqual((self.laptop.estado, self.laptop.identificador), ("baja", "LT-1"))
+
+    def test_sin_cambios_o_con_renglones_distintos_se_rechaza(self):
+        documento, dictamen = self.baja()
+        renglon = dictamen.equipos.get()
+        igual = {str(renglon.pk): {"equipo": "Laptop", "serie": "LT-1", "marca_modelo": "", "folio_inventario": "", "departamento": ""}}
+        with self.assertRaises(ValidationError):
+            svc.editar_dictamen(dictamen, usuario=self.user, campos={}, datos={}, equipos=igual)
+        with self.assertRaises(ValidationError):
+            svc.editar_dictamen(dictamen, usuario=self.user, campos={"ticket": "9"}, datos={}, equipos={**igual, "otro": {"equipo": "X"}})
+
+    def test_ya_firmado_exige_motivo_y_cancelado_no_se_edita(self):
+        documento, dictamen = self.baja()
+        renglon = dictamen.equipos.get()
+        fila = {str(renglon.pk): {"equipo": "Laptop", "serie": "NUEVA", "marca_modelo": "", "folio_inventario": "", "departamento": ""}}
+        Documento.objects.filter(pk=documento.pk).update(estado="entregado")
+        with self.assertRaises(ValidationError):
+            svc.editar_dictamen(dictamen, usuario=self.user, campos={}, datos={}, equipos=fila)
+        svc.editar_dictamen(dictamen, usuario=self.user, campos={}, datos={}, equipos=fila, motivo="Error de captura de la serie")
+        self.assertEqual(self.cambios(documento)["motivo"], "Error de captura de la serie")
+        Documento.objects.filter(pk=documento.pk).update(estado="cancelado")
+        with self.assertRaises(ValidationError):
+            svc.editar_dictamen(dictamen, usuario=self.user, campos={"ticket": "1"}, datos={}, equipos=fila, motivo="Motivo suficiente")
+
+    def test_corregir_alta_actualiza_asunto_y_busqueda(self):
+        documento, dictamen = svc.emitir_alta(
+            usuario=self.user, direccion=self.direccion, contraparte="Obras", ticket="5",
+            datos={"solicitud": "S", "justificacion": "J", "dictamen": "D"}, elaboro_nombre="T", elaboro_cargo="T",
+            autoriza_nombre="J", autoriza_cargo="D",
+        )
+        svc.editar_dictamen(dictamen, usuario=self.user, campos={"ticket": "77"}, datos={"solicitud": "Nueva solicitud", "justificacion": "J", "dictamen": "D"},
+                            equipos={}, contraparte="Tesorería")
+        documento.refresh_from_db()
+        dictamen.refresh_from_db()
+        self.assertEqual((dictamen.ticket, dictamen.datos["solicitud"], documento.contraparte), ("77", "Nueva solicitud", "Tesorería"))
+        self.assertIn("tesoreria", documento.busqueda)
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class VistaEditarDictamenTests(SoporteBase):
+    def test_formulario_y_guardado_de_una_baja(self):
+        documento, dictamen = self.baja()
+        renglon = dictamen.equipos.get()
+        url = reverse("seguimientos_oficios:soporte_editar", args=[documento.pk])
+        pagina = self.client.get(url)
+        self.assertEqual(pagina.status_code, 200)
+        self.assertContains(pagina, "Motivo de la corrección")
+        r = self.client.post(url, {
+            "direccion": self.direccion.pk, "ticket": "1234", "elaboro_cargo": "Técnico", "contraparte": "Tesorería",
+            "solicitante": "Ana", "diagnostico": "No enciende", "clasificacion": "no_reparable", "disposicion": "destruccion",
+            "autoriza_nombre": "Jefe", "autoriza_cargo": "Director", "motivo": "",
+            "eq-0-id": str(renglon.pk), "eq-0-equipo": "Laptop", "eq-0-serie": "LT-OK", "eq-0-departamento": "Innovación",
+        })
+        self.assertRedirects(r, reverse("seguimientos_oficios:documento_detail", args=[documento.pk]))
+        renglon.refresh_from_db()
+        self.assertEqual((renglon.serie, renglon.departamento), ("LT-OK", "Innovación"))
+        detalle = self.client.get(reverse("seguimientos_oficios:documento_detail", args=[documento.pk]))
+        self.assertContains(detalle, "Corregir")
+        self.assertContains(detalle, "LT-OK")
+
+    def test_sin_permiso_de_gestion_no_edita(self):
+        documento, _ = self.baja()
+        UserAppRole.objects.filter(user=self.user).update(role="viewer", permissions_list=P.ROLE_MAPPING["viewer"])
+        self.assertIn(self.client.get(reverse("seguimientos_oficios:soporte_editar", args=[documento.pk])).status_code, (302, 403))

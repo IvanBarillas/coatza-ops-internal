@@ -5,12 +5,14 @@ from django.core.paginator import Paginator
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..integracion import nombre_de_usuario, proteger_vista
-from ..models import ClaseDocumento
+from ..models import ClaseDocumento, Direccion, Documento
 from ..selectors import APP_SLUG, permitido
 from ..views import _query, _render
 from . import selectors as sel
-from .forms import AltaForm, BajaForm, DiagnosticoForm, leer_equipos
-from .services import CLASIFICACIONES, DISPOSICIONES, ETIQUETAS, RECOMENDACIONES, emitir_alta, emitir_baja, emitir_diagnostico
+from .forms import AltaForm, BajaForm, DiagnosticoForm, leer_equipos, leer_equipos_edicion
+from .services import (
+    CLASIFICACIONES, DISPOSICIONES, RECOMENDACIONES, edicion_exige_motivo, editar_dictamen, emitir_alta, emitir_baja, emitir_diagnostico,
+)
 
 TABS = (
     ("todos", "Todos", None),
@@ -37,6 +39,22 @@ def soporte_view(request):
         "query_sin_pagina": _query(request, tab=tab),
         "puede_gestionar": permitido(request, "can_manage_support"),
     })
+
+
+def _datos_diagnostico(d):
+    return {
+        "fecha_recibido": d["fecha_recibido"].isoformat(), "tipo_bien": d["tipo_bien"], "fallo": d["fallo"], "causa": d["causa"],
+        "solucion": d["solucion"], "observaciones": d["observaciones"], "recomendacion": d["recomendacion"],
+        "solicito": d["solicitante"],
+    }
+
+
+def _datos_baja(d):
+    return {"diagnostico": d["diagnostico"], "clasificacion": d["clasificacion"], "disposicion": d["disposicion"], "solicito": d["solicitante"]}
+
+
+def _datos_alta(d):
+    return {k: d[k] for k in ("solicitud", "justificacion", "dictamen")}
 
 
 def _contexto_form(request, form, clase, titulo, descripcion, equipos=None, un_equipo=False, errores_equipos=()):
@@ -86,12 +104,7 @@ def crear_diagnostico_view(request):
             try:
                 documento, _ = emitir_diagnostico(
                     **_base_kwargs(request, datos), solicitante=datos["solicitante"], equipo=(equipos or [{}])[0],
-                    datos={
-                        "fecha_recibido": datos["fecha_recibido"].isoformat(), "tipo_bien": datos["tipo_bien"],
-                        "fallo": datos["fallo"], "causa": datos["causa"], "solucion": datos["solucion"],
-                        "observaciones": datos["observaciones"], "recomendacion": datos["recomendacion"],
-                        "solicito": datos["solicitante"],
-                    },
+                    datos=_datos_diagnostico(datos),
                 )
             except ValidationError as error:
                 form.add_error(None, error)
@@ -119,10 +132,7 @@ def crear_baja_view(request):
                     **_base_kwargs(request, datos), contraparte=datos["contraparte"],
                     contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"], equipos=equipos,
                     autoriza_nombre=datos["autoriza_nombre"], autoriza_cargo=datos["autoriza_cargo"],
-                    datos={
-                        "diagnostico": datos["diagnostico"], "clasificacion": datos["clasificacion"],
-                        "disposicion": datos["disposicion"], "solicito": datos["solicitante"],
-                    },
+                    datos=_datos_baja(datos),
                 )
             except ValidationError as error:
                 form.add_error(None, error)
@@ -147,7 +157,7 @@ def crear_alta_view(request):
                 **_base_kwargs(request, datos), contraparte=datos["contraparte"],
                 contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"],
                 autoriza_nombre=datos["autoriza_nombre"], autoriza_cargo=datos["autoriza_cargo"],
-                datos={k: datos[k] for k in ("solicitud", "justificacion", "dictamen")},
+                datos=_datos_alta(datos),
             )
         except ValidationError as error:
             form.add_error(None, error)
@@ -168,3 +178,69 @@ def imprimir_view(request, pk):
         "recomendacion_actual": d.get("recomendacion"), "clasificacion_actual": d.get("clasificacion"),
         "disposicion_actual": d.get("disposicion"),
     })
+
+
+FORMULARIOS = {
+    ClaseDocumento.DIAGNOSTICO_TECNICO: (DiagnosticoForm, "diagnostico", _datos_diagnostico),
+    ClaseDocumento.DICTAMEN_BAJA: (BajaForm, "baja", _datos_baja),
+    ClaseDocumento.DICTAMEN_ALTA: (AltaForm, "alta", _datos_alta),
+}
+
+
+def _inicial(dictamen):
+    documento, d = dictamen.documento, dictamen.datos
+    inicial = {
+        "ticket": dictamen.ticket, "elaboro_cargo": dictamen.elaboro_cargo, "autoriza_nombre": dictamen.autoriza_nombre,
+        "autoriza_cargo": dictamen.autoriza_cargo, "direccion": documento.direccion_id,
+        "solicitante": d.get("solicito", documento.contraparte), "fecha_recibido": d.get("fecha_recibido"),
+        **{k: v for k, v in d.items() if k not in ("solicito", "fecha_recibido")},
+    }
+    if documento.clase == ClaseDocumento.DIAGNOSTICO_TECNICO:
+        inicial["solicitante"] = documento.contraparte
+    elif documento.contraparte_dependencia_uuid:
+        inicial["contraparte_dependencia"] = str(documento.contraparte_dependencia_uuid)
+    else:
+        inicial["contraparte"] = documento.contraparte
+    return inicial
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_manage_support")
+def editar_view(request, pk):
+    dictamen = get_object_or_404(sel.dictamenes_visibles(request, "can_manage_support"), documento_id=pk)
+    documento = dictamen.documento
+    formulario, clase_ctx, armar_datos = FORMULARIOS[documento.clase]
+    direcciones = Direccion.objects.filter(pk=documento.direccion_id)
+    form = formulario(request.POST or None, direcciones=direcciones, edicion=True, initial=_inicial(dictamen))
+    filas = [
+        {"id": str(r.pk), "equipo": r.equipo, "marca_modelo": r.marca_modelo, "serie": r.serie,
+         "folio_inventario": r.folio_inventario, "departamento": r.departamento, "bien": str(r.bien_id or "")}
+        for r in dictamen.equipos.all()
+    ]
+    errores = []
+    if request.method == "POST":
+        nuevos = leer_equipos_edicion(request.POST)
+        if nuevos:
+            filas = [{**f, **nuevos.get(f["id"], {})} for f in filas]
+        if form.is_valid():
+            datos = form.cleaned_data
+            try:
+                editar_dictamen(
+                    dictamen, usuario=request.user, motivo=datos.get("motivo", ""),
+                    campos={"ticket": datos["ticket"], "elaboro_cargo": datos["elaboro_cargo"],
+                            "autoriza_nombre": datos.get("autoriza_nombre", ""), "autoriza_cargo": datos.get("autoriza_cargo", "")},
+                    datos=armar_datos(datos), equipos=nuevos,
+                    contraparte=datos.get("solicitante") if documento.clase == ClaseDocumento.DIAGNOSTICO_TECNICO else datos.get("contraparte"),
+                    contraparte_dependencia_uuid=datos.get("contraparte_dependencia_uuid"),
+                )
+            except ValidationError as error:
+                form.add_error(None, error)
+            else:
+                messages.success(request, f"{documento.get_clase_display()} {documento.folio} corregido. Vuelve a imprimirlo si ya estaba impreso.")
+                return redirect("seguimientos_oficios:documento_detail", pk=documento.pk)
+    contexto = _contexto_form(request, form, clase_ctx, f"Corregir {documento.get_clase_display().lower()}", f"Folio {documento.folio}: el folio, la dirección y los bienes que ampara no cambian.", filas, documento.clase == ClaseDocumento.DIAGNOSTICO_TECNICO, errores)
+    contexto.update(
+        editando=True, documento=documento, sin_habilitar=False,
+        aviso_firmado=edicion_exige_motivo(documento) or documento.estado != Documento.Estado.GENERADO,
+    )
+    return _render(request, "soporte_form", contexto)
