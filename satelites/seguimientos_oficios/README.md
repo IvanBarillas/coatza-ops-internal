@@ -68,8 +68,11 @@ CDN). Abre en la página encontrada, resalta las palabras buscadas (sin distingu
 contador y botones para saltar entre coincidencias; funciona igual en todos los navegadores. Un original escaneado es
 solo imagen y no tiene texto que resaltar, así que el OCR conserva además una **copia con capa de texto**
 (`..._buscable.pdf`, junto al original) que usa solo el visor; la descarga y el archivo firmado siguen siendo el
-original intacto. Esa copia duplica aproximadamente el espacio de los PDF con OCR. Para generarla en adjuntos ya
-procesados: `python manage.py oficios_reprocesar_ocr --buscables`. La imagen de despliegue recolecta el static del
+original intacto. La copia se genera con `--skip-text`, que conserva las imágenes tal cual, y pesa casi lo mismo que el original (unos
+KB más por la capa de texto), así que un PDF con OCR ocupa el doble en disco (original + copia). Solo si alguna
+página ya traía texto digital se rehace con `--force-ocr`, que es más pesado. Para generar o aligerar las copias de
+adjuntos ya procesados: `python manage.py oficios_reprocesar_ocr --buscables` (rehace las que faltan o pesan más
+del doble que el original). La imagen de despliegue recolecta el static del
 satélite (`deploy/oficios/Containerfile`).
 
 **Alcance del OCR:** solo se procesan el **original** de los recibidos y el **documento firmado** de los enviados. La
