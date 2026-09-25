@@ -4,7 +4,7 @@ import uuid
 
 from django.db.models import Q
 
-from .integracion import dependencias_del_core
+from .integracion import dependencias_del_core, usuarios_con_acceso
 from .models import Categoria, ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
@@ -114,8 +114,8 @@ class CancelacionForm(forms.Form):
 class AdjuntoForm(forms.Form):
     rol = forms.CharField(required=False, widget=forms.HiddenInput)
     archivo = forms.FileField(
-        label="Archivo PDF",
-        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
+        label="Archivo (PDF o foto)",
+        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf,image/*", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
     )
 
 
@@ -250,14 +250,14 @@ class DocumentoEdicionForm(forms.Form):
 class GestorForm(forms.ModelForm):
     class Meta:
         model = Gestor
-        fields = ["nombre"]
+        fields = ["nombre", "usuario"]
 
     def __init__(self, *args, direccion=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.direccion = direccion or getattr(self.instance, "direccion", None)
-        self.fields["nombre"].widget.attrs.setdefault(
-            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
-        )
+        self.fields["usuario"].queryset = usuarios_con_acceso("seguimientos_oficios")
+        self.fields["usuario"].required = False
+        self.fields["nombre"].widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def clean_nombre(self):
         nombre = " ".join(self.cleaned_data["nombre"].split())
@@ -266,7 +266,11 @@ class GestorForm(forms.ModelForm):
             raise forms.ValidationError("Ya existe un gestor con ese nombre en esta dirección.")
         return nombre
 
-
+    def clean_usuario(self):
+        usuario = self.cleaned_data.get("usuario")
+        if usuario and Gestor.objects.filter(direccion=self.direccion, usuario=usuario).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Ese usuario ya está vinculado a otro gestor de esta dirección.")
+        return usuario
 
 class FiltroBusquedaForm(FiltroDocumentosForm):
     """Filtros de la vista de búsqueda: el texto manda; el resto acota (sentido, clase, dirección, fechas)."""
@@ -299,3 +303,18 @@ class CategoriaForm(forms.ModelForm):
         ):
             raise forms.ValidationError("Ya existe una categoría con ese nombre en esta dirección.")
         return nombre
+
+
+class GestorEntregaForm(forms.Form):
+    fecha_entrega = forms.DateField(
+        label="Fecha de entrega", required=False,
+        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
+    )
+    receptor = forms.CharField(
+        label="Quién recibió", max_length=200, required=False,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
+    )
+    archivo = forms.FileField(
+        label="Foto o PDF del acuse", required=False,
+        widget=forms.ClearableFileInput(attrs={"accept": "image/*,application/pdf", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
+    )

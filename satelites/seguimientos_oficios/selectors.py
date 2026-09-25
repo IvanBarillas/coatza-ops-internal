@@ -52,6 +52,13 @@ def documentos_seguimiento(request):
     ).select_related("direccion", "gestor")
 
 
+def documentos_de_gestor(request):
+    """Pendientes asignados al gestor vinculado al usuario; independiente del alcance por dependencia."""
+    return Documento.objects.filter(
+        is_deleted=False, sentido=Documento.Sentido.ENVIADO, gestor__usuario=request.user, estado__in=PENDIENTES,
+    ).select_related("direccion", "gestor")
+
+
 def documento_visible(request, pk):
     from django.http import Http404
 
@@ -61,6 +68,10 @@ def documento_visible(request, pk):
             return documento
     if permitido(request, "can_view_tracking"):
         documento = documentos_seguimiento(request).filter(pk=pk).first()
+        if documento:
+            return documento
+    if permitido(request, "can_view_own_pendings"):
+        documento = documentos_de_gestor(request).filter(pk=pk).first()
         if documento:
             return documento
     raise Http404("Documento no disponible.")

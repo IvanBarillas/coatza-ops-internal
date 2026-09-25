@@ -5,11 +5,14 @@ from . import views
 app_name = "seguimientos_oficios"
 
 urlpatterns = [
-    path("", views.documento_list_view, name="documento_list"),
+    path("documentos/", views.documento_list_view, name="documento_list"),
     path("buscar/", views.busqueda_view, name="busqueda"),
     path("<uuid:pk>/visor/<uuid:adjunto_pk>/", views.visor_view, name="visor"),
     path("<uuid:pk>/lector/<uuid:adjunto_pk>/", views.lector_pdf_view, name="lector"),
+    path("", views.inicio_view, name="inicio"),
     path("seguimiento/", views.seguimiento_view, name="seguimiento"),
+    path("gestor/", views.gestor_view, name="gestor"),
+    path("gestor/<uuid:pk>/entrega/", views.gestor_entrega_view, name="gestor_entrega"),
     path("nuevo/", views.documento_create_view, name="documento_create"),
     path("catalogos/", views.catalogos_view, name="catalogos"),
     path("catalogos/direcciones/nueva/", views.direccion_editar_view, name="direccion_crear"),
