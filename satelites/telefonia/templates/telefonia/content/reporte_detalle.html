@@ -40,19 +40,28 @@
             {{ comentario_form.texto }}
             <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Comentar</button>
         </form>
-        <form method="post" action="{% url 'telefonia:reporte_evidencia' reporte.pk %}" enctype="multipart/form-data" class="space-y-2 border-t border-gray-100 pt-4">
+        <form method="post" action="{% url 'telefonia:reporte_evidencia' reporte.pk %}" enctype="multipart/form-data" x-data="{ nombre: '' }" class="space-y-2 border-t border-gray-100 pt-4">
             {% csrf_token %}
-            <span class="block text-xs font-bold uppercase text-gray-500">Subir evidencia (opcional): foto o captura</span>
-            <div class="flex flex-wrap items-center gap-2">{{ evidencia_form.archivo }}{{ evidencia_form.tipo }}
-                <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Subir</button></div>
+            <span class="block text-xs font-bold uppercase text-gray-500">Subir evidencia (opcional)</span>
+            <div class="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <label class="flex min-h-11 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-xl border border-dashed border-gray-300 bg-gray-50/70 px-4 py-2.5 text-xs font-bold text-gray-600 transition hover:border-gray-950 hover:bg-white">
+                    <i data-lucide="camera" class="h-4 w-4 shrink-0 text-gray-400"></i>
+                    <span class="truncate" x-text="nombre || 'Elegir foto o captura…'"></span>
+                    <input type="file" name="archivo" id="id_archivo" required accept="image/jpeg,image/png,image/webp,application/pdf" class="sr-only" @change="nombre = $event.target.files[0] ? $event.target.files[0].name : ''">
+                </label>
+                {{ evidencia_form.tipo }}
+                <button type="submit" class="min-h-11 rounded-xl border border-gray-200 bg-white px-5 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Subir</button>
+            </div>
+            <p class="text-xs text-gray-400">JPG, PNG, WebP o PDF de hasta 15 MB. Puede ser una foto o la captura de una prueba de velocidad.</p>
         </form>
         {% if reporte.estatus == 'pendiente' %}
         <form method="post" action="{% url 'telefonia:reporte_atender' reporte.pk %}" class="space-y-2 border-t border-gray-100 pt-4">
             {% csrf_token %}
             <span class="block text-xs font-bold uppercase text-gray-500">Marcar como atendido (cuando el técnico de Telmex ya terminó)</span>
-            <div class="flex flex-wrap items-end gap-2">
-                <div>{{ atender_form.fecha }}</div><div class="min-w-0 flex-1">{{ atender_form.comentario }}</div>
-                <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Atendido</button>
+            <div class="grid grid-cols-1 gap-2 sm:grid-cols-[11rem_1fr_auto] sm:items-end">
+                <div><label for="id_fecha" class="mb-1 block text-xs text-gray-400">Fecha (opcional)</label>{{ atender_form.fecha }}</div>
+                <div><label for="id_comentario" class="mb-1 block text-xs text-gray-400">Comentario (opcional)</label>{{ atender_form.comentario }}</div>
+                <button type="submit" class="min-h-11 rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Atendido</button>
             </div>
             <p class="text-xs text-gray-400">Sin fecha se toma la de hoy.</p>
         </form>

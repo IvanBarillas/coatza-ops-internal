@@ -109,17 +109,21 @@ class ComentarioForm(forms.Form):
 
 
 class EvidenciaForm(forms.Form):
-    archivo = forms.FileField(label="Foto o captura", widget=forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp,application/pdf", "capture": "environment"}))
+    # Sin `capture`: en el celular ofrece la cámara y también la galería (p. ej. una captura de la prueba de velocidad).
+    archivo = forms.FileField(label="Foto o captura", widget=forms.ClearableFileInput(attrs={"accept": "image/jpeg,image/png,image/webp,application/pdf"}))
     tipo = forms.ChoiceField(label="Tipo", choices=Evidencia.Tipo.choices, initial=Evidencia.Tipo.FOTO)
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         _estilo(self, excluir=("archivo",))
+        self.fields["tipo"].widget.attrs["class"] = CLASE.replace("w-full", "w-full sm:w-56 sm:shrink-0")
 
 
 class AtenderForm(forms.Form):
     fecha = forms.DateField(label="Fecha de atención", required=False, widget=FECHA)
-    comentario = forms.CharField(label="Comentario", required=False, widget=forms.Textarea(attrs={"rows": 2}))
+    comentario = forms.CharField(
+        label="Comentario", required=False, max_length=500, widget=forms.TextInput(attrs={"placeholder": "Ej. Telmex ya validó el servicio"}),
+    )
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
