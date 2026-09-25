@@ -237,3 +237,18 @@ class VistaEditarDictamenTests(SoporteBase):
         documento, _ = self.baja()
         UserAppRole.objects.filter(user=self.user).update(role="viewer", permissions_list=P.ROLE_MAPPING["viewer"])
         self.assertIn(self.client.get(reverse("seguimientos_oficios:soporte_editar", args=[documento.pk])).status_code, (302, 403))
+
+
+class RegistroManualPorPermisoTests(SoporteBase):
+    def clases(self):
+        pagina = self.client.get(reverse("seguimientos_oficios:documento_create"))
+        return [v for v, _ in pagina.context["form"].fields["clase"].choices]
+
+    def test_solo_quien_gestiona_soporte_puede_registrar_diagnosticos_y_dictamenes(self):
+        UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
+        self.assertIn("dictamen_baja", self.clases())
+        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
+        clases = self.clases()
+        self.assertIn("oficio", clases)
+        for reservada in ("diagnostico_tecnico", "dictamen_alta", "dictamen_baja"):
+            self.assertNotIn(reservada, clases)

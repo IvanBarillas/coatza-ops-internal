@@ -94,7 +94,7 @@ def documento_create_view(request):
     direcciones = direcciones_visibles(request)
     form = DocumentoForm(
         request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request),
-        categorias=categorias_visibles(request),
+        categorias=categorias_visibles(request), puede_soporte=_permitido(request, "can_manage_support"),
     )
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data

@@ -64,8 +64,12 @@ class DocumentoForm(forms.ModelForm):
         }
         labels = {"direccion": "Dirección que registra"}
 
-    def __init__(self, *args, direcciones=None, gestores=None, categorias=None, **kwargs):
+    def __init__(self, *args, direcciones=None, gestores=None, categorias=None, puede_soporte=True, **kwargs):
         super().__init__(*args, **kwargs)
+        if not puede_soporte:
+            # Diagnósticos y dictámenes solo los registra quien tiene el permiso de soporte técnico.
+            reservadas = {ClaseDocumento.DIAGNOSTICO_TECNICO, ClaseDocumento.DICTAMEN_ALTA, ClaseDocumento.DICTAMEN_BAJA}
+            self.fields["clase"].choices = [(v, e) for v, e in self.fields["clase"].choices if v not in reservadas]
         self.fields["categoria"].queryset = categorias if categorias is not None else Categoria.objects.none()
         self.fields["categoria"].required = False
         self.fields["categoria"].empty_label = "Sin categoría"
