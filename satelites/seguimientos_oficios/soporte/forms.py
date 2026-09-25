@@ -3,6 +3,7 @@ from django.utils import timezone
 
 from ..forms import _agregar_contraparte, _resolver_contraparte
 from ..integracion import director_de_dependencia
+from ..models import Gestor
 from ..prestamos.forms import CLASE
 from .services import CLASIFICACIONES, DISPOSICIONES, RECOMENDACIONES
 
@@ -62,6 +63,13 @@ class SoporteBase(forms.Form):
     OCULTOS = ("direccion",)
     FIRMAS = ("elaboro_cargo", "autoriza_nombre", "autoriza_cargo")
 
+    def clean(self):
+        datos = super().clean()
+        direccion, gestor = datos.get("direccion"), datos.get("gestor")
+        if direccion and gestor and gestor.direccion_id != direccion.pk:
+            self.add_error("gestor", "El gestor no pertenece a la dirección.")
+        return datos
+
     @property
     def grupos(self):
         """Campos por bloque de la pantalla: datos, opciones (radios) y firmas; la dirección va aparte."""
@@ -72,10 +80,14 @@ class SoporteBase(forms.Form):
             "firmas": [c for c in campos if c.name in self.FIRMAS],
         }
 
-    def __init__(self, *args, direcciones, edicion=False, **kwargs):
+    def __init__(self, *args, direcciones, edicion=False, gestores=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.edicion = edicion
         self.fields["direccion"].queryset = direcciones
+        self.fields["gestor"] = forms.ModelChoiceField(
+            label="Gestor (quien lo lleva a la dependencia)", required=False, empty_label="Sin asignar",
+            queryset=gestores if gestores is not None else Gestor.objects.none(),
+        )
         self.mostrar_direccion = direcciones.count() != 1
         if not self.mostrar_direccion:
             self.fields["direccion"].initial = direcciones.first().pk

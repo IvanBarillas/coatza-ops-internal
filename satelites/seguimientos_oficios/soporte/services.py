@@ -3,7 +3,7 @@ from django.db import transaction
 from django.utils import timezone
 
 from ..models import Adjunto, Bien, ClaseDocumento, Dictamen, DictamenBien, Documento, HistorialBien, HistorialDocumento, PrestamoBien
-from ..services import MOTIVO_MINIMO, _historial, crear_documento
+from ..services import MOTIVO_MINIMO, _historial, _validar_gestor, crear_documento
 from ..prestamos import bitacora
 
 RECOMENDACIONES = (("mantenimiento", "Mantenimiento"), ("reasignacion", "Reasignación"), ("baja", "Baja"))
@@ -24,7 +24,7 @@ ETIQUETAS = dict(RECOMENDACIONES) | dict(CLASIFICACIONES) | dict(DISPOSICIONES)
 
 
 def _emitir(*, clase, usuario, direccion, contraparte, asunto, ticket, elaboro_nombre, elaboro_cargo, autoriza_nombre,
-            autoriza_cargo, datos, equipos, contraparte_dependencia_uuid=None, fecha=None):
+            autoriza_cargo, datos, equipos, contraparte_dependencia_uuid=None, fecha=None, gestor=None):
     """Crea el documento (folio automático), su contenido y los equipos que ampara."""
     if not direccion.soporte_habilitado:
         raise ValidationError("Esta dirección no tiene habilitado el soporte técnico.")
@@ -32,7 +32,7 @@ def _emitir(*, clase, usuario, direccion, contraparte, asunto, ticket, elaboro_n
     documento = crear_documento(
         usuario=usuario, direccion=direccion, sentido=Documento.Sentido.ENVIADO, clase=clase,
         contraparte=contraparte, contraparte_dependencia_uuid=contraparte_dependencia_uuid,
-        asunto=asunto[:300], fecha=fecha, folio_automatico=True,
+        asunto=asunto[:300], fecha=fecha, folio_automatico=True, gestor=gestor,
     )
     dictamen = Dictamen.objects.create(
         documento=documento, ticket=(ticket or "").strip(), elaboro_nombre=elaboro_nombre, elaboro_cargo=elaboro_cargo,
@@ -68,7 +68,7 @@ def _validar_equipos(equipos, minimo=1):
 
 @transaction.atomic
 def emitir_diagnostico(*, usuario, direccion, solicitante, ticket, equipo, datos, elaboro_nombre, elaboro_cargo,
-                       autoriza_nombre="", autoriza_cargo=""):
+                       autoriza_nombre="", autoriza_cargo="", gestor=None):
     _validar_equipos([equipo])
     if datos.get("recomendacion") not in dict(RECOMENDACIONES):
         raise ValidationError("Elija la recomendación sobre el bien.")
@@ -76,7 +76,7 @@ def emitir_diagnostico(*, usuario, direccion, solicitante, ticket, equipo, datos
         clase=ClaseDocumento.DIAGNOSTICO_TECNICO, usuario=usuario, direccion=direccion, contraparte=solicitante,
         asunto=asunto_de(ClaseDocumento.DIAGNOSTICO_TECNICO, solicitante, [equipo]), ticket=ticket, elaboro_nombre=elaboro_nombre,
         elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre, autoriza_cargo=autoriza_cargo, datos=datos,
-        equipos=[equipo],
+        equipos=[equipo], gestor=gestor,
     )
     if equipo.get("bien"):
         bitacora.registrar(equipo["bien"], HistorialBien.Accion.DIAGNOSTICO, usuario, {
@@ -88,7 +88,7 @@ def emitir_diagnostico(*, usuario, direccion, solicitante, ticket, equipo, datos
 
 @transaction.atomic
 def emitir_baja(*, usuario, direccion, contraparte, ticket, equipos, datos, elaboro_nombre, elaboro_cargo,
-                autoriza_nombre, autoriza_cargo, contraparte_dependencia_uuid=None):
+                autoriza_nombre, autoriza_cargo, contraparte_dependencia_uuid=None, gestor=None):
     """Dictamen de baja: los equipos del catálogo pasan a baja, con su bitácora."""
     _validar_equipos(equipos)
     if datos.get("clasificacion") not in dict(CLASIFICACIONES):
@@ -112,7 +112,7 @@ def emitir_baja(*, usuario, direccion, contraparte, ticket, equipos, datos, elab
         contraparte_dependencia_uuid=contraparte_dependencia_uuid,
         asunto=asunto_de(ClaseDocumento.DICTAMEN_BAJA, contraparte, equipos),
         ticket=ticket, elaboro_nombre=elaboro_nombre, elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre,
-        autoriza_cargo=autoriza_cargo, datos=datos, equipos=equipos,
+        autoriza_cargo=autoriza_cargo, datos=datos, equipos=equipos, gestor=gestor,
     )
     for pk in ids:
         bien = bloqueados[pk]
@@ -128,7 +128,7 @@ def emitir_baja(*, usuario, direccion, contraparte, ticket, equipos, datos, elab
 
 @transaction.atomic
 def emitir_alta(*, usuario, direccion, contraparte, ticket, datos, elaboro_nombre, elaboro_cargo, autoriza_nombre,
-                autoriza_cargo, contraparte_dependencia_uuid=None):
+                autoriza_cargo, contraparte_dependencia_uuid=None, gestor=None):
     """Dictamen de alta: solo documenta la solicitud; no crea el bien."""
     for campo, nombre in (("solicitud", "la solicitud"), ("justificacion", "la justificación"), ("dictamen", "el dictamen")):
         if not (datos.get(campo) or "").strip():
@@ -137,7 +137,7 @@ def emitir_alta(*, usuario, direccion, contraparte, ticket, datos, elaboro_nombr
         clase=ClaseDocumento.DICTAMEN_ALTA, usuario=usuario, direccion=direccion, contraparte=contraparte,
         contraparte_dependencia_uuid=contraparte_dependencia_uuid, asunto=asunto_de(ClaseDocumento.DICTAMEN_ALTA, contraparte, []),
         ticket=ticket, elaboro_nombre=elaboro_nombre, elaboro_cargo=elaboro_cargo, autoriza_nombre=autoriza_nombre,
-        autoriza_cargo=autoriza_cargo, datos=datos, equipos=[],
+        autoriza_cargo=autoriza_cargo, datos=datos, equipos=[], gestor=gestor,
     )
 
 
@@ -174,8 +174,12 @@ def _legible(valor):
     return ETIQUETAS.get(valor, valor)
 
 
+SIN_CAMBIO = object()
+
+
 @transaction.atomic
-def editar_dictamen(dictamen, *, usuario, campos, datos, equipos, contraparte=None, contraparte_dependencia_uuid=None, motivo=""):
+def editar_dictamen(dictamen, *, usuario, campos, datos, equipos, contraparte=None, contraparte_dependencia_uuid=None, motivo="",
+                    gestor=SIN_CAMBIO):
     """Corrige un diagnóstico o dictamen ya emitido y deja en el historial cada valor anterior y nuevo.
 
     No cambia el folio, la dirección, la clase ni qué bienes ampara (la baja ya movió su estado): para eso se cancela
@@ -233,6 +237,10 @@ def editar_dictamen(dictamen, *, usuario, campos, datos, equipos, contraparte=No
             nuevo = (nuevos[pk].get(campo) or "").strip()
             anotar(f"Equipo {indice}: {ETIQUETAS_EQUIPO[campo]}", getattr(renglon, campo), nuevo)
             setattr(renglon, campo, nuevo)
+    if gestor is not SIN_CAMBIO and gestor != documento.gestor:
+        _validar_gestor(gestor, documento.direccion, documento.sentido, documento.gestor)
+        anotar("Gestor", documento.gestor.nombre if documento.gestor else "", gestor.nombre if gestor else "")
+        documento.gestor = gestor
     if not cambios:
         raise ValidationError("No hay cambios que guardar.")
     exigir_motivo_de_edicion(documento, motivo)
