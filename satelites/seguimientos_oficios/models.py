@@ -28,6 +28,7 @@ class ClaseDocumento(models.TextChoices):
     DIAGNOSTICO_TECNICO = "diagnostico_tecnico", "Diagnóstico técnico"
     DICTAMEN_ALTA = "dictamen_alta", "Dictamen de alta"
     DICTAMEN_BAJA = "dictamen_baja", "Dictamen de baja"
+    RESGUARDO = "resguardo", "Resguardo de equipos"
     COMUNICADO = "comunicado", "Comunicado"
     OTRO = "otro", "Otro"
 
@@ -538,6 +539,7 @@ class HistorialBien(models.Model):
         LIBERADO = "liberado", "Vale cancelado"
         DIAGNOSTICO = "diagnostico", "Diagnóstico técnico"
         DICTAMEN = "dictamen", "Dictamen de baja"
+        RESGUARDO = "resguardo", "Resguardo"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     bien = models.ForeignKey(Bien, on_delete=models.PROTECT, related_name="historial")
@@ -586,6 +588,8 @@ class DictamenBien(models.Model):
     serie = models.CharField(max_length=120, blank=True)
     folio_inventario = models.CharField(max_length=60, blank=True)
     departamento = models.CharField(max_length=150, blank=True)
+    tipo = models.CharField(max_length=20, blank=True)
+    info_tecnica = models.TextField(blank=True)
 
     class Meta:
         db_table = "oficios_dictamen_bien"

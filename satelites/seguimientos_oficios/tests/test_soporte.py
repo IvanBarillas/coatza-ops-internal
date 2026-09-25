@@ -5,6 +5,8 @@ from django.urls import reverse
 from apps.security.models import UserAppRole
 from satelites.seguimientos_oficios.models import Bien, Dictamen, Direccion, Documento, HistorialBien, Nomenclatura
 from satelites.seguimientos_oficios.permissions import SeguimientosOficiosPermissions as P
+import datetime
+
 from satelites.seguimientos_oficios.soporte import services as svc
 
 from .base import BaseAdjuntos
@@ -15,7 +17,7 @@ class SoporteBase(BaseAdjuntos):
         super().setUp()
         Direccion.objects.filter(pk=self.direccion.pk).update(soporte_habilitado=True)
         self.direccion.refresh_from_db()
-        for clase, prefijo in (("diagnostico_tecnico", "DT"), ("dictamen_baja", "DIB"), ("dictamen_alta", "DIA")):
+        for clase, prefijo in (("diagnostico_tecnico", "DT"), ("dictamen_baja", "DIB"), ("dictamen_alta", "DIA"), ("resguardo", "RES")):
             Nomenclatura.objects.create(direccion=self.direccion, clase=clase, plantilla=prefijo + "-STI-TM{n:03d}-{anio2}")
         UserAppRole.objects.filter(user=self.user).update(role="soporte", permissions_list=P.ROLE_MAPPING["soporte"])
         self.laptop = Bien.objects.create(direccion=self.direccion, nombre="Laptop", identificador="LT-1", marca_modelo="Dell 5420")
@@ -250,7 +252,7 @@ class RegistroManualPorPermisoTests(SoporteBase):
         UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
         clases = self.clases()
         self.assertIn("oficio", clases)
-        for reservada in ("diagnostico_tecnico", "dictamen_alta", "dictamen_baja"):
+        for reservada in ("diagnostico_tecnico", "dictamen_alta", "dictamen_baja", "resguardo"):
             self.assertNotIn(reservada, clases)
 
 
@@ -298,3 +300,105 @@ class GestorEnSoporteTests(SoporteBase):
         documento.refresh_from_db()
         self.assertEqual(documento.gestor, nuevo)
         self.assertEqual(documento.historial.filter(accion="editado").order_by("created_at").last().datos["cambios"]["Gestor"], {"antes": "", "despues": "Nuevo Gestor"})
+
+
+def componentes(**por_tipo):
+    """Los cuatro renglones del resguardo; `por_tipo` da los datos de los que sí se entregan."""
+    return [
+        {"tipo": t, "equipo": n, "serie": "", "marca_modelo": "", "folio_inventario": "", "departamento": "", "info_tecnica": "",
+         **por_tipo.get(t, {})}
+        for t, n in svc.COMPONENTES
+    ]
+
+
+class ResguardoTests(SoporteBase):
+    def resguardo(self, equipos=None, **extra):
+        return svc.emitir_resguardo(
+            usuario=self.user, direccion=self.direccion, contraparte="Tesorería", ticket="", fecha=datetime.date(2026, 7, 21),
+            datos={"empleado": "Ana Pérez", "fecha_entrega": "2026-07-21"},
+            equipos=equipos or componentes(equipo={"serie": "PC-1", "marca_modelo": "Dell 3020", "info_tecnica": "i5, 16 GB"},
+                                           monitor={"serie": "MON-1"}),
+            elaboro_nombre="Técnico", elaboro_cargo="Técnico de Soporte en TI", autoriza_nombre="Jefe", autoriza_cargo="Director", **extra,
+        )
+
+    def test_emite_con_folio_cuatro_renglones_y_fecha_de_entrega(self):
+        documento, dictamen = self.resguardo()
+        self.assertEqual((documento.clase, documento.fecha), ("resguardo", datetime.date(2026, 7, 21)))
+        self.assertTrue(documento.folio.startswith("RES-STI-TM001-"))
+        self.assertEqual([e.tipo for e in dictamen.equipos.all()], ["equipo", "monitor", "teclado", "raton"])
+        self.assertEqual(dictamen.equipos.get(tipo="equipo").info_tecnica, "i5, 16 GB")
+        self.assertIn("Ana Pérez", documento.asunto)
+
+    def test_los_componentes_del_catalogo_dejan_bitacora_sin_cambiar_su_estado(self):
+        self.resguardo(componentes(equipo={"bien": self.laptop, "serie": "LT-1"}))
+        entrada = self.laptop.historial.get(accion="resguardo")
+        self.assertEqual((entrada.datos["empleado"], entrada.datos["departamento"], entrada.datos["componente"]), ("Ana Pérez", "Tesorería", "Equipo"))
+        self.laptop.refresh_from_db()
+        self.assertEqual(self.laptop.estado, "disponible")
+
+    def test_validaciones(self):
+        with self.assertRaises(ValidationError):
+            self.resguardo(componentes())  # sin serie ni marca del equipo
+        with self.assertRaises(ValidationError):
+            self.resguardo(componentes(equipo={"serie": "X"})[:3])  # faltan componentes
+        with self.assertRaises(ValidationError):
+            svc.emitir_resguardo(
+                usuario=self.user, direccion=self.direccion, contraparte="T", ticket="", fecha=datetime.date(2026, 7, 21),
+                datos={"empleado": " "}, equipos=componentes(equipo={"serie": "X"}), elaboro_nombre="T", elaboro_cargo="T",
+                autoriza_nombre="J", autoriza_cargo="D",
+            )
+        self.laptop.estado = "baja"
+        self.laptop.save()
+        with self.assertRaises(ValidationError):
+            self.resguardo(componentes(equipo={"bien": self.laptop, "serie": "LT-1"}))
+
+    def test_corregir_serie_y_fecha_de_entrega(self):
+        documento, dictamen = self.resguardo()
+        filas = {str(e.pk): {"equipo": e.equipo, "serie": e.serie, "marca_modelo": e.marca_modelo, "folio_inventario": "", "departamento": "",
+                             "info_tecnica": e.info_tecnica} for e in dictamen.equipos.all()}
+        pc = str(dictamen.equipos.get(tipo="equipo").pk)
+        filas[pc]["serie"] = "PC-OK"
+        svc.editar_dictamen(dictamen, usuario=self.user, campos={}, equipos=filas,
+                            datos={"empleado": "Ana Pérez", "fecha_entrega": "2026-07-22"}, contraparte="Tesorería")
+        documento.refresh_from_db()
+        self.assertEqual(documento.fecha, datetime.date(2026, 7, 22))
+        self.assertEqual(dictamen.equipos.get(tipo="equipo").serie, "PC-OK")
+        with self.assertRaises(ValidationError):
+            svc.editar_dictamen(dictamen, usuario=self.user, campos={}, equipos=filas, contraparte="Tesorería",
+                                datos={"empleado": "Ana Pérez", "fecha_entrega": "2025-12-31"})
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class VistaResguardoTests(SoporteBase):
+    def test_formulario_creacion_e_impresion(self):
+        url = reverse("seguimientos_oficios:soporte_crear_resguardo")
+        pagina = self.client.get(url)
+        self.assertEqual(pagina.status_code, 200)
+        self.assertContains(pagina, "Empleado a quien se le asigna el equipo")
+        self.assertContains(pagina, "Nuevo resguardo")  # menú lateral
+        r = self.client.post(url, {
+            "direccion": self.direccion.pk, "elaboro_cargo": "Técnico", "contraparte": "Tesorería", "fecha_entrega": "2026-07-21",
+            "empleado": "Ana Pérez", "autoriza_nombre": "Jefe", "autoriza_cargo": "Director", "ticket": "",
+            "eq-0-serie": "PC-1", "eq-0-marca_modelo": "Dell", "eq-0-info_tecnica": "i5", "eq-1-serie": "MON-1",
+            "eq-0-bien": str(self.laptop.pk),
+        })
+        dictamen = Dictamen.objects.get()
+        self.assertRedirects(r, reverse("seguimientos_oficios:documento_detail", args=[dictamen.documento_id]))
+        impreso = self.client.get(reverse("seguimientos_oficios:soporte_imprimir", args=[dictamen.documento_id]))
+        for texto in ("Resguardo de equipos de cómputo", "Ana Pérez", "PC-1", "Información del monitor", "Anexo fotográfico", "21/07/2026"):
+            self.assertContains(impreso, texto)
+        self.assertEqual(self.laptop.historial.filter(accion="resguardo").count(), 1)
+        edicion = self.client.get(reverse("seguimientos_oficios:soporte_editar", args=[dictamen.documento_id]))
+        self.assertEqual(edicion.status_code, 200)
+
+    def test_sin_empleado_no_emite_y_conserva_lo_capturado(self):
+        r = self.client.post(reverse("seguimientos_oficios:soporte_crear_resguardo"), {
+            "direccion": self.direccion.pk, "elaboro_cargo": "T", "contraparte": "Tesorería", "fecha_entrega": "2026-07-21",
+            "autoriza_nombre": "J", "autoriza_cargo": "D", "eq-0-serie": "PC-9",
+        })
+        self.assertEqual(r.status_code, 200)
+        self.assertFalse(Dictamen.objects.exists())
+        self.assertContains(r, "PC-9")

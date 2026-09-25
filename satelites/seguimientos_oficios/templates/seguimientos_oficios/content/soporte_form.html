@@ -10,7 +10,8 @@
     {{ equipos|json_script:"soporte-equipos" }}
     <form method="post" class="space-y-5 rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm sm:p-6"
           x-data="{ filas: JSON.parse(document.getElementById('soporte-equipos').textContent), catalogo: JSON.parse(document.getElementById('soporte-catalogo').textContent),
-                    elegir(f) { const b = this.catalogo.find(c => c.id === f.bien); if (b) { f.equipo = b.equipo; f.marca_modelo = b.marca_modelo; f.serie = b.serie; f.folio_inventario = b.folio_inventario; f.departamento = b.departamento } } }">
+                    elegir(f) { const b = this.catalogo.find(c => c.id === f.bien); if (b) { f.equipo = b.equipo; f.marca_modelo = b.marca_modelo; f.serie = b.serie; f.folio_inventario = b.folio_inventario; f.departamento = b.departamento } },
+                    elegirComp(f) { const b = this.catalogo.find(c => c.id === f.bien); if (b) { f.marca_modelo = b.marca_modelo; f.serie = b.serie; f.folio_inventario = b.folio_inventario } } }">
         {% csrf_token %}
         {% for e in form.non_field_errors %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}
         {% for e in errores_equipos %}<p class="text-xs text-red-600">{{ e }}</p>{% endfor %}
@@ -26,7 +27,28 @@
             {% endfor %}
         </div>
 
-        {% if clase != "alta" %}
+        {% if clase == "resguardo" %}
+        <template x-for="(f, i) in filas" :key="i">
+            <fieldset class="space-y-2 rounded-xl border border-gray-200 p-4">
+                <legend class="px-2 text-xs font-black uppercase text-gray-700" x-text="'Información del ' + f.equipo.toLowerCase()"></legend>
+                {% if editando %}<input type="hidden" :name="`eq-${i}-id`" :value="f.id">{% endif %}
+                <input type="hidden" :name="`eq-${i}-equipo`" :value="f.equipo">
+                <input type="hidden" :name="`eq-${i}-folio_inventario`" :value="f.folio_inventario">
+                {% if catalogo and not editando %}
+                <select :name="`eq-${i}-bien`" x-model="f.bien" @change="elegirComp(f)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700" aria-label="Bien del catálogo">
+                    <option value="">No está en el catálogo (escribir datos)</option>
+                    <template x-for="c in catalogo" :key="c.id"><option :value="c.id" x-text="c.texto" :selected="c.id === f.bien"></option></template>
+                </select>
+                {% endif %}
+                <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                    <input type="text" :name="`eq-${i}-serie`" x-model="f.serie" placeholder="Serie" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
+                    <input type="text" :name="`eq-${i}-marca_modelo`" x-model="f.marca_modelo" placeholder="Marca y modelo" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
+                    <textarea :name="`eq-${i}-info_tecnica`" x-model="f.info_tecnica" rows="2" placeholder="Información técnica (procesador, memoria, disco, sistema…)" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700 sm:col-span-2"></textarea>
+                </div>
+            </fieldset>
+        </template>
+        {% endif %}
+        {% if clase != "alta" and clase != "resguardo" %}
         <fieldset class="space-y-3 rounded-xl border border-gray-200 p-4">
             <legend class="px-2 text-xs font-black uppercase text-gray-700">{% if un_equipo %}Equipo{% else %}Equipos{% endif %}</legend>
             <template x-for="(f, i) in filas" :key="i">

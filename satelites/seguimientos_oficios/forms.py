@@ -68,7 +68,7 @@ class DocumentoForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         if not puede_soporte:
             # Diagnósticos y dictámenes solo los registra quien tiene el permiso de soporte técnico.
-            reservadas = {ClaseDocumento.DIAGNOSTICO_TECNICO, ClaseDocumento.DICTAMEN_ALTA, ClaseDocumento.DICTAMEN_BAJA}
+            reservadas = {ClaseDocumento.DIAGNOSTICO_TECNICO, ClaseDocumento.DICTAMEN_ALTA, ClaseDocumento.DICTAMEN_BAJA, ClaseDocumento.RESGUARDO}
             self.fields["clase"].choices = [(v, e) for v, e in self.fields["clase"].choices if v not in reservadas]
         self.fields["categoria"].queryset = categorias if categorias is not None else Categoria.objects.none()
         self.fields["categoria"].required = False

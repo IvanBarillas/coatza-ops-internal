@@ -3,7 +3,7 @@
 {% block titulo %}{{ documento.get_clase_display }} {{ documento.folio }}{% endblock %}
 
 {% block cab_der %}
-{% if clase == "diagnostico_tecnico" or clase == "dictamen_baja" %}
+{% if clase == "diagnostico_tecnico" or clase == "dictamen_baja" or clase == "resguardo" %}
 <div class="cab-der cab-caja"><strong>MUNICIPIO DE COATZACOALCOS, VERACRUZ</strong><br>{{ documento.direccion_nombre }}</div>
 {% else %}
 <div class="cab-der">{{ documento.folio }}</div>
@@ -38,6 +38,42 @@
     <div class="firma"><div class="banda">Solicitó</div><div class="espacio">{{ d.solicito }}</div></div>
     <div class="firma"><div class="banda">Realizó</div><div class="espacio">{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div></div>
 </div>
+
+{% elif clase == "resguardo" %}
+<div class="compacto">
+<h1 style="margin-bottom:8px">Resguardo de equipos de cómputo</h1>
+<table class="t">
+    <colgroup><col style="width:22%"><col style="width:28%"><col style="width:22%"><col style="width:28%"></colgroup>
+    <tr><th class="g">Fecha de entrega:</th><td>{{ documento.fecha|date:"d/m/Y" }}</td><th class="g">No. de resguardo</th><td>{{ documento.folio }}</td></tr>
+    <tr><th class="g">Departamento</th><td colspan="3">{{ documento.contraparte }}</td></tr>
+</table>
+{% for nombre, c in componentes %}
+<table class="t">
+    <colgroup><col style="width:30%"><col style="width:30%"><col style="width:40%"></colgroup>
+    <tr><th class="banda" colspan="3">Información del {{ nombre|lower }}</th></tr>
+    <tr><th class="gris">Serie</th><th class="gris">Marca/Modelo</th><th class="gris">Información técnica</th></tr>
+    <tr><td class="texto" style="height:1cm">{{ c.serie }}</td><td class="texto" style="height:1cm">{{ c.marca_modelo }}</td><td class="texto" style="height:1cm">{{ c.info_tecnica }}</td></tr>
+</table>
+{% endfor %}
+<table class="t">
+    <colgroup><col style="width:65%"><col style="width:35%"></colgroup>
+    <tr><th class="banda" colspan="2">Nombre del empleado a quien se le asigna el equipo</th></tr>
+    <tr><th class="gris">Nombre</th><th class="gris">Firma</th></tr>
+    <tr><td style="height:1cm">{{ d.empleado }}</td><td></td></tr>
+</table>
+<table class="t">
+    <tr><th class="banda">Observaciones</th></tr>
+    <tr><td>Es responsabilidad estricta del empleado salvaguardar el bien que le ha sido encomendado, debiendo destinarlo única y exclusivamente al desempeño de sus funciones laborales. Ante cualquier eventualidad o desperfecto que presente el equipo, se deberá notificar de manera inmediata al área de soporte técnico adscrita a esta dirección.</td></tr>
+</table>
+<div class="lineas">
+    <div class="firma"><div class="banda">Entrega equipo</div><div class="espacio">{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div></div>
+    <div class="firma"><div class="banda">Recibe equipo</div><div class="espacio">{{ d.empleado }}</div></div>
+</div>
+<div class="lineas" style="justify-content:center">
+    <div class="firma" style="flex:0 0 50%"><div class="banda">Autorización</div><div class="espacio">{{ dictamen.autoriza_nombre }}<br>{{ dictamen.autoriza_cargo }}</div></div>
+</div>
+</div>
+<div class="salto"><h1 style="margin-top:0">Anexo fotográfico</h1></div>
 
 {% elif clase == "dictamen_baja" %}
 <h1>Dictamen técnico del estado físico y funcionamiento de los bienes muebles dispuestos para baja del inventario del H. Ayuntamiento de Coatzacoalcos, Veracruz.</h1>
