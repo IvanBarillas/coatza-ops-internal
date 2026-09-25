@@ -31,16 +31,23 @@
 {% endif %}
 
 <form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true"
-      class="mb-4 grid grid-cols-1 gap-3 rounded-2xl border border-gray-200/80 bg-white shadow-sm p-4 sm:grid-cols-2 lg:grid-cols-4">
+      x-data="{ abierto: {{ filtros_activos|yesno:'true,false' }} }"
+      class="mb-4 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm">
     {% if tab_explicita %}<input type="hidden" name="tab" value="{{ tab_explicita }}">{% endif %}
-    <div class="sm:col-span-2 lg:col-span-4">{{ filtro.q }}</div>
-    <div>{{ filtro.sentido }}</div><div>{{ filtro.clase }}</div><div>{{ filtro.estado }}</div><div>{{ filtro.gestor }}</div>
-    {% if varias_direcciones %}<div>{{ filtro.direccion }}</div>{% endif %}
-    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ filtro.desde.id_for_label }}">Desde</label>{{ filtro.desde }}</div>
-    <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ filtro.hasta.id_for_label }}">Hasta</label>{{ filtro.hasta }}</div>
-    <div class="flex items-end gap-2 sm:col-span-2">
+    <div class="flex flex-wrap items-center gap-2">
+        <div class="min-w-0 flex-1">{{ filtro.q }}</div>
         <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
-        {% if filtros_activos %}<a href="{{ lista_url }}?{{ query_limpiar }}" hx-get="{{ lista_url }}?{{ query_limpiar }}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Limpiar</a>{% endif %}
+        <button type="button" @click="abierto = !abierto" :aria-expanded="abierto"
+                class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">
+            <i data-lucide="sliders-horizontal" class="h-4 w-4"></i>Filtros
+        </button>
+        {% if filtros_activos %}<a href="{{ lista_url }}?{{ query_limpiar }}" hx-get="{{ lista_url }}?{{ query_limpiar }}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600">Limpiar</a>{% endif %}
+    </div>
+    <div x-show="abierto" x-cloak class="mt-3 grid grid-cols-1 gap-3 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
+        <div>{{ filtro.sentido }}</div><div>{{ filtro.clase }}</div><div>{{ filtro.estado }}</div><div>{{ filtro.gestor }}</div>
+        {% if varias_direcciones %}<div>{{ filtro.direccion }}</div>{% endif %}
+        <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ filtro.desde.id_for_label }}">Desde</label>{{ filtro.desde }}</div>
+        <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ filtro.hasta.id_for_label }}">Hasta</label>{{ filtro.hasta }}</div>
     </div>
 </form>
 
