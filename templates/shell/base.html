@@ -88,22 +88,69 @@
             background-color: rgb(255 255 255 / 0.1) !important;
             color: #ffffff !important;
         }
-        /* Sidebar contextual contraíble: solo iconos. Los elementos marcados con
-           .ax-sb-hide (cabeceras, tarjetas, textos) se ocultan. En los enlaces, el
-           texto suelto se oculta con font-size:0 y los <span> con display:none; los
-           iconos conservan tamaño por las clases h-*/w-*. */
-        #module-sidebar { transition: width .2s ease; }
+        /* Sidebar contextual contraíble: solo iconos, con transición.
+           - El ancho se anima con una curva suave (--ax-sb-ease).
+           - Los elementos .ax-sb-hide (cabeceras, tarjetas, textos) se pliegan: alto,
+             margen, relleno y opacidad van a 0. Animar height:auto exige
+             interpolate-size (Chromium/Safari); sin él (Firefox) el plegado es
+             instantáneo pero el resto sigue animado.
+           - En los enlaces el texto (suelto o en <span> con su propio text-xs) se
+             encoge a font-size:0 y se desvanece; los iconos conservan tamaño por
+             sus clases de tamaño (h-4, w-4). */
+        :root {
+            interpolate-size: allow-keywords;
+            --ax-sb-ease: cubic-bezier(.4, 0, .2, 1);
+            --ax-sb-time: .4s;
+        }
+        #module-sidebar { transition: width var(--ax-sb-time) var(--ax-sb-ease); }
         html[data-module-sidebar="collapsed"] #module-sidebar { width: 5.5rem; }
-        html[data-module-sidebar="collapsed"] #module-sidebar .ax-sb-hide { display: none !important; }
+
+        #module-sidebar .ax-sb-hide {
+            overflow: hidden;
+            height: auto;
+            opacity: 1;
+            visibility: visible;
+            transition: height var(--ax-sb-time) var(--ax-sb-ease), opacity .25s ease .1s,
+                        padding var(--ax-sb-time) var(--ax-sb-ease), margin var(--ax-sb-time) var(--ax-sb-ease),
+                        border-width var(--ax-sb-time) var(--ax-sb-ease), visibility 0s;
+        }
+        html[data-module-sidebar="collapsed"] #module-sidebar .ax-sb-hide {
+            height: 0;
+            opacity: 0;
+            padding-block: 0;
+            margin-block: 0;
+            border-width: 0;
+            visibility: hidden;
+            transition: height var(--ax-sb-time) var(--ax-sb-ease), opacity .2s ease,
+                        padding var(--ax-sb-time) var(--ax-sb-ease), margin var(--ax-sb-time) var(--ax-sb-ease),
+                        border-width var(--ax-sb-time) var(--ax-sb-ease), visibility 0s var(--ax-sb-time);
+        }
+
+        #module-sidebar a {
+            transition: color .15s, background-color .15s, border-color .15s,
+                        font-size var(--ax-sb-time) var(--ax-sb-ease), gap var(--ax-sb-time) var(--ax-sb-ease);
+        }
+        #module-sidebar a span {
+            transition: font-size var(--ax-sb-time) var(--ax-sb-ease), opacity .25s ease;
+        }
         html[data-module-sidebar="collapsed"] #module-sidebar a {
             font-size: 0;
             gap: 0;
             justify-content: center;
+            /* justify-content no se interpola: se aplica al final para que el icono no salte al inicio. */
+            transition: color .15s, background-color .15s, border-color .15s,
+                        font-size var(--ax-sb-time) var(--ax-sb-ease), gap var(--ax-sb-time) var(--ax-sb-ease),
+                        justify-content 0s calc(var(--ax-sb-time) * .75) allow-discrete;
         }
-        /* Muchos <span> traen su propio text-xs y no heredan el font-size:0. */
-        html[data-module-sidebar="collapsed"] #module-sidebar a span { display: none; }
+        html[data-module-sidebar="collapsed"] #module-sidebar a span {
+            font-size: 0;
+            opacity: 0;
+        }
+        [data-axentra-sidebar-toggle] svg { transition: transform var(--ax-sb-time) var(--ax-sb-ease); }
         html[data-module-sidebar="collapsed"] [data-axentra-sidebar-toggle] svg { transform: rotate(180deg); }
-        @media (prefers-reduced-motion: reduce) { #module-sidebar { transition: none; } }
+        @media (prefers-reduced-motion: reduce) {
+            #module-sidebar, #module-sidebar *, [data-axentra-sidebar-toggle] svg { transition: none !important; }
+        }
         .animate-pop-up { animation: popUp .16s ease-out; transform-origin: var(--modules-x, 37.5vw) bottom; }
         @keyframes popUp {
             from { opacity: 0; transform: translateY(10px) scale(.96); }

@@ -73,3 +73,18 @@ class CollapsibleModuleSidebarTests(SimpleTestCase):
 
         shared = get_template("shell/_module_sidebar.html").template.source
         self.assertIn("shell/_module_sidebar_toggle.html", shared)
+
+    def test_shell_style_comments_are_balanced(self):
+        """Un `*/` dentro de un comentario CSS (p. ej. en `h-*/w-*`) lo cierra antes de
+        tiempo y el navegador descarta en silencio la regla siguiente: la transicion
+        del sidebar no corria por eso."""
+        import re
+
+        source = get_template("shell/base.html").template.source
+        blocks = re.findall(r"<style>(.*?)</style>", source, re.S)
+        self.assertTrue(blocks)
+
+        for block in blocks:
+            stripped = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
+            self.assertNotIn("*/", stripped)
+            self.assertNotIn("/*", stripped)
