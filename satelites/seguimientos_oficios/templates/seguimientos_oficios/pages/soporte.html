@@ -1,0 +1,4 @@
+{% extends "shell/workbench.html" %}
+{% block title %}Soporte técnico | {{ tenant.app_name }}{% endblock %}
+{% block module_sidebar %}{% include "seguimientos_oficios/contextual/oficios_sidebar.html" %}{% endblock %}
+{% block page_content %}{% include "seguimientos_oficios/content/soporte.html" %}{% endblock %}

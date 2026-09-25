@@ -14,8 +14,8 @@ from ..models import Bien, PrestamoBien
 from ..selectors import APP_SLUG, gestores_asignables, permitido
 from ..views import _query, _render
 from . import selectors as sel
-from .forms import BienForm, DevolucionForm, ValeForm
-from .services import crear_vale, foto_bien, registrar_alta_bien, registrar_cambios_bien, registrar_devolucion
+from .forms import BienForm, DevolucionForm, ValeEdicionForm, ValeForm
+from .services import crear_vale, editar_vale, foto_bien, registrar_alta_bien, registrar_cambios_bien, registrar_devolucion
 
 GRUPOS_PRESTAMOS = {
     "abiertos": ("Abiertos", lambda p: p.situacion in ("vigente", "por_vencer", "vencido")),
@@ -103,9 +103,37 @@ def vale_crear_view(request):
 @proteger_vista(APP_SLUG, "can_view_loans")
 def vale_imprimir_view(request, pk):
     prestamo = get_object_or_404(sel.prestamos_visibles(request), documento_id=pk)
+    bienes = [r.bien for r in prestamo.renglones.select_related("bien")]
     return render(request, "seguimientos_oficios/vale_imprimir.html", {
-        "prestamo": prestamo, "documento": prestamo.documento,
-        "bienes": [r.bien for r in prestamo.renglones.select_related("bien")],
+        "prestamo": prestamo, "documento": prestamo.documento, "bienes": bienes,
+        "relleno": range(max(0, 9 - len(bienes))),
+    })
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_manage_loans")
+def vale_editar_view(request, pk):
+    from ..soporte.services import edicion_exige_motivo
+
+    prestamo = get_object_or_404(sel.prestamos_visibles(request, "can_manage_loans"), documento_id=pk)
+    documento = prestamo.documento
+    form = ValeEdicionForm(request.POST or None, prestamo=prestamo)
+    if request.method == "POST" and form.is_valid():
+        datos = form.cleaned_data
+        try:
+            editar_vale(
+                prestamo, usuario=request.user, fecha_entrega=datos["fecha_entrega"], fecha_limite=datos["fecha_limite"],
+                observaciones=datos["observaciones"], contraparte=datos["contraparte"],
+                contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"], motivo=datos["motivo"],
+            )
+        except ValidationError as error:
+            form.add_error(None, error)
+        else:
+            messages.success(request, f"Vale {documento.folio} corregido. Vuelve a imprimirlo si ya estaba impreso.")
+            return redirect("seguimientos_oficios:documento_detail", pk=documento.pk)
+    return _render(request, "vale_editar", {
+        "form": form, "prestamo": prestamo, "documento": documento, "area_actual": "prestamos",
+        "aviso_firmado": edicion_exige_motivo(documento),
     })
 
 

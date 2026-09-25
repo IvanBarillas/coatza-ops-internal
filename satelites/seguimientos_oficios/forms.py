@@ -64,8 +64,12 @@ class DocumentoForm(forms.ModelForm):
         }
         labels = {"direccion": "Dirección que registra"}
 
-    def __init__(self, *args, direcciones=None, gestores=None, categorias=None, **kwargs):
+    def __init__(self, *args, direcciones=None, gestores=None, categorias=None, puede_soporte=True, **kwargs):
         super().__init__(*args, **kwargs)
+        if not puede_soporte:
+            # Diagnósticos y dictámenes solo los registra quien tiene el permiso de soporte técnico.
+            reservadas = {ClaseDocumento.DIAGNOSTICO_TECNICO, ClaseDocumento.DICTAMEN_ALTA, ClaseDocumento.DICTAMEN_BAJA}
+            self.fields["clase"].choices = [(v, e) for v, e in self.fields["clase"].choices if v not in reservadas]
         self.fields["categoria"].queryset = categorias if categorias is not None else Categoria.objects.none()
         self.fields["categoria"].required = False
         self.fields["categoria"].empty_label = "Sin categoría"
@@ -156,8 +160,11 @@ class DireccionForm(forms.ModelForm):
 
     class Meta:
         model = Direccion
-        fields = ["nombre", "folio_manual", "vales_habilitados", "is_active"]
-        labels = {"is_active": "Activa", "folio_manual": "Folio manual", "vales_habilitados": "Vales de préstamo"}
+        fields = ["nombre", "folio_manual", "vales_habilitados", "soporte_habilitado", "is_active"]
+        labels = {
+            "is_active": "Activa", "folio_manual": "Folio manual", "vales_habilitados": "Vales de préstamo",
+            "soporte_habilitado": "Soporte técnico",
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -167,7 +174,7 @@ class DireccionForm(forms.ModelForm):
         if self.instance.dependencia_uuid:
             self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
         for nombre, campo in self.fields.items():
-            if nombre not in ("is_active", "folio_manual", "vales_habilitados"):
+            if nombre not in ("is_active", "folio_manual", "vales_habilitados", "soporte_habilitado"):
                 campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def save(self, commit=True):

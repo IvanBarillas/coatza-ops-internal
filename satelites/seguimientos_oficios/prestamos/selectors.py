@@ -22,9 +22,9 @@ def bienes_disponibles(request):
     return bienes_visibles(request).filter(is_active=True, estado=Bien.Estado.DISPONIBLE).exclude(asignaciones__abierto=True)
 
 
-def prestamos_visibles(request):
+def prestamos_visibles(request, permiso="can_view_loans"):
     return (
-        Prestamo.objects.filter(is_deleted=False, documento__direccion__in=direcciones_con_vales(request))
+        Prestamo.objects.filter(is_deleted=False, documento__direccion__in=direcciones_con_vales(request, permiso))
         .select_related("documento", "documento__direccion", "documento__gestor")
         .prefetch_related("renglones__bien")
     )

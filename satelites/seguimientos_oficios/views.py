@@ -24,7 +24,7 @@ from .selectors import (
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
     categorias_visibles, documentos_de_gestor, gestores_asignables, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from .models import Adjunto, AdjuntoOCR, Categoria, Direccion, Prestamo, Documento, Gestor, Nomenclatura
+from .models import Adjunto, AdjuntoOCR, Categoria, Dictamen, Direccion, Prestamo, Documento, Gestor, Nomenclatura
 from .storage import almacen
 from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
@@ -94,7 +94,7 @@ def documento_create_view(request):
     direcciones = direcciones_visibles(request)
     form = DocumentoForm(
         request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request),
-        categorias=categorias_visibles(request),
+        categorias=categorias_visibles(request), puede_soporte=_permitido(request, "can_manage_support"),
     )
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data
@@ -124,8 +124,14 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
     prestamo = Prestamo.objects.filter(documento=documento).prefetch_related("renglones__bien").first() if (
         _permitido(request, "can_view_loans") or _permitido(request, "can_view_oficios")
     ) else None
+    dictamen = (
+        Dictamen.objects.filter(documento=documento).prefetch_related("equipos").first()
+        if _permitido(request, "can_view_support") else None
+    )
     contexto = {
-        "documento": documento,
+        "documento": documento, "dictamen": dictamen,
+        "puede_editar_dictamen": bool(dictamen and documento.estado != documento.Estado.CANCELADO and _permitido(request, "can_manage_support")),
+        "puede_editar_vale": bool(prestamo and documento.estado != documento.Estado.CANCELADO and _permitido(request, "can_manage_loans")),
         "historial": documento.historial.all(),
         "entrega_form": entrega_form or EntregaForm(),
         "cancelacion_form": cancelacion_form or CancelacionForm(),
@@ -135,7 +141,7 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "adjuntos_quitados": documento.adjuntos.filter(eliminado=True).order_by("eliminado_en"),
         "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
-        "prestamo": prestamo, "area_actual": "prestamos" if prestamo else None,
+        "prestamo": prestamo, "area_actual": "prestamos" if prestamo else "soporte" if dictamen else None,
         "puede_devolver": bool(prestamo and prestamo.abierto and _permitido(request, "can_manage_loans")),
         "devolucion_form": DevolucionForm(),
         "roles_adjuntables": (

@@ -1,0 +1,40 @@
+{% include "seguimientos_oficios/contextual/_menu_movil.html" %}
+{% url 'seguimientos_oficios:soporte' as lista_url %}
+<div class="w-full space-y-4 font-mono text-left">
+    {% include "components/list_header.html" with module_label="Oficios" status_label="Soporte técnico" title="Diagnósticos y dictámenes" description="Diagnósticos técnicos y dictámenes de alta y baja emitidos por soporte." icon="stethoscope" %}
+    {% include "seguimientos_oficios/content/_mensajes.html" %}
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" role="tablist">
+        {% for t in tabs %}
+        <a href="{{ lista_url }}?{{ t.query }}" hx-get="{{ lista_url }}?{{ t.query }}" hx-target="#page-content" hx-push-url="true" role="tab"
+           class="rounded-2xl border border-gray-200 bg-white p-3 text-center text-gray-600 shadow-sm transition {% if t.activa %}ring-2 ring-gray-950{% endif %}">
+            <div class="text-2xl font-black">{{ t.total }}</div>
+            <div class="mt-0.5 text-xs font-black uppercase tracking-widest">{{ t.nombre }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    <div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+        <table class="min-w-full text-xs">
+            <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
+                <tr><th class="px-3 py-3">Fecha</th><th class="px-3 py-3">Folio</th><th class="px-3 py-3">Equipos</th><th class="px-3 py-3">Ticket</th><th class="px-3 py-3"></th></tr>
+            </thead>
+            <tbody>
+            {% for d in pagina %}
+                <tr class="border-t border-gray-100 align-top">
+                    <td class="whitespace-nowrap px-3 py-3">{{ d.documento.fecha|date:"d/m/y" }}</td>
+                    <td class="px-3 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ d.documento.folio }}</a><div class="text-gray-400">{{ d.documento.get_clase_display }}</div></td>
+                    <td class="px-3 py-3">{% for e in d.equipos.all %}<div>{{ e.equipo }}{% if e.serie %} <span class="text-gray-400">· {{ e.serie }}</span>{% endif %}</div>{% empty %}<span class="text-gray-400">{{ d.documento.contraparte }}</span>{% endfor %}</td>
+                    <td class="px-3 py-3">{{ d.ticket|default:"—" }}</td>
+                    <td class="px-3 py-3 text-right"><a target="_blank" rel="noopener" class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:soporte_imprimir' d.documento_id %}">Imprimir</a></td>
+                </tr>
+            {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Aún no hay documentos de soporte.{% if puede_gestionar %} Emite el primero desde el menú.{% endif %}</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="flex items-center justify-center gap-3 text-xs">
+        {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+        <span class="text-gray-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+    </nav>
+    {% endif %}
+</div>

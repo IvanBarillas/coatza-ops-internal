@@ -2,6 +2,7 @@ from django.urls import path
 
 from . import views
 from .prestamos import views as prestamos_views
+from .soporte import views as soporte_views
 
 app_name = "seguimientos_oficios"
 
@@ -12,7 +13,14 @@ urlpatterns = [
     path("prestamos/vales/", prestamos_views.vales_view, name="vales"),
     path("prestamos/nuevo/", prestamos_views.vale_crear_view, name="vale_crear"),
     path("prestamos/<uuid:pk>/imprimir/", prestamos_views.vale_imprimir_view, name="vale_imprimir"),
+    path("prestamos/<uuid:pk>/editar/", prestamos_views.vale_editar_view, name="vale_editar"),
     path("prestamos/<uuid:pk>/devolucion/", prestamos_views.devolucion_view, name="vale_devolucion"),
+    path("soporte/", soporte_views.soporte_view, name="soporte"),
+    path("soporte/diagnostico/nuevo/", soporte_views.crear_diagnostico_view, name="soporte_crear_diagnostico"),
+    path("soporte/baja/nueva/", soporte_views.crear_baja_view, name="soporte_crear_baja"),
+    path("soporte/alta/nueva/", soporte_views.crear_alta_view, name="soporte_crear_alta"),
+    path("soporte/<uuid:pk>/editar/", soporte_views.editar_view, name="soporte_editar"),
+    path("soporte/<uuid:pk>/imprimir/", soporte_views.imprimir_view, name="soporte_imprimir"),
     path("bienes/", prestamos_views.bienes_view, name="bienes"),
     path("bienes/nuevo/", prestamos_views.bien_form_view, name="bien_crear"),
     path("bienes/<uuid:pk>/", prestamos_views.bien_detalle_view, name="bien_detalle"),

@@ -14,7 +14,7 @@ CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text
 class BienForm(forms.ModelForm):
     class Meta:
         model = Bien
-        fields = ["direccion", "nombre", "identificador", "folio_inventario", "descripcion", "estado"]
+        fields = ["direccion", "nombre", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado"]
         widgets = {"descripcion": forms.Textarea(attrs={"rows": 2})}
 
     motivo = forms.CharField(
@@ -112,3 +112,36 @@ class DevolucionForm(forms.Form):
         super().__init__(*args, **kwargs)
         for campo in self.fields.values():
             campo.widget.attrs.setdefault("class", CLASE)
+
+
+class ValeEdicionForm(forms.Form):
+    fecha_entrega = forms.DateField(label="Fecha de entrega", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    fecha_limite = forms.DateField(label="Devolución límite", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+    contraparte = forms.CharField(label="Nombre si es otra / externa", max_length=200, required=False)
+    observaciones = forms.CharField(label="Observaciones", required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    motivo = forms.CharField(
+        label="Motivo de la corrección", required=False, max_length=300,
+        help_text="Obligatorio si el vale ya se firmó o entregó.",
+    )
+
+    def __init__(self, *args, prestamo, **kwargs):
+        documento = prestamo.documento
+        kwargs.setdefault("initial", {
+            "fecha_entrega": prestamo.fecha_entrega, "fecha_limite": prestamo.fecha_limite,
+            "observaciones": prestamo.observaciones,
+            "contraparte_dependencia": str(documento.contraparte_dependencia_uuid or ""),
+            "contraparte": "" if documento.contraparte_dependencia_uuid else documento.contraparte,
+        })
+        super().__init__(*args, **kwargs)
+        _agregar_contraparte(self, "Dirección que recibe")
+        self.fields["contraparte_dependencia"].choices = [
+            ("", "Otra / externa (escribir nombre)")
+        ] + self.fields["contraparte_dependencia"].choices[1:]
+        self.propia = documento.direccion.dependencia_uuid
+        for campo in self.fields.values():
+            campo.widget.attrs.setdefault("class", CLASE)
+
+    def clean(self):
+        datos = super().clean()
+        _resolver_contraparte(self, datos, self.propia)
+        return datos
