@@ -5,7 +5,6 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
-from . import bandeja
 from .integracion import director_de_dependencia, encolar_tarea, nombre_de_usuario
 from .models import Adjunto, AdjuntoOCR, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
 from .storage import almacen, ruta_del_adjunto
@@ -230,50 +229,6 @@ def _preparar_ocr(adjunto, *, encolar=True):
     AdjuntoOCR.objects.create(adjunto=adjunto)
     if encolar:
         transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))
-
-
-def ruta_bandeja_de(documento, rol=None):
-    direccion = documento.direccion
-    rol = rol or (roles_permitidos(documento) or [None])[0]
-    return {
-        Adjunto.Rol.ORIGINAL: direccion.ruta_recibidos,
-        Adjunto.Rol.FIRMADO: direccion.ruta_firmados,
-        Adjunto.Rol.EVIDENCIA: direccion.ruta_evidencias,
-    }.get(rol, "")
-
-
-def _carpeta_de(documento, rol):
-    ruta = ruta_bandeja_de(documento, rol)
-    if not ruta:
-        raise ValidationError("La dirección no tiene configurada la carpeta de la bandeja para este tipo de archivo.")
-    try:
-        return bandeja.resolver(ruta)
-    except bandeja.BandejaError as error:
-        raise ValidationError(str(error)) from error
-
-
-def listar_bandeja(documento, rol=None):
-    rol = _elegir_rol(documento, rol)
-    carpeta = _carpeta_de(documento, rol)
-    try:
-        return bandeja.listar_pdfs(carpeta)
-    except bandeja.BandejaError as error:
-        raise ValidationError(str(error)) from error
-
-
-@transaction.atomic
-def adjuntar_desde_bandeja(documento, *, usuario, nombre, rol=None):
-    rol = _elegir_rol(documento, rol)
-    carpeta = _carpeta_de(documento, rol)
-    try:
-        contenido = bandeja.leer(carpeta, nombre, tamano_maximo=TAMANO_MAXIMO)
-    except bandeja.BandejaError as error:
-        raise ValidationError(str(error)) from error
-    resultado = adjuntar_pdf(
-        documento, usuario=usuario, archivo=ContentFile(contenido, name=nombre), origen="bandeja", rol=rol
-    )
-    transaction.on_commit(lambda: bandeja.archivar_sin_fallar(carpeta, nombre))
-    return resultado
 
 
 CAMPOS_EDITABLES = ("contraparte", "contraparte_dependencia_uuid", "asunto", "fecha")

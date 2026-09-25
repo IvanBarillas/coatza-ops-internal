@@ -27,7 +27,6 @@ class CatalogosTests(BaseAdjuntos):
         self.como_owner()
         respuesta = self.client.get(lista)
         self.assertContains(respuesta, reverse("seguimientos_oficios:catalogos"))
-        self.assertContains(respuesta, reverse("seguimientos_oficios:configuracion"))
 
     def test_la_lista_enlaza_a_los_gestores_de_cada_direccion(self):
         from satelites.seguimientos_oficios.models import Gestor

@@ -7,7 +7,6 @@ class SeguimientosOficiosPermissions:
         "can_create_oficio": "Permite registrar documentos nuevos.",
         "can_update_status": "Permite marcar un documento como entregado.",
         "can_upload_files": "Permite adjuntar PDF (original o evidencia) a un documento.",
-        "can_configure_bandeja": "Permite configurar las carpetas de la bandeja de escaneo de su dirección.",
         "can_manage_catalogs": "Permite crear y editar direcciones y sus nomenclaturas de folio.",
         "can_edit_oficio": "Permite corregir datos de un documento (asunto, remitente o destinatario, fecha), con rastro en el historial.",
         "can_view_own_pendings": "Permite ver los documentos pendientes asignados al gestor vinculado a su usuario.",
@@ -20,7 +19,7 @@ class SeguimientosOficiosPermissions:
         "owner": [
             "has_access_module", "can_view_oficios", "can_create_oficio",
             "can_update_status", "can_upload_files", "can_edit_oficio", "can_cancel_oficio", "can_cancel_concluded",
-            "can_configure_bandeja", "can_manage_catalogs", "can_view_own_pendings", "can_remove_files",
+            "can_manage_catalogs", "can_view_own_pendings", "can_remove_files",
         ],
         "editor": [
             "has_access_module", "can_view_oficios", "can_create_oficio",
@@ -38,6 +37,5 @@ class SeguimientosOficiosPermissions:
         ["search", "Búsqueda", "seguimientos_oficios:busqueda", 2, "can_view_oficios"],
         ["clipboard-list", "Mis pendientes", "seguimientos_oficios:mis_pendientes", 3, "can_view_own_pendings"],
         ["plus-circle", "Registrar documento", "seguimientos_oficios:documento_create", 4, "can_create_oficio"],
-        ["settings", "Configuración", "seguimientos_oficios:configuracion", 5, "can_configure_bandeja"],
         ["layers", "Catálogos", "seguimientos_oficios:catalogos", 6, "can_manage_catalogs"],
     ]

@@ -43,18 +43,6 @@ class Direccion(BaseOficios):
         "Folio manual", default=True,
         help_text="Activo: quien registra un oficio enviado escribe su folio. Inactivo: se genera con la nomenclatura.",
     )
-    ruta_recibidos = models.CharField(
-        "Carpeta de recibidos", max_length=255, blank=True,
-        help_text="Carpeta donde se escanean los oficios recibidos (ej. innovacion/oficios/recibidos).",
-    )
-    ruta_firmados = models.CharField(
-        "Carpeta de firmados", max_length=255, blank=True,
-        help_text="Carpeta donde se escanean los oficios enviados ya firmados.",
-    )
-    ruta_evidencias = models.CharField(
-        "Carpeta de evidencias", max_length=255, blank=True,
-        help_text="Carpeta donde se escanean las evidencias de entrega.",
-    )
     dependencia_uuid = models.UUIDField(
         "Dependencia del Core",
         null=True,

@@ -11,16 +11,15 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
     documentos_de_gestor, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from . import bandeja
 from .models import Adjunto, Direccion, Gestor, Nomenclatura
 from .storage import almacen
-from .services import quitar_adjunto, roles_permitidos, adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
+from .services import quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
 
 POR_PAGINA = 25
@@ -225,84 +224,6 @@ def adjunto_descargar_view(request, pk, adjunto_pk):
     respuesta["Content-Disposition"] = content_disposition_header(False, adjunto.nombre_original)
     respuesta["X-Content-Type-Options"] = "nosniff"
     return respuesta
-
-
-@login_required
-@proteger_vista(APP_SLUG, "can_upload_files")
-def documento_bandeja_view(request, pk):
-    documento = documento_visible(request, pk)
-    try:
-        rol = request.GET.get("rol") or None
-        archivos, error = listar_bandeja(documento, rol), ""
-    except ValidationError as excepcion:
-        archivos, error = [], "; ".join(excepcion.messages)
-    return render(request, "seguimientos_oficios/htmx/bandeja_lista.html",
-                  {"documento": documento, "archivos": archivos, "error": error, "rol": request.GET.get("rol", "")})
-
-
-@login_required
-@require_POST
-@proteger_vista(APP_SLUG, "can_upload_files")
-def documento_adjuntar_bandeja_view(request, pk):
-    documento = documento_visible(request, pk)
-    try:
-        _, duplicado = adjuntar_desde_bandeja(
-            documento, usuario=request.user, nombre=request.POST.get("nombre", ""), rol=request.POST.get("rol") or None
-        )
-    except ValidationError as error:
-        messages.error(request, "; ".join(error.messages))
-    else:
-        messages.success(request, "Archivo adjuntado desde la bandeja.")
-        if duplicado:
-            messages.warning(request, f"Este archivo ya está en otro documento ({duplicado.documento.folio or 'sin folio'}).")
-    return redirect("seguimientos_oficios:documento_detail", pk=pk)
-
-
-def _estado_bandeja(ruta):
-    if not ruta:
-        return {"ruta": "", "ok": None, "detalle": "Sin configurar"}
-    try:
-        return {"ruta": ruta, "ok": True, "detalle": f"{len(bandeja.listar_pdfs(bandeja.resolver(ruta)))} PDF"}
-    except bandeja.BandejaError as error:
-        return {"ruta": ruta, "ok": False, "detalle": str(error)}
-
-
-@login_required
-@proteger_vista(APP_SLUG, "can_configure_bandeja")
-def configuracion_view(request):
-    filas = []
-    for direccion in direcciones_visibles(request):
-        filas.append({
-            "direccion": direccion,
-            "form": BandejaConfigForm(initial={
-                "ruta_recibidos": direccion.ruta_recibidos, "ruta_firmados": direccion.ruta_firmados,
-                "ruta_evidencias": direccion.ruta_evidencias,
-            }),
-            "recibidos": _estado_bandeja(direccion.ruta_recibidos),
-            "firmados": _estado_bandeja(direccion.ruta_firmados),
-            "evidencias": _estado_bandeja(direccion.ruta_evidencias),
-        })
-    raiz = bandeja.raiz()
-    return _render(request, "configuracion", {"filas": filas, "raiz": str(raiz) if raiz else ""})
-
-
-@login_required
-@require_POST
-@proteger_vista(APP_SLUG, "can_configure_bandeja")
-def configuracion_guardar_view(request, pk):
-    direccion = get_object_or_404(direcciones_visibles(request), pk=pk)
-    form = BandejaConfigForm(request.POST)
-    if form.is_valid():
-        direccion.ruta_recibidos = form.cleaned_data["ruta_recibidos"]
-        direccion.ruta_firmados = form.cleaned_data["ruta_firmados"]
-        direccion.ruta_evidencias = form.cleaned_data["ruta_evidencias"]
-        direccion.save()
-        messages.success(request, f"Bandeja de {direccion.nombre} guardada.")
-    else:
-        for errores in form.errors.values():
-            for error in errores:
-                messages.error(request, f"{direccion.nombre}: {error}")
-    return redirect("seguimientos_oficios:configuracion")
 
 
 @login_required

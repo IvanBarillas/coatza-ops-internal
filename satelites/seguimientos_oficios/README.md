@@ -18,38 +18,20 @@ membresía a los usuarios.
 | Variable | Uso | Por defecto |
 |---|---|---|
 | `OFICIOS_ARCHIVOS_ROOT` | Almacén de PDF adjuntos, por contenido (`AAAA/MM/xx/<sha256>.pdf`) | `MEDIA_ROOT/oficios` |
-| `OFICIOS_BANDEJA_RAIZ` | Raíz donde está montada la QNAP; las carpetas por dirección son relativas a ella | vacío (la bandeja no funciona) |
+| `OFICIOS_BANDEJA_RAIZ` | Carpeta base desde la que el comando `oficios_importar_historico` lee los PDF (solo importación; la subida normal usa el selector de archivos del navegador) | vacío |
 | `OFICIOS_OCR_COMANDO` | Ejecutable de OCR | `ocrmypdf` |
 | `OFICIOS_OCR_IDIOMA` | Idioma de Tesseract | `spa` |
 | `OFICIOS_OCR_TIMEOUT` | Segundos máximos por documento | `900` |
 
 `OFICIOS_ARCHIVOS_ROOT` debe estar en un volumen persistente y con respaldo.
 
-## Bandeja de la QNAP (SMB)
+## Subida de archivos
 
-La app no guarda credenciales SMB: el servidor monta el recurso y la app lee la carpeta.
-
-```
-# /etc/oficios-qnap.cred   (chmod 600, dueño root)
-username=USUARIO
-password=CONTRASEÑA
-domain=DOMINIO
-```
-
-```
-# /etc/fstab   (requiere cifs-utils)
-//172.16.2.5/documentos  /mnt/qnap  cifs  credentials=/etc/oficios-qnap.cred,uid=<usuario-del-servicio>,gid=<grupo>,file_mode=0660,dir_mode=0770,vers=3.0,_netdev,nofail,x-systemd.automount  0 0
-```
-
-Recurso público: sustituir `credentials=...` por `guest`. Si cada departamento tiene su propio
-recurso o credencial, montar cada uno en una subcarpeta de la raíz (`/mnt/qnap/innovacion`, …)
-con su archivo de credenciales.
-
-Luego `OFICIOS_BANDEJA_RAIZ=/mnt/qnap` y, en la pantalla **Configuración** del módulo, indicar por
-dirección las carpetas de recibidos y de evidencias (relativas a la raíz). La cuenta SMB necesita
-escritura: al adjuntar, el archivo se mueve a `procesados/AAAA-MM/`; con solo lectura el adjunto
-funciona pero el archivo sigue apareciendo en la lista. En contenedores, montar la raíz con el
-mismo permiso de escritura en `web`.
+Los archivos se suben desde el navegador (selector de archivos del equipo del usuario, que puede navegar a
+cualquier carpeta o unidad mapeada, sea QNAP, Samba o local). No hay carpetas de escaneo configuradas en el
+servidor. Solo el importador del histórico (línea de comandos) lee una carpeta del servidor: si el histórico está
+en un recurso de red, se monta en el servidor (`cifs-utils`, con un archivo de credenciales `chmod 600`, o `guest`
+si es público) y se apunta `OFICIOS_BANDEJA_RAIZ` a esa carpeta.
 
 ## Despliegue (Podman)
 
@@ -59,13 +41,10 @@ mismo permiso de escritura en `web`.
   y `ocrmypdf --language spa --force-ocr --sidecar` extrae el texto de un PDF de prueba dentro del contenedor.
 - `build.sh`: construye la base y la capa de OCR (`localhost/axentra-ops-internal:latest`).
 - `docker-compose.oficios.yml`: override de `docker-compose.prod.yml` (misma imagen para `web` y `worker`, el
-  worker monta el mismo volumen `media_data` para leer los PDF, `web` monta la QNAP). **No se ha levantado
+  worker monta el mismo volumen `media_data` para leer los PDF). **No se ha levantado
   con `.env.prod` real**: revisarlo antes de usarlo.
 
-Pendiente de resolver en el servidor real: el usuario del contenedor (`axentra`, UID 1000) debe poder
-**escribir** en la QNAP montada. En Podman rootless eso depende del mapeo de UID (por ejemplo `userns: keep-id`
-o montar el CIFS con `uid=`/`gid=` del UID que ve el contenedor). Sin escritura el adjuntar funciona, pero el
-archivo no se mueve a `procesados/`. Además, `media_data` guarda los PDF adjuntos: incluirlo en los respaldos.
+`media_data` guarda los PDF adjuntos: incluirlo en los respaldos.
 
 ## OCR
 
@@ -88,8 +67,8 @@ palabra lo aplica el visor de Firefox, no el de Chrome). Los PDF nuevos aparecen
 
 ## Importar histórico ya digitalizado
 
-Comando: `oficios_importar_historico --direccion <slug|nombre> --carpeta <ruta relativa a la raíz de la bandeja>`.
-Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borra los PDF de la QNAP.
+Comando: `oficios_importar_historico --direccion <slug|nombre> --carpeta <ruta relativa a OFICIOS_BANDEJA_RAIZ>`.
+Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borra los PDF de origen.
 
 - `--sentido recibido|enviado` y `--clase` fijan los valores para todos los archivos.
 - `--csv manifiesto.csv` (columnas `archivo,sentido,clase,fecha,folio,contraparte,asunto,director`; solo
@@ -111,10 +90,8 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   número. Sin folio manual, el sistema lo genera. En los recibidos el folio del remitente siempre se captura a mano.
 - El folio automático de los enviados sale de la **Nomenclatura** (dirección + clase), con contador por año.
   Se administra en el admin de Django hasta que exista su pantalla.
-- Archivos por tipo: **Original** (recibidos), **Documento firmado** (enviados: el oficio ya firmado, se sube o se
-  elige de la bandeja estando Generado; no cambia el estado) y **Evidencia de entrega** (enviados ya Entregados;
-  concluye el documento). Estando Entregado o Concluido también se puede agregar un firmado. Cada tipo tiene su
-  carpeta de bandeja por dirección (recibidos, firmados, evidencias).
+- Archivos por tipo: **Original** (recibidos), **Documento firmado** (enviados: el oficio ya firmado, se sube estando Generado; no cambia el estado) y **Evidencia de entrega** (enviados ya Entregados;
+  concluye el documento). Estando Entregado o Concluido también se puede agregar un firmado.
 - Estados: Generado → Entregado → Concluido (con evidencia PDF); Cancelado desde cualquiera, con
   motivo. Cancelar un Concluido exige `can_cancel_concluded`. Los documentos no se eliminan.
 - Director, dirección, folio (en enviados), clase y sentido quedan congelados al registrar; el historial es

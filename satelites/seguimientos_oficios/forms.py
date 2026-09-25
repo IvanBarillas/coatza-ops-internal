@@ -136,40 +136,6 @@ class FiltroDocumentosForm(forms.Form):
             campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
-class BandejaConfigForm(forms.Form):
-    ruta_recibidos = forms.CharField(label="Carpeta de recibidos", required=False, max_length=255)
-    ruta_firmados = forms.CharField(label="Carpeta de firmados", required=False, max_length=255)
-    ruta_evidencias = forms.CharField(label="Carpeta de evidencias", required=False, max_length=255)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for campo in self.fields.values():
-            campo.widget.attrs.update({
-                "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white",
-                "placeholder": "innovacion/oficios",
-            })
-
-    def _validar(self, campo):
-        from . import bandeja
-
-        valor = self.cleaned_data.get(campo, "").strip()
-        if not valor:
-            return ""
-        try:
-            return bandeja.ruta_normalizada(bandeja.resolver(valor))
-        except bandeja.BandejaError as error:
-            raise forms.ValidationError(str(error)) from error
-
-    def clean_ruta_recibidos(self):
-        return self._validar("ruta_recibidos")
-
-    def clean_ruta_firmados(self):
-        return self._validar("ruta_firmados")
-
-    def clean_ruta_evidencias(self):
-        return self._validar("ruta_evidencias")
-
-
 class DireccionForm(forms.ModelForm):
     dependencia = forms.ChoiceField(
         label="Dependencia del Core", required=False,
