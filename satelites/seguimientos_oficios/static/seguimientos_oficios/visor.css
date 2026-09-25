@@ -1,0 +1,11 @@
+html, body { height: 100%; margin: 0; background: #e5e7eb; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+#contenedor { position: absolute; inset: 0; overflow: auto; }
+#estado { position: fixed; top: 0.75rem; left: 50%; transform: translateX(-50%); z-index: 10; padding: 0.5rem 1rem;
+    border-radius: 0.75rem; background: #fef3c7; color: #92400e; font-size: 0.75rem; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+#paginas { position: fixed; bottom: 0.75rem; right: 0.75rem; z-index: 10; padding: 0.25rem 0.6rem; border-radius: 0.5rem;
+    background: rgba(17,24,39,.75); color: #fff; font-size: 0.75rem; }
+.pdfViewer .page { margin: 0.5rem auto; box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+#navegacion { position: fixed; bottom: 0.75rem; left: 0.75rem; z-index: 10; display: flex; align-items: center; gap: 0.4rem;
+    padding: 0.25rem 0.5rem; border-radius: 0.5rem; background: rgba(17,24,39,.85); color: #fff; font-size: 0.75rem; }
+#navegacion button { border: 0; border-radius: 0.4rem; padding: 0.15rem 0.6rem; background: #fff; color: #111827; font-weight: 700; cursor: pointer; }
+#navegacion[hidden] { display: none; }

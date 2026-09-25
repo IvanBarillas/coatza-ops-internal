@@ -1,0 +1,21 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ adjunto.nombre_original }}</title>
+    <link rel="stylesheet" href="{% static 'seguimientos_oficios/pdfjs/web/pdf_viewer.css' %}">
+    <link rel="stylesheet" href="{% static 'seguimientos_oficios/visor.css' %}">
+</head>
+<body data-pdf="{{ url_pdf }}" data-pagina="{{ pagina }}" data-consulta="{{ consulta }}">
+    <div id="estado">Abriendo el PDF…</div>
+    <div id="paginas"></div>
+    <div id="navegacion" hidden>
+        <button id="anterior" type="button" aria-label="Coincidencia anterior">‹</button>
+        <span id="coincidencias"></span>
+        <button id="siguiente" type="button" aria-label="Coincidencia siguiente">›</button>
+    </div>
+    <div id="contenedor"><div id="visor" class="pdfViewer"></div></div>
+    <script type="module" src="{% static 'seguimientos_oficios/visor.js' %}"></script>
+</body>
+</html>

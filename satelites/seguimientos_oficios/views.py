@@ -21,7 +21,7 @@ from .selectors import (
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
     documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from .models import Adjunto, Direccion, Documento, Gestor, Nomenclatura
+from .models import Adjunto, AdjuntoOCR, Direccion, Documento, Gestor, Nomenclatura
 from .storage import almacen
 from .services import quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
@@ -222,12 +222,22 @@ def adjunto_descargar_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
     adjunto = get_object_or_404(documento.adjuntos.filter(eliminado=False), pk=adjunto_pk)
     almacen_ = almacen()
-    if not almacen_.exists(adjunto.ruta):
+    ruta = adjunto.ruta
+    if request.GET.get("version") == "buscable":
+        buscable = _ruta_buscable(adjunto)
+        ruta = buscable if buscable else ruta
+    if not almacen_.exists(ruta):
         raise Http404("El archivo no está en el almacén.")
-    respuesta = FileResponse(almacen_.open(adjunto.ruta, "rb"), content_type="application/pdf")
-    respuesta["Content-Disposition"] = content_disposition_header(False, adjunto.nombre_original)
+    respuesta = FileResponse(almacen_.open(ruta, "rb"), content_type="application/pdf")
+    respuesta["Content-Disposition"] = content_disposition_header(request.GET.get("descargar") == "1", adjunto.nombre_original)
     respuesta["X-Content-Type-Options"] = "nosniff"
     return respuesta
+
+
+def _ruta_buscable(adjunto):
+    """Copia con capa de texto (solo para el visor), si el OCR la generó y sigue en el almacén."""
+    ruta = AdjuntoOCR.objects.filter(adjunto=adjunto).values_list("ruta_buscable", flat=True).first()
+    return ruta if ruta and almacen().exists(ruta) else ""
 
 
 @login_required
@@ -401,10 +411,11 @@ def visor_view(request, pk, adjunto_pk):
     except ValueError:
         pagina = 1
     consulta = request.GET.get("q", "")[:200]
-    fragmento = urlencode({"page": pagina, "search": consulta}) if consulta else f"page={pagina}"
+    parametros = urlencode({"pagina": pagina, **({"q": consulta} if consulta else {})})
     return render(request, "seguimientos_oficios/htmx/visor.html", {
         "documento": documento, "adjunto": adjunto, "pagina": pagina,
-        "src": reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk]) + "#" + fragmento,
+        "src": reverse("seguimientos_oficios:lector", args=[documento.pk, adjunto.pk]) + "?" + parametros,
+        "descarga": reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk]) + "?descargar=1",
     })
 
 
@@ -469,3 +480,22 @@ def seguimiento_view(request):
         "umbral_ambar": ambar, "umbral_rojo": rojo, "total": len(documentos),
     }
     return _render(request, "seguimiento", contexto)
+
+
+@login_required
+@xframe_options_sameorigin
+@proteger_vista(APP_SLUG, "has_access_module")
+def lector_pdf_view(request, pk, adjunto_pk):
+    """Página del visor PDF.js: abre en la página indicada y resalta las palabras buscadas."""
+    documento = documento_visible(request, pk)
+    adjunto = get_object_or_404(documento.adjuntos.filter(eliminado=False), pk=adjunto_pk)
+    try:
+        pagina = max(1, int(request.GET.get("pagina", 1)))
+    except ValueError:
+        pagina = 1
+    url = reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk])
+    if _ruta_buscable(adjunto):
+        url += "?version=buscable"
+    return render(request, "seguimientos_oficios/visor_pdf.html", {
+        "adjunto": adjunto, "pagina": pagina, "consulta": request.GET.get("q", "")[:200], "url_pdf": url,
+    })

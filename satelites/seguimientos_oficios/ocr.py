@@ -14,9 +14,9 @@ class OcrFallido(Exception):
     pass
 
 
-def extraer_texto(ruta_pdf):
-    """Extrae el texto con OCRmyPDF (Tesseract). El PDF original no se modifica:
-    la salida con capa de texto se descarta y solo se conserva el texto (sidecar)."""
+def extraer_texto(ruta_pdf, ruta_salida=None):
+    """Extrae el texto con OCRmyPDF (Tesseract). El PDF original no se modifica. Si se indica `ruta_salida`,
+    ahí queda una copia con capa de texto, pensada solo para el visor (resaltado de palabras)."""
     comando = getattr(settings, "OFICIOS_OCR_COMANDO", "ocrmypdf")
     if shutil.which(comando) is None:
         raise OcrNoDisponible(f"No se encontró '{comando}'. Instale ocrmypdf y tesseract con el idioma español.")
@@ -34,4 +34,7 @@ def extraer_texto(ruta_pdf):
             raise OcrFallido(f"El OCR excedió {limite} s.") from error
         if proceso.returncode != 0:
             raise OcrFallido((proceso.stderr or proceso.stdout or "OCR falló").strip()[-2000:])
+        if ruta_salida and salida.exists():
+            Path(ruta_salida).parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(salida), str(ruta_salida))
         return texto.read_text(encoding="utf-8", errors="replace") if texto.exists() else ""

@@ -8,6 +8,7 @@ urlpatterns = [
     path("", views.documento_list_view, name="documento_list"),
     path("buscar/", views.busqueda_view, name="busqueda"),
     path("<uuid:pk>/visor/<uuid:adjunto_pk>/", views.visor_view, name="visor"),
+    path("<uuid:pk>/lector/<uuid:adjunto_pk>/", views.lector_pdf_view, name="lector"),
     path("seguimiento/", views.seguimiento_view, name="seguimiento"),
     path("nuevo/", views.documento_create_view, name="documento_create"),
     path("catalogos/", views.catalogos_view, name="catalogos"),

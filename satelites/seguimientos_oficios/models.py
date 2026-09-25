@@ -337,6 +337,10 @@ class AdjuntoOCR(models.Model):
     estado = models.CharField(max_length=12, choices=Estado.choices, default=Estado.PENDIENTE, db_index=True)
     texto = models.TextField(blank=True)
     texto_normalizado = models.TextField(editable=False, blank=True, default="")
+    ruta_buscable = models.CharField(
+        "Copia con capa de texto", max_length=255, blank=True,
+        help_text="PDF con el texto reconocido, solo para el visor; el original no se modifica.",
+    )
     error = models.TextField(blank=True)
     intentos = models.PositiveSmallIntegerField(default=0)
     iniciado_en = models.DateTimeField(null=True, blank=True)

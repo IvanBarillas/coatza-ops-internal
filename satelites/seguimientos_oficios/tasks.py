@@ -19,12 +19,14 @@ def procesar_ocr(adjunto_id):
         return "omitido"
     registro = AdjuntoOCR.objects.select_related("adjunto").get(adjunto_id=adjunto_id)
     registro.intentos += 1
+    ruta_buscable = registro.adjunto.ruta.removesuffix(".pdf") + "__buscable.pdf"
     try:
-        texto = ocr.extraer_texto(almacen().path(registro.adjunto.ruta))
+        texto = ocr.extraer_texto(almacen().path(registro.adjunto.ruta), almacen().path(ruta_buscable))
     except (ocr.OcrNoDisponible, ocr.OcrFallido) as error:
         registro.estado, registro.error = AdjuntoOCR.Estado.ERROR, str(error)
     else:
         registro.estado, registro.texto = AdjuntoOCR.Estado.LISTO, texto
+        registro.ruta_buscable = ruta_buscable if almacen().exists(ruta_buscable) else ""
     registro.terminado_en = timezone.now()
     registro.save()
     return registro.estado

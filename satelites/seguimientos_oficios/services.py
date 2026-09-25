@@ -224,7 +224,7 @@ def _preparar_ocr(adjunto, *, encolar=True):
     if previo:
         AdjuntoOCR.objects.create(
             adjunto=adjunto, estado=AdjuntoOCR.Estado.LISTO, texto=previo.texto,
-            terminado_en=timezone.now(),
+            ruta_buscable=previo.ruta_buscable, terminado_en=timezone.now(),
         )
         return
     AdjuntoOCR.objects.create(adjunto=adjunto)

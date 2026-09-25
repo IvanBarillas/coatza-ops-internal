@@ -13,10 +13,17 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--atascados-min", type=int, default=60,
                             help="Minutos tras los que un 'procesando' se considera atascado.")
+        parser.add_argument("--buscables", action="store_true",
+                            help="Rehace el OCR de los adjuntos ya procesados que no tienen copia con capa de texto (visor).")
 
     def handle(self, *args, **opciones):
         for adjunto in Adjunto.objects.filter(ocr__isnull=True, rol__in=Adjunto.ROLES_CON_OCR):
             AdjuntoOCR.objects.create(adjunto=adjunto)
+        if opciones["buscables"]:
+            AdjuntoOCR.objects.filter(
+                estado=AdjuntoOCR.Estado.LISTO, ruta_buscable="", adjunto__eliminado=False,
+                adjunto__rol__in=Adjunto.ROLES_CON_OCR,
+            ).update(estado=AdjuntoOCR.Estado.PENDIENTE)
         limite = timezone.now() - datetime.timedelta(minutes=opciones["atascados_min"])
         AdjuntoOCR.objects.filter(
             estado=AdjuntoOCR.Estado.PROCESANDO, iniciado_en__lt=limite

@@ -65,9 +65,11 @@ class BusquedaVisorTests(BaseAdjuntos):
         documento, adjunto = self.con_ocr()
         url = reverse("seguimientos_oficios:visor", args=[documento.pk, adjunto.pk])
         respuesta = self.client.get(url, {"pagina": 3, "q": "instalación eléctrica"}, headers={"HX-Request": "true"})
+        lector = reverse("seguimientos_oficios:lector", args=[documento.pk, adjunto.pk])
         self.assertContains(respuesta, "<iframe")
-        self.assertContains(respuesta, "#page=3&amp;search=instalaci%C3%B3n+el%C3%A9ctrica")
-        self.assertContains(self.client.get(url, {"pagina": "abc"}), "#page=1")
+        self.assertContains(respuesta, f"{lector}?pagina=3&amp;q=instalaci%C3%B3n+el%C3%A9ctrica")
+        self.assertContains(respuesta, "Descargar PDF")
+        self.assertContains(self.client.get(url, {"pagina": "abc"}), f"{lector}?pagina=1")
 
     def test_el_pdf_puede_mostrarse_en_un_iframe_del_mismo_sitio(self):
         documento, adjunto = self.con_ocr()
