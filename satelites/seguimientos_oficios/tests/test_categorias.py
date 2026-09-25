@@ -125,3 +125,19 @@ class CategoriasTests(BaseAdjuntos):
         documento.refresh_from_db()
         self.assertEqual(documento.categoria, self.escuelas)
         self.assertContains(self.client.get(reverse("seguimientos_oficios:documento_detail", args=[documento.pk])), "Escuelas")
+
+    def test_la_lista_es_compacta_sin_columnas_de_categoria_ni_dias(self):
+        self.registrar("Del panteón", self.panteones)
+        pagina = self.client.get(reverse("seguimientos_oficios:documento_list"), {"tab": "todos"})
+        contenido = pagina.content.decode()
+        cabecera = contenido[contenido.index("<thead"):contenido.index("</thead>")]
+        for columna in ("Fecha", "Folio", "Asunto", "Gestor", "Estado"):
+            self.assertIn(columna, cabecera)
+        for sobra in ("Categoría", "Días", "Clase", "Sentido", "Tipo", "Dirección"):
+            self.assertNotIn(sobra, cabecera)
+        self.assertContains(pagina, "De: X")
+        self.assertContains(pagina, "Oficio · Recibido")
+        # la categoría sigue disponible como filtro y en el detalle, no como columna
+        self.assertContains(pagina, "Todas las categorías")
+        detalle = self.client.get(reverse("seguimientos_oficios:documento_detail", args=[Documento.objects.get(asunto="Del panteón").pk]))
+        self.assertContains(detalle, "Panteones")

@@ -120,6 +120,9 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   motivo. Cancelar un Concluido exige `can_cancel_concluded`. Los documentos no se eliminan.
 - Director, dirección, folio (en enviados), clase y sentido quedan congelados al registrar; el historial es
   solo de escritura.
+- La lista de Documentos es compacta: Fecha, Folio (con clase y sentido debajo), Asunto (con remitente o destinatario
+  debajo), Gestor y Estado; la Dirección solo aparece si el usuario ve más de una. Los días de espera y la categoría
+  no van en la tabla (los días viven en Seguimiento; la categoría en el detalle y como filtro).
 - Seguimiento: la lista abre en **Pendientes** (enviados Generado o Entregado, del más antiguo al más nuevo,
   con los días transcurridos desde la entrega o el registro); las demás pestañas son Concluidos (incluye los
   recibidos registrados), Cancelados y Todos. Buscar texto sin elegir pestaña busca en Todos. Sobre los pendientes
