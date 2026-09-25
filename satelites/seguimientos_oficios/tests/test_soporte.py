@@ -252,3 +252,49 @@ class RegistroManualPorPermisoTests(SoporteBase):
         self.assertIn("oficio", clases)
         for reservada in ("diagnostico_tecnico", "dictamen_alta", "dictamen_baja"):
             self.assertNotIn(reservada, clases)
+
+
+@override_settings(STORAGES={
+    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+})
+class GestorEnSoporteTests(SoporteBase):
+    def test_los_tres_documentos_aceptan_gestor_y_aparece_en_sus_pendientes(self):
+        gestor = self.gestor("Juan Gestor")
+        documento, _ = self.baja(gestor=gestor)
+        alta, _ = svc.emitir_alta(
+            usuario=self.user, direccion=self.direccion, contraparte="Obras", ticket="", gestor=gestor,
+            datos={"solicitud": "S", "justificacion": "J", "dictamen": "D"}, elaboro_nombre="T", elaboro_cargo="T",
+            autoriza_nombre="J", autoriza_cargo="D",
+        )
+        diag, _ = svc.emitir_diagnostico(
+            usuario=self.user, direccion=self.direccion, solicitante="Ana", ticket="", equipo={"equipo": "PC"}, gestor=gestor,
+            datos={"fallo": "f", "causa": "c", "solucion": "s", "recomendacion": "baja"}, elaboro_nombre="T", elaboro_cargo="T",
+        )
+        self.assertEqual({d.gestor_id for d in (documento, alta, diag)}, {gestor.pk})
+
+    def test_formulario_ofrece_el_gestor_y_lo_guarda(self):
+        gestor = self.gestor("Maria Gestora")
+        pagina = self.client.get(reverse("seguimientos_oficios:soporte_crear_alta"))
+        self.assertContains(pagina, "Gestor (quien lo lleva")
+        self.assertContains(pagina, "Maria Gestora")
+        self.client.post(reverse("seguimientos_oficios:soporte_crear_alta"), {
+            "direccion": self.direccion.pk, "ticket": "1", "elaboro_cargo": "T", "contraparte": "Obras", "gestor": gestor.pk,
+            "solicitud": "S", "justificacion": "J", "dictamen": "D", "autoriza_nombre": "J", "autoriza_cargo": "D",
+        })
+        self.assertEqual(Dictamen.objects.get().documento.gestor, gestor)
+
+    def test_gestor_de_otra_direccion_se_rechaza_y_se_puede_reasignar_al_corregir(self):
+        otra = Direccion.objects.create(nombre="Egresos", soporte_habilitado=True)
+        ajeno = self.gestor("Ajeno Gestor", otra)
+        with self.assertRaises(ValidationError):
+            self.baja(gestor=ajeno)
+        documento, dictamen = self.baja()
+        nuevo = self.gestor("Nuevo Gestor")
+        renglon = dictamen.equipos.get()
+        svc.editar_dictamen(dictamen, usuario=self.user, campos={}, datos={}, gestor=nuevo, equipos={
+            str(renglon.pk): {"equipo": "Laptop", "serie": "LT-1", "marca_modelo": "", "folio_inventario": "", "departamento": ""},
+        })
+        documento.refresh_from_db()
+        self.assertEqual(documento.gestor, nuevo)
+        self.assertEqual(documento.historial.filter(accion="editado").order_by("created_at").last().datos["cambios"]["Gestor"], {"antes": "", "despues": "Nuevo Gestor"})

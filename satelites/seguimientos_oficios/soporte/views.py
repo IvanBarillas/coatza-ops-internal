@@ -2,11 +2,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ValidationError
 from django.core.paginator import Paginator
+from django.db.models import Q
 from django.shortcuts import get_object_or_404, redirect, render
 
 from ..integracion import nombre_de_usuario, proteger_vista
-from ..models import ClaseDocumento, Direccion, Documento
-from ..selectors import APP_SLUG, permitido
+from ..models import ClaseDocumento, Direccion, Documento, Gestor
+from ..selectors import APP_SLUG, gestores_asignables, permitido
 from ..views import _query, _render
 from . import selectors as sel
 from .forms import AltaForm, BajaForm, DiagnosticoForm, leer_equipos, leer_equipos_edicion
@@ -80,6 +81,7 @@ def _base_kwargs(request, datos):
     return {
         "usuario": request.user, "direccion": datos["direccion"], "ticket": datos["ticket"],
         "elaboro_nombre": nombre_de_usuario(request.user), "elaboro_cargo": datos["elaboro_cargo"],
+        "gestor": datos.get("gestor"),
     }
 
 
@@ -95,7 +97,7 @@ def crear_diagnostico_view(request):
     titulo, ayuda = "Nuevo diagnóstico técnico", "Estado físico y funcionamiento de un bien, con su recomendación."
     if not direcciones.exists():
         return _render(request, "soporte_form", _contexto_form(request, None, "diagnostico", titulo, ayuda))
-    form = DiagnosticoForm(request.POST or None, direcciones=direcciones)
+    form = DiagnosticoForm(request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request))
     equipos, errores = [{}], []
     if request.method == "POST":
         equipos, errores = leer_equipos(request.POST, sel.bienes_catalogo(request))
@@ -121,7 +123,7 @@ def crear_baja_view(request):
     titulo, ayuda = "Nuevo dictamen de baja", "Los bienes del catálogo que ampare pasan a estado Baja al emitirlo."
     if not direcciones.exists():
         return _render(request, "soporte_form", _contexto_form(request, None, "baja", titulo, ayuda))
-    form = BajaForm(request.POST or None, direcciones=direcciones)
+    form = BajaForm(request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request))
     equipos, errores = [{}], []
     if request.method == "POST":
         equipos, errores = leer_equipos(request.POST, sel.bienes_catalogo(request))
@@ -149,7 +151,7 @@ def crear_alta_view(request):
     titulo, ayuda = "Nuevo dictamen de alta", "Solicitud para que el departamento tramite el alta del bien en Ingresos. No da de alta el bien en el catálogo."
     if not direcciones.exists():
         return _render(request, "soporte_form", _contexto_form(request, None, "alta", titulo, ayuda))
-    form = AltaForm(request.POST or None, direcciones=direcciones)
+    form = AltaForm(request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request))
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data
         try:
@@ -191,7 +193,7 @@ def _inicial(dictamen):
     documento, d = dictamen.documento, dictamen.datos
     inicial = {
         "ticket": dictamen.ticket, "elaboro_cargo": dictamen.elaboro_cargo, "autoriza_nombre": dictamen.autoriza_nombre,
-        "autoriza_cargo": dictamen.autoriza_cargo, "direccion": documento.direccion_id,
+        "autoriza_cargo": dictamen.autoriza_cargo, "direccion": documento.direccion_id, "gestor": documento.gestor_id,
         "solicitante": d.get("solicito", documento.contraparte), "fecha_recibido": d.get("fecha_recibido"),
         **{k: v for k, v in d.items() if k not in ("solicito", "fecha_recibido")},
     }
@@ -211,7 +213,8 @@ def editar_view(request, pk):
     documento = dictamen.documento
     formulario, clase_ctx, armar_datos = FORMULARIOS[documento.clase]
     direcciones = Direccion.objects.filter(pk=documento.direccion_id)
-    form = formulario(request.POST or None, direcciones=direcciones, edicion=True, initial=_inicial(dictamen))
+    form = formulario(request.POST or None, direcciones=direcciones, edicion=True, initial=_inicial(dictamen),
+                        gestores=Gestor.objects.filter(Q(pk__in=gestores_asignables(request).values("pk")) | Q(pk=documento.gestor_id)))
     filas = [
         {"id": str(r.pk), "equipo": r.equipo, "marca_modelo": r.marca_modelo, "serie": r.serie,
          "folio_inventario": r.folio_inventario, "departamento": r.departamento, "bien": str(r.bien_id or "")}
@@ -231,7 +234,7 @@ def editar_view(request, pk):
                             "autoriza_nombre": datos.get("autoriza_nombre", ""), "autoriza_cargo": datos.get("autoriza_cargo", "")},
                     datos=armar_datos(datos), equipos=nuevos,
                     contraparte=datos.get("solicitante") if documento.clase == ClaseDocumento.DIAGNOSTICO_TECNICO else datos.get("contraparte"),
-                    contraparte_dependencia_uuid=datos.get("contraparte_dependencia_uuid"),
+                    contraparte_dependencia_uuid=datos.get("contraparte_dependencia_uuid"), gestor=datos.get("gestor"),
                 )
             except ValidationError as error:
                 form.add_error(None, error)
