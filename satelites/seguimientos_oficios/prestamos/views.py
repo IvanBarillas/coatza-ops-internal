@@ -10,7 +10,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from ..integracion import proteger_vista
-from ..models import Bien, PrestamoBien
+from ..models import Bien, CategoriaBien, PrestamoBien
 from ..selectors import APP_SLUG, gestores_asignables, permitido
 from ..views import _query, _render
 from . import selectors as sel
@@ -96,7 +96,18 @@ def vale_crear_view(request):
         else:
             messages.success(request, f"Vale {documento.folio} generado. Ya puedes imprimirlo para firmarlo.")
             return redirect("seguimientos_oficios:documento_detail", pk=documento.pk)
-    return _render(request, "vale_form", {"form": form, "sin_bienes": not bienes.exists()})
+    return _render(request, "vale_form", {
+        "form": form, "sin_bienes": not bienes.exists(),
+        "bienes_data": [
+            {"id": str(b.pk), "texto": str(b), "categoria": str(b.categoria_id or ""), "direccion": str(b.direccion_id)}
+            for b in bienes.select_related("categoria")
+        ],
+        "categorias_data": [
+            {"id": str(c.pk), "nombre": c.nombre, "direccion": str(c.direccion_id)}
+            for c in CategoriaBien.objects.filter(direccion__in=direcciones, is_active=True, is_deleted=False).order_by("nombre")
+        ],
+        "elegidos": [str(v) for v in request.POST.getlist("bienes")] if request.method == "POST" else [],
+    })
 
 
 @login_required
@@ -166,13 +177,21 @@ SITUACIONES_BIEN = (
 def bienes_view(request):
     abiertos = PrestamoBien.objects.filter(abierto=True).select_related("prestamo__documento")
     bienes = list(
-        sel.bienes_visibles(request)
+        sel.bienes_visibles(request).select_related("categoria")
         .prefetch_related(Prefetch("asignaciones", queryset=abiertos, to_attr="abiertas"))
         .order_by("nombre", "identificador")
     )
     texto = request.GET.get("q", "").strip()[:100].casefold()
     if texto:
-        bienes = [b for b in bienes if texto in f"{b.nombre} {b.identificador} {b.folio_inventario}".casefold()]
+        bienes = [b for b in bienes if texto in f"{b.nombre} {b.identificador} {b.folio_inventario} {b.marca_modelo}".casefold()]
+    categorias = list(CategoriaBien.objects.filter(pk__in={b.categoria_id for b in bienes if b.categoria_id}).order_by("nombre"))
+    categoria = request.GET.get("categoria", "")
+    if categoria == "sin":
+        bienes = [b for b in bienes if not b.categoria_id]
+    elif categoria in {str(c.pk) for c in categorias}:
+        bienes = [b for b in bienes if str(b.categoria_id) == categoria]
+    else:
+        categoria = ""
     for bien in bienes:
         bien.situacion = "prestado" if bien.abiertas else bien.estado
         bien.prestamo_abierto = bien.abiertas[0].prestamo if bien.abiertas else None
@@ -184,6 +203,7 @@ def bienes_view(request):
     pagina = Paginator(filas, 25).get_page(request.GET.get("pagina"))
     return _render(request, "bienes", {
         "pagina": pagina, "situacion": situacion, "texto": request.GET.get("q", ""), "total": len(filas),
+        "categorias": categorias, "categoria": categoria,
         "tabs": [
             {"clave": c, "nombre": n, "color": col, "total": conteos[c], "activa": c == situacion, "query": _query(request, situacion=c)}
             for c, n, col in SITUACIONES_BIEN

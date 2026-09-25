@@ -18,14 +18,14 @@ from django.urls import reverse
 from .prestamos.forms import DevolucionForm
 from .areas import areas_disponibles, construir_menu
 from .panel import tarjetas
-from .forms import AdjuntoForm, GestorEntregaForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, GestorEntregaForm, CategoriaBienForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
     color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
     categorias_visibles, documentos_de_gestor, gestores_asignables, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from .models import Adjunto, AdjuntoOCR, Categoria, Dictamen, Direccion, Prestamo, Documento, Gestor, Nomenclatura
+from .models import Adjunto, AdjuntoOCR, Categoria, CategoriaBien, Dictamen, Direccion, Prestamo, Documento, Gestor, Nomenclatura
 from .storage import almacen
 from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
@@ -276,11 +276,12 @@ def direccion_editar_view(request, pk=None):
             gestores=direccion.gestores.select_related("usuario").order_by("nombre"),
             usuarios=usuarios_con_acceso(APP_SLUG),
             categorias=direccion.categorias.order_by("nombre"),
+            categorias_bien=direccion.categorias_bien.order_by("nombre"),
         )
     return _render(request, "direccion_form", contexto)
 
 
-SECCIONES_DE_DIRECCION = ("nomenclaturas", "gestores", "categorias")
+SECCIONES_DE_DIRECCION = ("nomenclaturas", "gestores", "categorias", "bienes")
 
 
 def _volver_a_direccion(pk, seccion="nomenclaturas"):
@@ -556,6 +557,45 @@ def categoria_actualizar_view(request, pk):
                 for error in errores:
                     messages.error(request, error)
     return _volver_a_direccion(categoria.direccion_id, "categorias")
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def categoria_bien_crear_view(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk)
+    form = CategoriaBienForm(request.POST, direccion=direccion)
+    if form.is_valid():
+        categoria = form.save(commit=False)
+        categoria.direccion = direccion
+        categoria.save()
+        messages.success(request, f"Categoría de bienes {categoria.nombre} agregada.")
+    else:
+        for errores in form.errors.values():
+            for error in errores:
+                messages.error(request, error)
+    return _volver_a_direccion(pk, "bienes")
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def categoria_bien_actualizar_view(request, pk):
+    categoria = get_object_or_404(CategoriaBien, pk=pk)
+    if request.POST.get("accion") == "estado":
+        categoria.is_active = not categoria.is_active
+        categoria.save()
+        messages.success(request, f"Categoría {categoria.nombre} " + ("activada." if categoria.is_active else "desactivada."))
+    else:
+        form = CategoriaBienForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Nombre actualizado.")
+        else:
+            for errores in form.errors.values():
+                for error in errores:
+                    messages.error(request, error)
+    return _volver_a_direccion(categoria.direccion_id, "bienes")
 
 
 @login_required

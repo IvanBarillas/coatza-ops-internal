@@ -199,6 +199,25 @@ class Categoria(BaseOficios):
         return self.nombre
 
 
+class CategoriaBien(BaseOficios):
+    """Familia de bienes de una dirección (p. ej. cómputo, energía eléctrica) para encontrarlos rápido al prestar."""
+
+    direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="categorias_bien")
+    nombre = models.CharField("Nombre", max_length=100)
+
+    class Meta:
+        db_table = "oficios_categoria_bien"
+        ordering = ["nombre"]
+        verbose_name = "Categoría de bien"
+        verbose_name_plural = "Categorías de bienes"
+        constraints = [
+            models.UniqueConstraint(fields=["direccion", "nombre"], name="oficios_categoria_bien_unica")
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+
 class ConsecutivoFolio(models.Model):
     nomenclatura = models.ForeignKey(Nomenclatura, on_delete=models.PROTECT, related_name="consecutivos")
     anio = models.PositiveSmallIntegerField("Año")
@@ -420,6 +439,9 @@ class Bien(BaseOficios):
     direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="bienes")
     nombre = models.CharField("Bien", max_length=150)
     identificador = models.CharField("Número de serie o etiqueta", max_length=120, blank=True)
+    categoria = models.ForeignKey(
+        CategoriaBien, null=True, blank=True, on_delete=models.PROTECT, related_name="bienes", verbose_name="Categoría",
+    )
     marca_modelo = models.CharField("Marca y modelo", max_length=150, blank=True)
     folio_inventario = models.CharField("Folio de inventario", max_length=60, blank=True)
     descripcion = models.TextField("Descripción", blank=True)
