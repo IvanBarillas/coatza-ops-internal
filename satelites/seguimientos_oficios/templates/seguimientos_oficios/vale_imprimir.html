@@ -1,48 +1,21 @@
-{% load static %}<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Vale de préstamo {{ documento.folio }}</title>
-    <style>
-        body { font-family: Georgia, "Times New Roman", serif; color: #111; max-width: 780px; margin: 0 auto; padding: 32px 24px; }
-        h1 { font-size: 20px; text-align: center; margin: 4px 0 2px; letter-spacing: .04em; text-transform: uppercase; }
-        .inst { text-align: center; font-size: 13px; color: #444; }
-        .folio { text-align: right; font-size: 14px; margin: 18px 0 6px; }
-        table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
-        th, td { border: 1px solid #333; padding: 6px 8px; text-align: left; vertical-align: top; }
-        th { background: #eee; }
-        .datos p { margin: 4px 0; font-size: 14px; }
-        .firmas { display: flex; gap: 40px; margin-top: 90px; }
-        .firmas div { flex: 1; text-align: center; border-top: 1px solid #333; padding-top: 6px; font-size: 13px; }
-        .aviso { margin-top: 24px; font-size: 12px; color: #444; }
-        .acciones { text-align: center; margin-bottom: 18px; }
-        .acciones button { padding: 8px 18px; font-size: 14px; cursor: pointer; }
-        @media print { .acciones { display: none; } body { padding: 0; } }
-    </style>
-</head>
-<body>
-    <div class="acciones"><button type="button" onclick="window.print()">Imprimir</button></div>
-    <div class="inst">{{ tenant.institution_name|default:tenant.app_name|default:"" }}</div>
-    <h1>Vale de préstamo</h1>
-    <div class="inst">{{ documento.direccion_nombre }}</div>
-    <div class="folio"><strong>Folio:</strong> {{ documento.folio }}</div>
-    <div class="datos">
-        <p><strong>Entrega:</strong> {{ prestamo.fecha_entrega|date:"d/m/Y" }} &nbsp;&nbsp; <strong>Devolución límite:</strong> {{ prestamo.fecha_limite|date:"d/m/Y" }}</p>
-        <p><strong>Recibe:</strong> {{ documento.contraparte }}</p>
-        {% if documento.gestor %}<p><strong>Lo lleva:</strong> {{ documento.gestor }}</p>{% endif %}
-    </div>
-    <table>
-        <thead><tr><th>#</th><th>Bien</th><th>Número de serie o etiqueta</th><th>Folio de inventario</th></tr></thead>
-        <tbody>
-            {% for b in bienes %}<tr><td>{{ forloop.counter }}</td><td>{{ b.nombre }}{% if b.descripcion %}<br><small>{{ b.descripcion }}</small>{% endif %}</td><td>{{ b.identificador|default:"—" }}</td><td>{{ b.folio_inventario|default:"—" }}</td></tr>{% endfor %}
-        </tbody>
-    </table>
-    {% if prestamo.observaciones %}<p><strong>Observaciones:</strong> {{ prestamo.observaciones }}</p>{% endif %}
-    <p class="aviso">Quien recibe se compromete a cuidar los bienes y a devolverlos completos y en buen estado a más tardar en la fecha límite indicada.</p>
-    <div class="firmas">
-        <div>Entrega<br>{{ documento.director_nombre|default:documento.direccion_nombre }}</div>
-        <div>Recibe<br>{{ documento.contraparte }}</div>
-    </div>
-</body>
-</html>
+{% extends "seguimientos_oficios/formato_base.html" %}
+{% block titulo %}Vale de préstamo {{ documento.folio }}{% endblock %}
+
+{% block cab_der %}<div class="cab-der">{{ documento.folio }}</div>{% endblock %}
+
+{% block cuerpo %}
+<p style="text-align:right;margin:0 0 14px">Coatzacoalcos, Ver., a {{ prestamo.fecha_entrega|date:"j" }} de {{ prestamo.fecha_entrega|date:"F"|lower }} de {{ prestamo.fecha_entrega|date:"Y" }}</p>
+<h1 style="color:#1e7b3c;font-size:15px">Vale de entrega</h1>
+<p style="line-height:1.5;margin:0 0 12px">Se hace entrega a la: <strong>{{ documento.contraparte }}</strong>, el siguiente equipo, de la Dirección de {{ documento.direccion_nombre }}{% if documento.director_nombre %} a cargo de {{ documento.director_nombre }}{% endif %}. Devolución límite: <strong>{{ prestamo.fecha_limite|date:"d/m/Y" }}</strong>.</p>
+<table class="t">
+    <colgroup><col style="width:8%"><col style="width:8%"><col style="width:32%"><col style="width:30%"><col style="width:22%"></colgroup>
+    <tr><th class="gris">Cant.</th><th class="gris">Uni.</th><th class="gris">Descripción</th><th class="gris">Marca y modelo</th><th class="gris">Serie</th></tr>
+    {% for b in bienes %}<tr><td>1</td><td>PZA</td><td>{{ b.nombre }}{% if b.folio_inventario %}<br><small>Inv. {{ b.folio_inventario }}</small>{% endif %}</td><td>{{ b.marca_modelo }}</td><td>{{ b.identificador }}</td></tr>{% endfor %}
+    {% for _ in relleno %}<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td></tr>{% endfor %}
+</table>
+<table class="t" style="margin-top:16px"><tr><th class="gris">Observaciones.</th></tr><tr><td class="texto alto">{{ prestamo.observaciones }}</td></tr></table>
+<div class="lineas">
+    <div class="firma-linea">Recibe<div class="raya">{{ documento.contraparte }}</div></div>
+    <div class="firma-linea">Entrega<div class="raya">{{ documento.director_nombre }}<br>Titular de {{ documento.direccion_nombre }}</div></div>
+</div>
+{% endblock %}

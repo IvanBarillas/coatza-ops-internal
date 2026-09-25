@@ -103,9 +103,10 @@ def vale_crear_view(request):
 @proteger_vista(APP_SLUG, "can_view_loans")
 def vale_imprimir_view(request, pk):
     prestamo = get_object_or_404(sel.prestamos_visibles(request), documento_id=pk)
+    bienes = [r.bien for r in prestamo.renglones.select_related("bien")]
     return render(request, "seguimientos_oficios/vale_imprimir.html", {
-        "prestamo": prestamo, "documento": prestamo.documento,
-        "bienes": [r.bien for r in prestamo.renglones.select_related("bien")],
+        "prestamo": prestamo, "documento": prestamo.documento, "bienes": bienes,
+        "relleno": range(max(0, 9 - len(bienes))),
     })
 
 

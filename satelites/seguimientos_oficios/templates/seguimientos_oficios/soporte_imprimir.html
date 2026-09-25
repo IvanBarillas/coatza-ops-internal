@@ -1,110 +1,85 @@
-{% load static oficios_fechas %}<!doctype html>
-<html lang="es">
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ documento.get_clase_display }} {{ documento.folio }}</title>
-    <style>
-        @page { size: letter; margin: 1.2cm 1.6cm 3.2cm; }
-        body { font-family: Arial, Helvetica, sans-serif; color: #111; max-width: 780px; margin: 0 auto; padding: 16px 24px 120px; font-size: 12px; }
-        .encabezado { display: block; width: 62%; margin: 0 auto 6px; }
-        .institucion { text-align: center; font-size: 12px; font-weight: bold; line-height: 1.4; }
-        .folio { text-align: right; font-size: 11px; margin: 4px 0 8px; }
-        h1 { font-size: 13px; text-align: center; margin: 10px 0; text-transform: uppercase; }
-        table { width: 100%; border-collapse: collapse; margin: 8px 0; }
-        th, td { border: 1px solid #333; padding: 5px 7px; text-align: left; vertical-align: top; }
-        th { background: #e9e9e9; font-size: 11px; text-transform: uppercase; }
-        .titulo td, .titulo th { text-align: center; background: #e9e9e9; font-weight: bold; text-transform: uppercase; }
-        .texto { min-height: 60px; white-space: pre-line; }
-        .opcion { display: inline-block; margin-right: 14px; }
-        .caja { display: inline-block; width: 11px; height: 11px; border: 1px solid #111; margin-right: 4px; vertical-align: -2px; text-align: center; line-height: 10px; font-size: 11px; }
-        .firmas { display: flex; gap: 40px; margin-top: 70px; page-break-inside: avoid; }
-        .firmas div { flex: 1; text-align: center; border-top: 1px solid #333; padding-top: 5px; font-size: 11px; }
-        .carta p { margin: 8px 0; line-height: 1.5; }
-        .pie { position: fixed; left: 0; right: 0; bottom: 0; text-align: center; }
-        .pie img { width: 100%; max-width: 780px; }
-        .acciones { text-align: center; margin-bottom: 12px; }
-        .acciones button { padding: 8px 18px; font-size: 14px; cursor: pointer; }
-        @media print { .acciones { display: none; } body { padding: 0; } }
-    </style>
-</head>
-<body>
-    <div class="acciones"><button type="button" onclick="window.print()">Imprimir</button></div>
-    <img class="encabezado" src="{% static 'seguimientos_oficios/formatos/encabezado.png' %}" alt="Gobierno de la Ciudad">
-    <div class="institucion">{{ documento.direccion_nombre }}</div>
-    <div class="folio"><strong>{{ documento.folio }}</strong>{% if dictamen.ticket %} · Ticket {{ dictamen.ticket }}{% endif %}</div>
+{% extends "seguimientos_oficios/formato_base.html" %}
+{% load oficios_fechas %}
+{% block titulo %}{{ documento.get_clase_display }} {{ documento.folio }}{% endblock %}
 
-    {% if clase == "diagnostico_tecnico" %}
-    <h1>Diagnóstico técnico del estado físico y funcionamiento de los bienes del H. Ayuntamiento de Coatzacoalcos, Veracruz</h1>
-    <table>
-        <tr><th>Fecha de recibido</th><td>{{ d.fecha_recibido|fecha_iso }}</td><th>N° de diagnóstico</th><td>{{ documento.folio }}</td></tr>
-        <tr><th>Tipo de bien</th><td>{{ d.tipo_bien }}</td><th>Ticket</th><td>{{ dictamen.ticket }}</td></tr>
-    </table>
-    <table>
-        <tr class="titulo"><th colspan="3">Descripción del equipo</th></tr>
-        <tr><th>Folio</th><th>Serie</th><th>Marca y modelo</th></tr>
-        {% for e in equipos %}<tr><td>{{ e.folio_inventario }}</td><td>{{ e.serie }}</td><td>{{ e.equipo }}{% if e.marca_modelo %} · {{ e.marca_modelo }}{% endif %}</td></tr>{% endfor %}
-    </table>
-    <table>
-        <tr class="titulo"><th colspan="3">Diagnóstico del equipo</th></tr>
-        <tr><th>Fallo</th><th>Causa</th><th>Solución</th></tr>
-        <tr><td class="texto">{{ d.fallo }}</td><td class="texto">{{ d.causa }}</td><td class="texto">{{ d.solucion }}</td></tr>
-    </table>
-    <table><tr class="titulo"><th>Observaciones</th></tr><tr><td class="texto">{{ d.observaciones }}</td></tr></table>
-    <table>
-        <tr class="titulo"><th colspan="3">Recomendación sobre el bien</th></tr>
-        <tr>{% for clave, nombre in recomendaciones %}<td><span class="caja">{% if recomendacion_actual == clave %}X{% endif %}</span>{{ nombre }}</td>{% endfor %}</tr>
-    </table>
-    <div class="firmas">
-        <div>Solicitó<br>{{ d.solicito }}</div>
-        <div>Realizó<br>{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div>
-    </div>
+{% block cab_der %}
+{% if clase == "diagnostico_tecnico" or clase == "dictamen_baja" %}
+<div class="cab-der cab-caja"><strong>MUNICIPIO DE COATZACOALCOS, VERACRUZ</strong><br>{{ documento.direccion_nombre }}</div>
+{% else %}
+<div class="cab-der">{{ documento.folio }}</div>
+{% endif %}
+{% endblock %}
 
-    {% elif clase == "dictamen_baja" %}
-    <h1>Dictamen técnico del estado físico y funcionamiento de los bienes muebles dispuestos para baja del inventario del H. Ayuntamiento de Coatzacoalcos, Veracruz</h1>
-    <table>
-        <tr><th>Dictamen N°</th><td>{{ documento.folio }}</td><th>N° ticket (mesa de ayuda)</th><td>{{ dictamen.ticket }}</td></tr>
-        <tr><th>Área que identifica y solicita el dictamen</th><td>{{ documento.contraparte }}</td><th>Fecha de elaboración</th><td>{{ documento.fecha|date:"d/m/Y" }}</td></tr>
-    </table>
-    <table>
-        <tr><th>Folio</th><th>Serie</th><th>Equipo</th><th>Marca/modelo</th><th>Departamento</th></tr>
-        {% for e in equipos %}<tr><td>{{ e.folio_inventario }}</td><td>{{ e.serie }}</td><td>{{ e.equipo }}</td><td>{{ e.marca_modelo }}</td><td>{{ e.departamento }}</td></tr>{% endfor %}
-    </table>
-    <table><tr class="titulo"><th>Diagnóstico</th></tr><tr><td class="texto">{{ d.diagnostico }}</td></tr></table>
-    <table>
-        <tr><td>
-            Una vez revisados los bienes muebles anteriores y con sustento en el artículo 95, 106 y 107 de la Ley de Adquisiciones, Arrendamientos, Administración y Enajenación de Bienes Muebles del Estado de Veracruz de Ignacio de la Llave, última reforma publicada en la Gaceta Oficial el 26 de diciembre de 2017, se <strong>DICTAMINA SU NO UTILIDAD</strong> por estar dentro de la siguiente clasificación:
-            <div style="margin-top:6px">{% for clave, nombre in clasificaciones %}<div><span class="caja">{% if clasificacion_actual == clave %}X{% endif %}</span>{{ nombre }}</div>{% endfor %}</div>
-        </td></tr>
-    </table>
-    <table>
-        <tr class="titulo"><th>Recomendación de disposición final</th></tr>
-        <tr><td>{% for clave, nombre in disposiciones %}<span class="opcion"><span class="caja">{% if disposicion_actual == clave %}X{% endif %}</span>{{ nombre }}</span>{% endfor %}</td></tr>
-    </table>
-    <div class="firmas">
-        <div>Solicitó el dictamen<br>{{ d.solicito }}</div>
-        <div>Elaboró y dictaminó la no utilidad por el área técnica<br>{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div>
-    </div>
-    <div class="firmas" style="margin-top:50px">
-        <div>Autorización del dictamen técnico<br>{{ dictamen.autoriza_nombre }}<br>{{ dictamen.autoriza_cargo }}</div>
-    </div>
+{% block cuerpo %}
+{% if clase == "diagnostico_tecnico" %}
+<h1>Diagnóstico técnico del estado físico y funcionamiento de los bienes del H. Ayuntamiento de Coatzacoalcos, Veracruz.</h1>
+<table class="t">
+    <colgroup><col style="width:22%"><col style="width:26%"><col style="width:22%"><col style="width:30%"></colgroup>
+    <tr><th class="g">Fecha de recibido</th><td>{{ d.fecha_recibido|fecha_iso }}</td><th class="gris">N° diagnóstico</th><td>{{ documento.folio }}</td></tr>
+    <tr><th class="g">Tipo de bien</th><td>{{ d.tipo_bien }}</td><th class="gris">Ticket</th><td>{{ dictamen.ticket }}</td></tr>
+</table>
+<table class="t">
+    <colgroup><col style="width:22%"><col style="width:26%"><col style="width:52%"></colgroup>
+    <tr><th class="banda" colspan="3">Descripción del equipo</th></tr>
+    <tr><th class="sub">Folio</th><th class="sub">Serie</th><th class="sub">Marca y modelo</th></tr>
+    {% for e in equipos %}<tr><td>{{ e.folio_inventario }}</td><td>{{ e.serie }}</td><td>{{ e.equipo }}{% if e.marca_modelo %} · {{ e.marca_modelo }}{% endif %}</td></tr>{% endfor %}
+</table>
+<table class="t">
+    <tr><th class="banda" colspan="3">Diagnóstico del equipo</th></tr>
+    <tr><th class="sub">Fallo</th><th class="sub">Causa</th><th class="sub">Solución</th></tr>
+    <tr><td class="texto alto">{{ d.fallo }}</td><td class="texto alto">{{ d.causa }}</td><td class="texto alto">{{ d.solucion }}</td></tr>
+</table>
+<table class="t"><tr><th class="banda">Observaciones</th></tr><tr><td class="texto">{{ d.observaciones }}</td></tr></table>
+<table class="t">
+    <tr><th class="banda" colspan="3">Recomendación sobre el bien</th></tr>
+    <tr>{% for clave, nombre in recomendaciones %}<td><span class="caja">{% if recomendacion_actual == clave %}X{% endif %}</span>{{ nombre }}</td>{% endfor %}</tr>
+</table>
+<div class="lineas">
+    <div class="firma"><div class="banda">Solicitó</div><div class="espacio">{{ d.solicito }}</div></div>
+    <div class="firma"><div class="banda">Realizó</div><div class="espacio">{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div></div>
+</div>
 
-    {% else %}
-    <div class="carta">
-        <p style="text-align:right">Coatzacoalcos, Ver., a {{ documento.fecha|date:"j" }} de {{ documento.fecha|date:"F" }} de {{ documento.fecha|date:"Y" }}</p>
-        <p><strong>A quien corresponda<br>{{ documento.contraparte }}<br>Presente</strong></p>
-        <p>Por medio de la presente, y en atención al ticket número {{ dictamen.ticket|default:"—" }}, nos permitimos hacer de su conocimiento lo siguiente:</p>
-        <table><tr class="titulo"><th>Solicitud</th></tr><tr><td class="texto">{{ d.solicitud }}</td></tr></table>
-        <table><tr class="titulo"><th>Justificación</th></tr><tr><td class="texto">{{ d.justificacion }}</td></tr></table>
-        <table><tr class="titulo"><th>Dictamen</th></tr><tr><td class="texto">{{ d.dictamen }}</td></tr></table>
-        <p>Sin más, les reitero el saludo y quedo a su disposición para cualquier duda y/o aclaración.</p>
-    </div>
-    <div class="firmas">
-        <div>Elaborado por<br>{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div>
-        <div>Autorizado por<br>{{ dictamen.autoriza_nombre }}<br>{{ dictamen.autoriza_cargo }}</div>
-    </div>
-    {% endif %}
+{% elif clase == "dictamen_baja" %}
+<h1>Dictamen técnico del estado físico y funcionamiento de los bienes muebles dispuestos para baja del inventario del H. Ayuntamiento de Coatzacoalcos, Veracruz.</h1>
+<table class="t">
+    <colgroup><col style="width:22%"><col style="width:28%"><col style="width:24%"><col style="width:26%"></colgroup>
+    <tr><th class="g">Dictamen N°</th><td>{{ documento.folio }}</td><th class="g">N° ticket (mesa de ayuda)</th><td>{{ dictamen.ticket }}</td></tr>
+    <tr><th class="g">Área que identifica y solicita el dictamen</th><td>{{ documento.contraparte }}</td><th class="g">Fecha de elaboración</th><td>{{ documento.fecha|date:"d/m/Y" }}</td></tr>
+</table>
+<table class="t">
+    <tr><th class="g">Folio</th><th class="g">Serie</th><th class="g">Equipo</th><th class="g">Marca/modelo</th><th class="g">Departamento</th></tr>
+    {% for e in equipos %}<tr><td>{{ e.folio_inventario }}</td><td>{{ e.serie }}</td><td>{{ e.equipo }}</td><td>{{ e.marca_modelo }}</td><td>{{ e.departamento }}</td></tr>{% endfor %}
+</table>
+<table class="t"><tr><th class="banda">Diagnóstico</th></tr><tr><td class="texto alto">{{ d.diagnostico }}</td></tr></table>
+<table class="t"><tr><td style="border:none;padding:0 0 6px">
+    Una vez revisados los bienes muebles anteriores y con sustento en el artículo 95, 106 y 107 de la Ley de Adquisiciones, Arrendamientos, Administración y Enajenación de Bienes Muebles del Estado de Veracruz de Ignacio de la Llave, última reforma publicada en la Gaceta Oficial el 26 de diciembre de 2017, se DICTAMINA SU NO UTILIDAD por estar dentro de la siguiente clasificación:
+    <div style="margin-top:6px">{% for clave, nombre in clasificaciones %}<div style="margin:3px 0 3px 12px"><span class="caja">{% if clasificacion_actual == clave %}X{% endif %}</span>{{ nombre }}</div>{% endfor %}</div>
+</td></tr></table>
+<table class="t">
+    <tr><th class="banda">Recomendación de disposición final</th></tr>
+    <tr><td class="opciones">{% for clave, nombre in disposiciones %}<span><span class="caja">{% if disposicion_actual == clave %}X{% endif %}</span>{{ nombre }}</span>{% endfor %}</td></tr>
+</table>
+<div class="lineas">
+    <div class="firma"><div class="banda">Solicitó el dictamen</div><div class="espacio">{{ d.solicito }}</div></div>
+    <div class="firma"><div class="banda">Elaboró y dictaminó la no utilidad por el área técnica</div><div class="espacio">{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div></div>
+</div>
+<div class="lineas" style="justify-content:center">
+    <div class="firma" style="flex:0 0 50%"><div class="banda">Autorización del dictamen técnico</div><div class="espacio">{{ dictamen.autoriza_nombre }}<br>{{ dictamen.autoriza_cargo }}</div></div>
+</div>
 
-    <div class="pie"><img src="{% static 'seguimientos_oficios/formatos/pie.png' %}" alt=""></div>
-</body>
-</html>
+{% else %}
+<div class="carta">
+    <p style="text-align:right">Coatzacoalcos, Ver., a {{ documento.fecha|date:"j" }} de {{ documento.fecha|date:"F"|lower }} de {{ documento.fecha|date:"Y" }}</p>
+    <p><strong>A quien corresponda<br>{{ documento.contraparte }}<br>Presente</strong></p>
+    <p>Por medio de la presente, y en atención al ticket número {{ dictamen.ticket|default:"—" }}, nos permitimos hacer de su conocimiento lo siguiente:</p>
+    <table class="t"><tr><th class="gris-banda">SOLICITUD</th></tr><tr><td class="texto">{{ d.solicitud }}</td></tr></table>
+    <table class="t"><tr><th class="gris-banda">JUSTIFICACIÓN</th></tr><tr><td class="texto">{{ d.justificacion }}</td></tr></table>
+    <table class="t"><tr><th class="gris-banda">DICTAMEN</th></tr><tr><td class="texto alto">{{ d.dictamen }}</td></tr></table>
+    <p>Sin más, les reitero el saludo y quedo a su disposición para cualquier duda y/o aclaración.</p>
+</div>
+<div class="lineas">
+    <div class="firma-linea">Elaborado por<div class="raya">{{ dictamen.elaboro_nombre }}<br>{{ dictamen.elaboro_cargo }}</div></div>
+    <div class="firma-linea">Autorizado por<div class="raya">{{ dictamen.autoriza_nombre }}<br>{{ dictamen.autoriza_cargo }}</div></div>
+</div>
+{% endif %}
+{% endblock %}

@@ -3,6 +3,7 @@ from unittest import mock
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
+from django.test import override_settings
 from django.urls import reverse
 
 from apps.security.models import Dependencia, UserAppRole
@@ -208,6 +209,10 @@ class VistasPrestamosTests(PrestamosBase):
         self.assertNotContains(detalle, "Registrar devolución")
         self.assertContains(detalle, "Devolución completa")
 
+    @override_settings(STORAGES={
+        "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+        "staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"},
+    })
     def test_pagina_imprimible_del_vale(self):
         documento, _ = self.vale([self.starlink, self.laptop])
         pagina = self.client.get(reverse("seguimientos_oficios:vale_imprimir", args=[documento.pk]))

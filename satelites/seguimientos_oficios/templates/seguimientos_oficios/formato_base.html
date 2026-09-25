@@ -1,0 +1,71 @@
+{% load static %}<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block titulo %}{% endblock %}</title>
+    <style>
+        /* Márgenes en cero: así el navegador no imprime fecha, título ni dirección. Los márgenes reales los da la propia hoja. */
+        @page { size: letter; margin: 0; }
+        :root { --guinda: #7c2529; --gris: #bfbfbf; }
+        * { box-sizing: border-box; }
+        body { margin: 0; background: #e5e5e5; font-family: Archivo, Arial, Helvetica, sans-serif; font-size: 12px; color: #111; }
+        .acciones { text-align: center; padding: 12px; }
+        .acciones button { padding: 8px 18px; font-size: 14px; cursor: pointer; }
+        .hoja { position: relative; width: 21.59cm; min-height: 27.94cm; margin: 0 auto 24px; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
+        .cab, .cab-der, .pie { position: absolute; }
+        .cab { top: 1cm; left: 1.6cm; width: 6.8cm; }
+        .cab-der { top: 1.1cm; right: 1.6cm; text-align: right; max-width: 9cm; font-size: 12px; line-height: 1.5; }
+        .cab-der.cab-caja { width: 8.2cm; border: 1px solid var(--guinda); color: var(--guinda); text-align: center; padding: 8px 26px; font-size: 11px; line-height: 1.4; }
+        .pie { bottom: 0; left: 0; width: 100%; }
+        .pie img, .cab { display: block; }
+        .pie img { width: 100%; }
+        table.marco { width: 100%; border-collapse: collapse; }
+        .sp-cab { height: 3cm; } .sp-pie { height: 3.9cm; }
+        .contenido { padding: 0 1.7cm; }
+        table.t { width: 100%; border-collapse: collapse; margin: 0 0 9px; table-layout: fixed; }
+        .t th, .t td { border: 1px solid #222; padding: 4px 7px; vertical-align: top; text-align: left; }
+        .t th { font-weight: normal; text-transform: uppercase; font-size: 10.5px; }
+        .t th.g, .t th.banda { background: var(--guinda); color: #fff; border-color: var(--guinda); text-align: center; }
+        .t th.banda { padding: 5px; }
+        .t th.gris { background: var(--gris); text-align: center; }
+        .t th.sub { text-align: center; font-weight: bold; }
+        .t th.gris-banda { background: #ccc; text-align: left; font-weight: bold; font-size: 12px; padding: 6px 7px; }
+        .t td.texto { white-space: pre-line; min-height: 2cm; height: 2.4cm; }
+        .t td.alto { height: 3.2cm; }
+        .t td.opciones span { display: inline-block; margin-right: 22px; }
+        .caja { display: inline-block; width: 11px; height: 11px; border: 1px solid #111; margin-right: 5px; vertical-align: -2px; text-align: center; line-height: 10px; font-size: 11px; }
+        h1 { font-size: 12.5px; text-align: center; margin: 0 0 12px; text-transform: uppercase; }
+        .lineas { display: flex; gap: 28px; margin-top: 16px; break-inside: avoid; }
+        .lineas > div { flex: 1; }
+        .firma { border: 1px solid #222; break-inside: avoid; }
+        .firma .banda { background: var(--guinda); color: #fff; text-align: center; text-transform: uppercase; font-size: 10.5px; padding: 5px; }
+        .firma .espacio { height: 1.8cm; padding: 6px; display: flex; align-items: flex-end; justify-content: center; text-align: center; font-size: 11px; }
+        .firma-linea { text-align: center; text-transform: uppercase; font-size: 11px; }
+        .firma-linea .raya { margin-top: 1.9cm; border-top: 1px solid #222; padding-top: 4px; text-transform: none; }
+        .pagina { text-align: right; }
+        .carta p { margin: 8px 0; line-height: 1.5; }
+        @media print {
+            body { background: #fff; }
+            .acciones { display: none; }
+            .hoja { box-shadow: none; margin: 0; width: auto; min-height: 0; }
+            .cab, .cab-der, .pie { position: fixed; }
+            .t td.texto { min-height: 0; }
+            table.marco thead { display: table-header-group; } table.marco tfoot { display: table-footer-group; }
+        }
+    </style>
+</head>
+<body>
+    <div class="acciones"><button type="button" onclick="window.print()">Imprimir</button></div>
+    <div class="hoja">
+        <img class="cab" src="{% static 'seguimientos_oficios/formatos/encabezado.png' %}" alt="Gobierno de la Ciudad de Coatzacoalcos">
+        {% block cab_der %}{% endblock %}
+        <table class="marco">
+            <thead><tr><td><div class="sp-cab"></div></td></tr></thead>
+            <tfoot><tr><td><div class="sp-pie"></div></td></tr></tfoot>
+            <tbody><tr><td class="contenido">{% block cuerpo %}{% endblock %}</td></tr></tbody>
+        </table>
+        <div class="pie"><img src="{% static 'seguimientos_oficios/formatos/pie.png' %}" alt=""></div>
+    </div>
+</body>
+</html>
