@@ -58,11 +58,11 @@
         syncLinkTitles(collapsed);
     }
 
-    // Charts y tablas necesitan recalcular su ancho cuando termina la transición.
+    // Charts y tablas necesitan recalcular su ancho cuando termina la transición (0.4 s, ver base.html).
     function notifyResize() {
         window.setTimeout(function () {
             window.dispatchEvent(new Event("resize"));
-        }, 220);
+        }, 450);
     }
 
     function toggle() {
