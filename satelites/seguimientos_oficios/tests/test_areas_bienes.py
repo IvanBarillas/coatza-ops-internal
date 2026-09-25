@@ -74,6 +74,38 @@ class CatalogosEnOficiosTests(PrestamosBase):
         self.assertTrue(respuesta["Location"].endswith("?seccion=categorias"))
 
 
+class PanelDeInicioTests(PrestamosBase):
+    def inicio(self, **extra):
+        return self.client.get(reverse("seguimientos_oficios:inicio"), **extra)
+
+    def test_con_varias_areas_muestra_el_panel_con_una_tarjeta_por_area(self):
+        pagina = self.inicio()
+        self.assertEqual(pagina.status_code, 200)
+        self.assertEqual([t["clave"] for t in pagina.context["tarjetas"]], ["oficios", "prestamos"])
+        self.assertContains(pagina, reverse("seguimientos_oficios:prestamos"))
+        self.assertFalse(pagina.context["show_module_sidebar"])
+
+    def test_con_una_sola_area_entra_directo(self):
+        UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
+        self.assertRedirects(self.inicio(), reverse("seguimientos_oficios:documento_list"), fetch_redirect_response=False)
+
+    def test_las_cifras_reflejan_lo_que_requiere_atencion(self):
+        self.vale(limite=HOY + datetime.timedelta(days=1))  # vencido: la fecha real ya pasó
+        self.vale([self.laptop], limite=HOY + datetime.timedelta(days=3650))  # vigente
+        cifras = {t["clave"]: {c["etiqueta"]: c["valor"] for c in t["cifras"]} for t in self.inicio().context["tarjetas"]}
+        self.assertEqual(cifras["prestamos"]["Abiertos"], 2)
+        self.assertEqual(cifras["prestamos"]["Vencidos"], 1)
+        self.assertGreaterEqual(cifras["oficios"]["Pendientes"], 2)
+
+    def test_carga_parcial_del_workbench_no_lleva_el_menu_de_area(self):
+        parcial = self.inicio(HTTP_HX_REQUEST="true", HTTP_HX_TARGET="workbench")
+        self.assertContains(parcial, 'id="workbench"')
+        self.assertNotContains(parcial, 'id="module-sidebar"')
+
+    def test_el_area_tiene_enlace_de_regreso_al_panel(self):
+        self.assertContains(self.client.get(reverse("seguimientos_oficios:bienes")), reverse("seguimientos_oficios:inicio"))
+
+
 class TableroDePrestamosTests(PrestamosBase):
     def prestamo(self, dias_limite, bien=None):
         return self.vale([bien or self.bien(f"Bien {dias_limite}")], limite=HOY + datetime.timedelta(days=dias_limite))

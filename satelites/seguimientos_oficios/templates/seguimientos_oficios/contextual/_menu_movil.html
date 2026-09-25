@@ -6,9 +6,9 @@
         </span>
         <i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-open:rotate-180"></i>
     </summary>
-    {% if sidebar_areas %}
-    <div class="grid grid-cols-2 gap-1 border-t border-gray-100 p-2">
-        {% for a in sidebar_areas %}<a href="{{ a.href }}" hx-get="{{ a.href }}" hx-target="#workbench" hx-swap="innerHTML" hx-push-url="true" class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-black uppercase tracking-widest {% if a.activa %}bg-brand-primary text-white{% else %}bg-gray-100 text-gray-600{% endif %}"><i data-lucide="{{ a.icon }}" class="h-3.5 w-3.5"></i>{{ a.nombre }}</a>{% endfor %}
+    {% if sidebar_areas %}{% url 'seguimientos_oficios:inicio' as inicio_url %}
+    <div class="border-t border-gray-100 p-2">
+        <a href="{{ inicio_url }}" hx-get="{{ inicio_url }}" hx-target="#workbench" hx-swap="innerHTML" hx-push-url="true" class="flex min-h-11 items-center gap-2 rounded-xl bg-gray-100 px-3 py-2 text-xs font-black uppercase tracking-widest text-gray-600"><i data-lucide="layout-grid" class="h-4 w-4"></i>Inicio</a>
     </div>
     {% endif %}
     <nav class="space-y-1 border-t border-gray-100 p-2">

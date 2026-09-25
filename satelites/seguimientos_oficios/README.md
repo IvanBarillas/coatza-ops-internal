@@ -173,3 +173,12 @@ estén cancelados: ticket, textos, firmantes, y en los equipos su descripción, 
 documento ya se firmó (hay archivo firmado) o se entregó, además exige un motivo. No cambian el folio, la dirección ni *qué
 bienes* ampara: si el bien es otro, se cancela y se emite uno nuevo. La serie o el nombre de un bien se corrigen en el propio bien. Los formatos de
 referencia (Word) viven en `formatos_referencia/`, fuera de git.
+
+## Panel de inicio y áreas
+
+El módulo tiene tres áreas (**Oficios**, **Préstamos**, **Soporte técnico**), cada una con su propio menú lateral y solo las
+que el usuario puede usar según sus permisos. La entrada del módulo (`inicio`, la que abre el Hub) decide sola: con **una**
+sola área lleva directo a su primera opción (el gestor entra a *Mis pendientes*); con **varias** muestra el panel, una tarjeta
+por área con lo que requiere atención (oficios pendientes y en rojo, préstamos abiertos, por vencer y vencidos, documentos
+de soporte por entregar). Dentro de un área, el enlace *Inicio* del menú regresa al panel. Agregar un área nueva es una entrada
+en `areas.py` (`AREAS`, `DESCRIPCIONES`, sus rutas) y sus cifras en `panel.py`.

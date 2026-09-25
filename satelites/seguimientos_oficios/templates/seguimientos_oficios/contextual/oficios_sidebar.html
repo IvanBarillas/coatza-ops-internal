@@ -5,20 +5,15 @@
                 <i data-lucide="{{ area_actual.icon|default:'file-text' }}" class="h-5 w-5"></i>
             </div>
             <div class="min-w-0">
-                <div class="text-xs font-black uppercase tracking-[0.22em] text-white/60">Oficios</div>
+                <div class="text-xs font-black uppercase tracking-[0.22em] text-white/60">Seguimiento de oficios</div>
                 <h2 class="truncate text-sm font-black uppercase tracking-tight text-white">{{ area_actual.nombre|default:"Seguimiento" }}</h2>
             </div>
         </div>
-        {% if sidebar_areas %}
-        <div class="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/20 p-1" role="tablist" aria-label="Área">
-            {% for a in sidebar_areas %}
-            <a href="{{ a.href }}" hx-get="{{ a.href }}" hx-target="#workbench" hx-swap="innerHTML" hx-push-url="true" role="tab"
-               {% if a.activa %}aria-selected="true"{% endif %}
-               class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-black uppercase tracking-widest transition-colors {% if a.activa %}bg-white/20 text-white{% else %}text-white/60 hover:bg-white/10 hover:text-white{% endif %}">
-                <i data-lucide="{{ a.icon }}" class="h-3.5 w-3.5"></i>{{ a.nombre }}
-            </a>
-            {% endfor %}
-        </div>
+        {% if sidebar_areas %}{% url 'seguimientos_oficios:inicio' as inicio_url %}
+        <a href="{{ inicio_url }}" hx-get="{{ inicio_url }}" hx-target="#workbench" hx-swap="innerHTML" hx-push-url="true"
+           class="mt-4 flex items-center gap-1.5 rounded-lg bg-black/20 px-3 py-2 text-xs font-black uppercase tracking-widest text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+            <i data-lucide="layout-grid" class="h-3.5 w-3.5"></i>Inicio
+        </a>
         {% endif %}
     </div>
     <nav class="flex-1 space-y-1 overflow-y-auto p-3">

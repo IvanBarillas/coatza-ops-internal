@@ -24,16 +24,37 @@ def area_de(nombre_ruta):
     return "prestamos" if ruta in RUTAS_DE_PRESTAMOS else "soporte" if ruta in RUTAS_DE_SOPORTE else "oficios"
 
 
-def construir_menu(request, area_forzada=None):
-    """Devuelve (opciones del área actual, selector de áreas, área actual) según los permisos del usuario."""
+DESCRIPCIONES = {
+    "oficios": "Documentos recibidos y enviados, seguimiento de entregas y catálogos.",
+    "prestamos": "Vales de préstamo, bienes disponibles y devoluciones.",
+    "soporte": "Diagnósticos técnicos y dictámenes de alta y baja.",
+}
+
+
+def _agrupar(request):
+    """Opciones del menú que el usuario puede ver, agrupadas por área."""
     actual = request.resolver_match.view_name if request.resolver_match else ""
     por_area = {clave: [] for clave, _, _ in AREAS}
     for item in getattr(request, "axentra_sidebar_menu", []):
-        area = area_de(item["url"])
-        por_area[area].append({
+        por_area[area_de(item["url"])].append({
             "icon": item["icon"], "name": item["name"], "href": reverse(item["url"]),
             "active": item["url"] == actual,
         })
+    return por_area, actual
+
+
+def areas_disponibles(request):
+    """Áreas con al menos una opción visible; `href` es la primera opción (la entrada natural del área)."""
+    por_area, _ = _agrupar(request)
+    return [
+        {"clave": c, "nombre": n, "icon": i, "href": por_area[c][0]["href"], "descripcion": DESCRIPCIONES[c]}
+        for c, n, i in AREAS if por_area[c]
+    ]
+
+
+def construir_menu(request, area_forzada=None):
+    """Devuelve (opciones del área actual, áreas si hay más de una, área actual) según los permisos del usuario."""
+    por_area, actual = _agrupar(request)
     disponibles = [(c, n, i) for c, n, i in AREAS if por_area[c]]
     claves = [c for c, _, _ in disponibles]
     area_actual = area_forzada or area_de(actual)
