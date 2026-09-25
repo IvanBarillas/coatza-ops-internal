@@ -1,0 +1,124 @@
+{% load static %}
+{% include "telefonia/contextual/_menu_movil.html" %}
+{{ linea_data|json_script:"tel-linea-detalle" }}
+<link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
+<script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'telefonia/mapa.js' %}"></script>
+<div class="mx-auto w-full max-w-4xl space-y-4 font-mono text-left">
+    {% url 'telefonia:reportes' as volver_url %}
+    {% include "components/form_header.html" with module_label="Telefonía" mode_label="Reporte" title=reporte.folio description=reporte.sitio_texto icon="phone-call" back_url=volver_url back_label="Volver a reportes" %}
+    {% include "telefonia/content/_mensajes.html" %}
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2">
+                {% if reporte.estatus == 'pendiente' %}<span class="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black uppercase text-amber-700">Pendiente</span>
+                {% elif reporte.estatus == 'atendido' %}<span class="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-black uppercase text-emerald-700">Atendido</span>
+                {% else %}<span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-black uppercase text-gray-600">Cancelado</span>{% endif %}
+                {% if reporte.color %}<span class="inline-flex items-center gap-1 text-xs text-gray-500"><span class="inline-block h-3 w-3 rounded-full {% if reporte.color == 'rojo' %}bg-red-500{% elif reporte.color == 'ambar' %}bg-amber-500{% else %}bg-emerald-500{% endif %}"></span>{{ reporte.dias_abierto }} día{{ reporte.dias_abierto|pluralize }} abierto</span>{% endif %}
+            </div>
+            {% if puede_gestionar %}<a class="text-xs font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_editar' reporte.pk %}" hx-get="{% url 'telefonia:reporte_editar' reporte.pk %}" hx-target="#page-content" hx-push-url="true">Corregir datos</a>{% endif %}
+        </div>
+        <dl class="mt-4 grid grid-cols-1 gap-4 text-xs sm:grid-cols-3">
+            <div><dt class="font-bold uppercase text-gray-500">Línea</dt><dd><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:linea_detalle' reporte.linea_id %}" hx-get="{% url 'telefonia:linea_detalle' reporte.linea_id %}" hx-target="#page-content" hx-push-url="true">{{ reporte.linea_texto }}</a></dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Levantado</dt><dd>{{ reporte.levantado|date:"d/m/Y" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Atendido</dt><dd>{% if reporte.atendido %}{{ reporte.atendido|date:"d/m/Y" }}{% else %}—{% endif %}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Contacto en sitio</dt><dd>{{ reporte.contacto_nombre }}<br><a class="font-bold text-brand-primary underline" href="tel:{{ reporte.contacto_telefono }}">{{ reporte.contacto_telefono }}</a></dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Responsable de Innovación</dt><dd>{{ reporte.responsable_nombre|default:"Sin asignar" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Ubicación</dt><dd>{% if reporte.linea.con_ubicacion %}<a class="font-bold text-brand-primary underline" href="{{ reporte.linea.enlace_google_maps }}" target="_blank" rel="noopener">Abrir en Google Maps</a>{% else %}Sin ubicación{% endif %}</dd></div>
+            {% if reporte.detalle %}<div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Detalle de la falla</dt><dd class="whitespace-pre-line">{{ reporte.detalle }}</dd></div>{% endif %}
+            {% if reporte.motivo_cancelacion %}<div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Motivo de cancelación</dt><dd>{{ reporte.motivo_cancelacion }}</dd></div>{% endif %}
+        </dl>
+        {% if reporte.linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" class="mt-4 h-56 w-full overflow-hidden rounded-xl border border-gray-200"></div>{% endif %}
+    </section>
+
+    {% if puede_actualizar %}
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm space-y-5">
+        <form method="post" action="{% url 'telefonia:reporte_comentar' reporte.pk %}" class="space-y-2">
+            {% csrf_token %}
+            <label class="block text-xs font-bold uppercase text-gray-500" for="id_texto">Agregar comentario</label>
+            {{ comentario_form.texto }}
+            <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Comentar</button>
+        </form>
+        <form method="post" action="{% url 'telefonia:reporte_evidencia' reporte.pk %}" enctype="multipart/form-data" class="space-y-2 border-t border-gray-100 pt-4">
+            {% csrf_token %}
+            <span class="block text-xs font-bold uppercase text-gray-500">Subir evidencia (opcional): foto o captura</span>
+            <div class="flex flex-wrap items-center gap-2">{{ evidencia_form.archivo }}{{ evidencia_form.tipo }}
+                <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Subir</button></div>
+        </form>
+        {% if reporte.estatus == 'pendiente' %}
+        <form method="post" action="{% url 'telefonia:reporte_atender' reporte.pk %}" class="space-y-2 border-t border-gray-100 pt-4">
+            {% csrf_token %}
+            <span class="block text-xs font-bold uppercase text-gray-500">Marcar como atendido (cuando el técnico de Telmex ya terminó)</span>
+            <div class="flex flex-wrap items-end gap-2">
+                <div>{{ atender_form.fecha }}</div><div class="min-w-0 flex-1">{{ atender_form.comentario }}</div>
+                <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Atendido</button>
+            </div>
+            <p class="text-xs text-gray-400">Sin fecha se toma la de hoy.</p>
+        </form>
+        {% endif %}
+        {% if puede_gestionar %}
+        <form method="post" action="{% url 'telefonia:reporte_asignar' reporte.pk %}" class="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4">
+            {% csrf_token %}
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="id_resp">Responsable de Innovación</label>
+                <select name="responsable" id="id_resp" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700">
+                    <option value="">Sin asignar</option>{% for u in responsables %}<option value="{{ u.pk }}" {% if u.pk == reporte.responsable_id %}selected{% endif %}>{{ u.full_name|default:u.email }}</option>{% endfor %}
+                </select></div>
+            <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600">Asignar</button>
+        </form>
+        {% endif %}
+    </section>
+    {% endif %}
+
+    {% if puede_cancelar %}
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <form method="post" action="{% if reporte.estatus == 'pendiente' %}{% url 'telefonia:reporte_cancelar' reporte.pk %}{% else %}{% url 'telefonia:reporte_reabrir' reporte.pk %}{% endif %}" class="flex flex-wrap items-end gap-2">
+            {% csrf_token %}
+            <div class="min-w-0 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="id_motivo_c">{% if reporte.estatus == 'pendiente' %}Cancelar el reporte (duplicado, Telmex lo cerró…){% else %}Reabrir el reporte{% endif %}</label>
+                <input type="text" name="motivo" id="id_motivo_c" placeholder="Motivo" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700"></div>
+            <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest {% if reporte.estatus == 'pendiente' %}text-red-600{% else %}text-emerald-700{% endif %}">{% if reporte.estatus == 'pendiente' %}Cancelar{% else %}Reabrir{% endif %}</button>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if evidencias %}
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Evidencia</h2>
+        <ul class="flex flex-wrap gap-3 text-xs">
+            {% for e in evidencias %}
+            <li class="w-32">
+                <a href="{% url 'telefonia:evidencia_descargar' reporte.pk e.pk %}" target="_blank" rel="noopener" class="block overflow-hidden rounded-xl border border-gray-200">
+                    {% if e.es_imagen %}<img src="{% url 'telefonia:evidencia_descargar' reporte.pk e.pk %}" alt="{{ e.get_tipo_display }}" class="h-24 w-full object-cover">{% else %}<div class="flex h-24 items-center justify-center bg-gray-50 font-black text-gray-500">PDF</div>{% endif %}
+                </a>
+                <div class="mt-1 text-gray-500">{{ e.get_tipo_display }} · {{ e.created_at|date:"d/m/y" }}</div>
+            </li>
+            {% endfor %}
+        </ul>
+    </section>
+    {% endif %}
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Seguimiento</h2>
+        <ol class="space-y-3 text-xs">
+            {% for m in movimientos %}
+            <li class="border-l-4 {% if m.tipo == 'comentario' %}border-brand-primary{% else %}border-gray-200{% endif %} pl-3">
+                <div class="font-bold text-gray-700">{{ m.get_tipo_display }} · {{ m.usuario_nombre|default:"—" }}</div>
+                <div class="text-gray-400">{{ m.created_at|date:"d/m/Y H:i" }}</div>
+                {% if m.texto %}<div class="mt-1 whitespace-pre-line text-gray-700">{{ m.texto }}</div>{% endif %}
+                {% for campo, cambio in m.datos.cambios.items %}<div class="text-gray-500"><b>{{ campo }}</b>: {{ cambio.antes|default:"—" }} → {{ cambio.despues|default:"—" }}</div>{% endfor %}
+                {% if m.tipo == 'creado' %}<div class="text-gray-500">Contacto: {{ m.datos.contacto }}</div>{% endif %}
+                {% if m.tipo == 'responsable' %}<div class="text-gray-500">{{ m.datos.antes }} → {{ m.datos.despues }}</div>{% endif %}
+                {% if m.tipo == 'evidencia' %}<div class="text-gray-500">{{ m.datos.tipo }} · {{ m.datos.archivo }}</div>{% endif %}
+                {% if m.tipo == 'atendido' %}<div class="text-gray-500">Tardó {{ m.datos.dias }} día{{ m.datos.dias|pluralize }}.</div>{% endif %}
+            </li>
+            {% endfor %}
+        </ol>
+    </section>
+
+    {% if otros_reportes %}
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-2 text-xs font-black uppercase text-gray-700">Otros reportes de esta línea</h2>
+        <ul class="space-y-1 text-xs">{% for o in otros_reportes %}<li><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_detalle' o.pk %}" hx-get="{% url 'telefonia:reporte_detalle' o.pk %}" hx-target="#page-content" hx-push-url="true">{{ o.folio }}</a> · {{ o.levantado|date:"d/m/Y" }} · {{ o.get_estatus_display }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+</div>

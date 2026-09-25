@@ -1,0 +1,4 @@
+{% extends "shell/workbench.html" %}
+{% block title %}Telefonía | {{ tenant.app_name }}{% endblock %}
+{% block module_sidebar %}{% include "telefonia/contextual/sidebar.html" %}{% endblock %}
+{% block page_content %}{% include "telefonia/content/reporte_detalle.html" %}{% endblock %}

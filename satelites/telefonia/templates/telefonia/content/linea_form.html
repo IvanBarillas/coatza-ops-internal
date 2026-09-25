@@ -1,0 +1,21 @@
+{% include "telefonia/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-2xl space-y-4 font-mono">
+    {% url 'telefonia:lineas' as volver_url %}
+    {% if linea %}{% include "components/form_header.html" with module_label="Telefonía" mode_label="Línea" title=linea.identificador description="Corrija los datos de la línea o su ubicación." icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}
+    {% else %}{% include "components/form_header.html" with module_label="Telefonía" mode_label="Nueva línea" title="Nueva línea o enlace" description="Dé de alta la línea con su sitio y, si puede, su ubicación." icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}{% endif %}
+    <form method="post" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm sm:p-6">
+        {% csrf_token %}
+        {% for e in form.non_field_errors %}<p class="mb-3 text-xs text-red-600">{{ e }}</p>{% endfor %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% for campo in form %}
+            <div class="{% if campo.name == 'sitio' or campo.name == 'direccion' or campo.name == 'notas' or campo.name == 'enlace_maps' %}sm:col-span-2{% endif %}">
+                {% if campo.name == 'is_active' %}<label class="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">{{ campo }} {{ campo.label }}</label>
+                {% else %}<label for="{{ campo.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ campo.label }}</label>{{ campo }}{% endif %}
+                {% if campo.help_text %}<p class="mt-1 text-xs text-gray-400">{{ campo.help_text }}</p>{% endif %}
+                {% for e in campo.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        <div class="mt-6 flex justify-center"><button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Guardar</button></div>
+    </form>
+</div>

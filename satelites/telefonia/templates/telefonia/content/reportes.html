@@ -1,0 +1,67 @@
+{% include "telefonia/contextual/_menu_movil.html" %}
+{% url 'telefonia:reportes' as lista_url %}
+<div class="w-full space-y-4 font-mono text-left">
+    {% if puede_crear %}{% url 'telefonia:reporte_crear' as nuevo_url %}
+    {% include "components/list_header.html" with module_label="Telefonía" status_label="Reportes a Telmex" title="Reportes" description="Fallas de líneas y enlaces reportadas a Telmex, con su folio y su seguimiento hasta que quedan atendidas." icon="phone-call" action_url=nuevo_url action_label="Nuevo reporte" %}
+    {% else %}
+    {% include "components/list_header.html" with module_label="Telefonía" status_label="Reportes a Telmex" title="Reportes" description="Fallas de líneas y enlaces reportadas a Telmex, con su folio y su seguimiento hasta que quedan atendidas." icon="phone-call" %}
+    {% endif %}
+    {% include "telefonia/content/_mensajes.html" %}
+
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" role="tablist">
+        {% for t in tabs %}
+        <a href="{{ lista_url }}?{{ t.query }}" hx-get="{{ lista_url }}?{{ t.query }}" hx-target="#page-content" hx-push-url="true" role="tab"
+           class="rounded-2xl border border-gray-200 bg-white p-3 text-center text-gray-600 shadow-sm transition {% if t.activa %}ring-2 ring-gray-950{% endif %}">
+            <div class="text-2xl font-black">{{ t.total }}</div>
+            <div class="mt-0.5 text-xs font-black uppercase tracking-widest">{{ t.nombre }}</div>
+        </a>
+        {% endfor %}
+    </div>
+
+    {% if tiles %}
+    <div class="grid grid-cols-3 gap-3">
+        {% for s in tiles %}
+        <a href="{{ lista_url }}?{{ s.query }}" hx-get="{{ lista_url }}?{{ s.query }}" hx-target="#page-content" hx-push-url="true"
+           class="rounded-2xl border p-3 text-center shadow-sm transition {% if s.clave == 'rojo' %}border-red-200 bg-red-50 text-red-700{% elif s.clave == 'ambar' %}border-amber-200 bg-amber-50 text-amber-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %} {% if s.activo %}ring-2 ring-gray-950{% endif %}">
+            <div class="text-2xl font-black">{{ s.total }}</div>
+            <div class="text-xs font-black uppercase tracking-widest">{{ s.nombre }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    <p class="text-xs text-gray-400">Verde: menos de {{ umbral_ambar }} días abierto · Ámbar: {{ umbral_ambar }} a {{ umbral_rojo|add:"-1" }} días · Rojo: {{ umbral_rojo }} días o más. Los más antiguos van primero.</p>
+    {% endif %}
+
+    <form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true" class="flex flex-wrap gap-2">
+        <input type="hidden" name="tab" value="{{ tab }}">
+        <input type="search" name="q" value="{{ texto }}" placeholder="Folio, línea, sitio, contacto o detalle…" aria-label="Buscar reporte" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+        <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
+    </form>
+
+    <div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+        <table class="min-w-full text-xs">
+            <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
+                <tr><th class="px-3 py-3"></th><th class="px-3 py-3">Folio</th><th class="px-3 py-3">Sitio y línea</th><th class="px-3 py-3">Contacto</th><th class="px-3 py-3">Levantado</th><th class="px-3 py-3">Días</th><th class="px-3 py-3">Estatus</th></tr>
+            </thead>
+            <tbody>
+            {% for r in pagina %}
+                <tr class="border-t border-gray-100 align-top">
+                    <td class="px-3 py-3">{% if r.color %}<span class="inline-block h-3 w-3 rounded-full {% if r.color == 'rojo' %}bg-red-500{% elif r.color == 'ambar' %}bg-amber-500{% else %}bg-emerald-500{% endif %}" title="{{ r.color }}"></span>{% endif %}</td>
+                    <td class="whitespace-nowrap px-3 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_detalle' r.pk %}" hx-get="{% url 'telefonia:reporte_detalle' r.pk %}" hx-target="#page-content" hx-push-url="true">{{ r.folio }}</a></td>
+                    <td class="px-3 py-3"><div class="font-bold text-gray-800">{{ r.sitio_texto }}</div><div class="text-gray-400">{{ r.linea_texto }}</div></td>
+                    <td class="px-3 py-3"><div>{{ r.contacto_nombre }}</div><div class="text-gray-400">{{ r.contacto_telefono }}</div></td>
+                    <td class="whitespace-nowrap px-3 py-3">{{ r.levantado|date:"d/m/y" }}</td>
+                    <td class="px-3 py-3">{{ r.dias_abierto }}</td>
+                    <td class="px-3 py-3">{% if r.estatus == 'pendiente' %}<span class="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black uppercase text-amber-700">Pendiente</span>{% elif r.estatus == 'atendido' %}<span class="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-black uppercase text-emerald-700">Atendido</span>{% else %}<span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-black uppercase text-gray-600">Cancelado</span>{% endif %}</td>
+                </tr>
+            {% empty %}<tr><td colspan="7" class="px-4 py-8 text-center text-gray-500">No hay reportes aquí.</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="flex items-center justify-center gap-3 text-xs">
+        {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+        <span class="text-gray-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+    </nav>
+    {% endif %}
+</div>

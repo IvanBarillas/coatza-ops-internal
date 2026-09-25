@@ -1,0 +1,27 @@
+{% include "telefonia/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-3xl space-y-4 font-mono text-left">
+    {% include "components/list_header.html" with module_label="Telefonía" status_label="Asignados a mí" title="Mis pendientes" description="Reportes a Telmex que tiene a su cargo. Abra uno para comentar la visita, subir la foto o marcarlo atendido." icon="clipboard-list" %}
+    {% include "telefonia/content/_mensajes.html" %}
+    <ul class="space-y-3">
+        {% for r in pendientes %}
+        <li>
+            <a href="{% url 'telefonia:reporte_detalle' r.pk %}" hx-get="{% url 'telefonia:reporte_detalle' r.pk %}" hx-target="#page-content" hx-push-url="true"
+               class="block rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm transition hover:border-gray-300">
+                <div class="flex items-center justify-between gap-2">
+                    <strong class="text-sm text-gray-900">{{ r.sitio_texto }}</strong>
+                    <span class="inline-block h-3 w-3 rounded-full {% if r.color == 'rojo' %}bg-red-500{% elif r.color == 'ambar' %}bg-amber-500{% else %}bg-emerald-500{% endif %}"></span>
+                </div>
+                <div class="text-xs text-gray-500">{{ r.linea_texto }} · Folio {{ r.folio }}</div>
+                <div class="mt-1 text-xs text-gray-400">Abierto {{ r.dias_abierto }} día{{ r.dias_abierto|pluralize }} · desde {{ r.levantado|date:"d/m/Y" }}</div>
+                <div class="mt-1 text-xs text-gray-600">Contacto: {{ r.contacto_nombre }} · {{ r.contacto_telefono }}</div>
+            </a>
+        </li>
+        {% empty %}<li class="rounded-2xl border border-gray-200/80 bg-white p-6 text-center text-xs text-gray-500">No tiene reportes pendientes.</li>{% endfor %}
+    </ul>
+    {% if recientes %}
+    <h2 class="pt-2 text-xs font-black uppercase text-gray-500">Últimos cerrados</h2>
+    <ul class="space-y-2 text-xs">
+        {% for r in recientes %}<li class="rounded-xl border border-gray-200/80 bg-white px-4 py-2"><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_detalle' r.pk %}" hx-get="{% url 'telefonia:reporte_detalle' r.pk %}" hx-target="#page-content" hx-push-url="true">{{ r.folio }}</a> · {{ r.sitio_texto }} · {{ r.get_estatus_display }}</li>{% endfor %}
+    </ul>
+    {% endif %}
+</div>

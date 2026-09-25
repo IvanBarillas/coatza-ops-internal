@@ -1,0 +1,34 @@
+{% load static %}
+{% include "telefonia/contextual/_menu_movil.html" %}
+{{ linea_data|json_script:"tel-linea-detalle" }}
+<link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
+<script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'telefonia/mapa.js' %}"></script>
+<div class="mx-auto w-full max-w-4xl space-y-4 font-mono text-left">
+    {% url 'telefonia:lineas' as volver_url %}
+    {% include "components/form_header.html" with module_label="Telefonía" mode_label="Línea" title=linea.identificador description=linea.sitio icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}
+    {% include "telefonia/content/_mensajes.html" %}
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <dl class="grid grid-cols-1 gap-4 text-xs sm:grid-cols-3">
+            <div><dt class="font-bold uppercase text-gray-500">Tipo</dt><dd>{{ linea.get_tipo_display }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Paquete o velocidad</dt><dd>{{ linea.velocidad|default:"—" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Municipio</dt><dd>{{ linea.municipio }}</dd></div>
+            <div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Dirección</dt><dd>{{ linea.direccion|default:"—" }}</dd></div>
+            {% if linea.notas %}<div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Notas</dt><dd class="whitespace-pre-line">{{ linea.notas }}</dd></div>{% endif %}
+        </dl>
+        <div class="mt-4 flex flex-wrap gap-3">
+            {% if puede_crear and linea.is_active %}<a class="rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm" href="{% url 'telefonia:reporte_crear' %}?linea={{ linea.pk }}" hx-get="{% url 'telefonia:reporte_crear' %}?linea={{ linea.pk }}" hx-target="#page-content" hx-push-url="true">Reportar falla</a>{% endif %}
+            {% if puede_gestionar %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600" href="{% url 'telefonia:linea_editar' linea.pk %}" hx-get="{% url 'telefonia:linea_editar' linea.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}
+            {% if linea.con_ubicacion %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600" href="{{ linea.enlace_google_maps }}" target="_blank" rel="noopener">Abrir en Google Maps</a>{% endif %}
+        </div>
+        {% if linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" class="mt-4 h-64 w-full overflow-hidden rounded-xl border border-gray-200"></div>
+        {% else %}<p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">Esta línea aún no tiene ubicación. Edítela y pegue el enlace de Google Maps o las coordenadas.</p>{% endif %}
+    </section>
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-2 text-xs font-black uppercase text-gray-700">Historial de reportes ({{ reportes|length }})</h2>
+        <ul class="space-y-1 text-xs">
+            {% for r in reportes %}<li><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_detalle' r.pk %}" hx-get="{% url 'telefonia:reporte_detalle' r.pk %}" hx-target="#page-content" hx-push-url="true">{{ r.folio }}</a> · {{ r.levantado|date:"d/m/Y" }} · {{ r.get_estatus_display }}{% if r.atendido %} · atendido el {{ r.atendido|date:"d/m/Y" }}{% endif %}</li>
+            {% empty %}<li class="text-gray-400">Sin reportes.</li>{% endfor %}
+        </ul>
+    </section>
+</div>
