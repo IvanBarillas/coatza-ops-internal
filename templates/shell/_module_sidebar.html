@@ -1,0 +1,11 @@
+{% comment %}
+Sidebar contextual con botón de contraer. Se usa con el parámetro sidebar_template
+(ruta de la plantilla contextual). Lo usan los workbench parciales (swap de #workbench);
+shell/workbench.html lo arma en línea por su bloque module_sidebar.
+{% endcomment %}
+<div id="module-sidebar-shell" class="relative hidden lg:flex shrink-0">
+    <aside id="module-sidebar" class="flex w-72 shrink-0 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden">
+        {% include sidebar_template %}
+    </aside>
+    {% include "shell/_module_sidebar_toggle.html" %}
+</div>
