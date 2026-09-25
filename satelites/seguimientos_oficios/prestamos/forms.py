@@ -5,7 +5,7 @@ from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from ..forms import _agregar_contraparte, _resolver_contraparte
-from ..models import Bien, Gestor
+from ..models import Bien, CategoriaBien, Gestor
 from .services import exigir_motivo_de_estado
 
 CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
@@ -14,7 +14,7 @@ CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text
 class BienForm(forms.ModelForm):
     class Meta:
         model = Bien
-        fields = ["direccion", "nombre", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado"]
+        fields = ["direccion", "nombre", "categoria", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado"]
         widgets = {"descripcion": forms.Textarea(attrs={"rows": 2})}
 
     motivo = forms.CharField(
@@ -25,6 +25,12 @@ class BienForm(forms.ModelForm):
     def __init__(self, *args, direcciones, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["direccion"].queryset = direcciones
+        activas = CategoriaBien.objects.filter(direccion__in=direcciones, is_active=True, is_deleted=False)
+        if not self.instance._state.adding and self.instance.categoria_id:
+            activas = CategoriaBien.objects.filter(pk__in=[*activas.values_list("pk", flat=True), self.instance.categoria_id])
+        self.fields["categoria"].queryset = activas.select_related("direccion")
+        self.fields["categoria"].empty_label = "Sin categoría"
+        self.fields["categoria"].help_text = "Opcional. Se administran en Catálogos → dirección → Categorías de bienes."
         if not self.instance._state.adding:
             self.fields["direccion"].disabled = True
         self.mostrar_direccion = direcciones.count() > 1 and self.instance._state.adding
@@ -50,6 +56,9 @@ class BienForm(forms.ModelForm):
         datos["folio_inventario"] = folio
         if direccion and folio and Bien.objects.filter(direccion=direccion, folio_inventario=folio).exclude(pk=self.instance.pk).exists():
             self.add_error("folio_inventario", "Ya existe un bien con ese folio de inventario en la dirección.")
+        categoria = datos.get("categoria")
+        if categoria and direccion and categoria.direccion_id != direccion.pk:
+            self.add_error("categoria", "La categoría no pertenece a la dirección del bien.")
         if not self.instance._state.adding:
             if datos.get("estado") != Bien.Estado.DISPONIBLE and self.instance.asignaciones.filter(abierto=True).exists():
                 self.add_error("estado", "El bien está prestado: registre primero la devolución del vale.")
@@ -72,6 +81,7 @@ class ValeForm(forms.Form):
     def __init__(self, *args, direcciones, bienes, gestores, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["direccion"].queryset = direcciones
+        self.fields["direccion"].widget.attrs["x-model"] = "direccion"
         self.mostrar_direccion = direcciones.count() != 1
         if not self.mostrar_direccion:
             self.fields["direccion"].initial = direcciones.first().pk

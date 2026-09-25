@@ -5,7 +5,7 @@ import uuid
 from django.db.models import Q
 
 from .integracion import dependencias_del_core, usuarios_con_acceso
-from .models import Categoria, ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
+from .models import Categoria, CategoriaBien, ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
 def _agregar_contraparte(form, etiqueta):
@@ -306,6 +306,34 @@ class CategoriaForm(forms.ModelForm):
             for c in Categoria.objects.filter(direccion=self.direccion).exclude(pk=self.instance.pk)
         ):
             raise forms.ValidationError("Ya existe una categoría con ese nombre en esta dirección.")
+        return nombre
+
+
+class CategoriaBienForm(forms.ModelForm):
+    class Meta:
+        model = CategoriaBien
+        fields = ["nombre"]
+
+    def __init__(self, *args, direccion=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.direccion = direccion or getattr(self.instance, "direccion", None)
+        self.fields["nombre"].widget.attrs.setdefault(
+            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+        )
+
+    def validate_unique(self):
+        """La unicidad se valida en clean_nombre, con un mensaje claro."""
+
+    def validate_constraints(self):
+        """Ídem."""
+
+    def clean_nombre(self):
+        nombre = " ".join(self.cleaned_data["nombre"].split())
+        if any(
+            c.nombre.casefold() == nombre.casefold()
+            for c in CategoriaBien.objects.filter(direccion=self.direccion).exclude(pk=self.instance.pk)
+        ):
+            raise forms.ValidationError("Ya existe una categoría de bienes con ese nombre en esta dirección.")
         return nombre
 
 

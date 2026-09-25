@@ -182,3 +182,12 @@ sola área lleva directo a su primera opción (el gestor entra a *Mis pendientes
 por área con lo que requiere atención (oficios pendientes y en rojo, préstamos abiertos, por vencer y vencidos, documentos
 de soporte por entregar). Dentro de un área, el enlace *Inicio* del menú regresa al panel. Agregar un área nueva es una entrada
 en `areas.py` (`AREAS`, `DESCRIPCIONES`, sus rutas) y sus cifras en `panel.py`.
+
+## Categorías de bienes y selector del vale
+
+Cada dirección define sus **categorías de bienes** (Catálogos → dirección → *Categorías de bienes*: p. ej. Cómputo, Energía
+eléctrica); un bien puede tener una, opcional, que se asigna al darlo de alta o editarlo (con rastro en su bitácora). Son
+distintas de las categorías de documentos. La lista de Bienes se filtra por categoría. Al generar un vale, en lugar de una
+lista de casillas se elige la categoría en un combo (o *Sin categoría* / *Todas*), se busca por nombre, serie o inventario
+(sin importar acentos) y se **agregan** los bienes uno a uno a la lista «Se prestarán»; la selección se conserva al cambiar de
+categoría, así un mismo vale puede llevar bienes de varias.

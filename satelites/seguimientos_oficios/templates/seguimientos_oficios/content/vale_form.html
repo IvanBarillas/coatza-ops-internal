@@ -1,5 +1,25 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-3xl space-y-4 font-mono" x-data="{ dependencia: '{{ form.contraparte_dependencia.value|default:'' }}' }">
+{% if form %}{{ bienes_data|json_script:"vale-bienes" }}{{ categorias_data|json_script:"vale-categorias" }}{{ elegidos|json_script:"vale-elegidos" }}{% endif %}
+<div class="mx-auto w-full max-w-3xl space-y-4 font-mono" x-data="{
+    dependencia: '{{ form.contraparte_dependencia.value|default:'' }}', direccion: '{{ form.direccion.value|default:'' }}',
+    categoria: '', q: '',
+    bienes: {% if form %}JSON.parse(document.getElementById('vale-bienes').textContent){% else %}[]{% endif %},
+    categorias: {% if form %}JSON.parse(document.getElementById('vale-categorias').textContent){% else %}[]{% endif %},
+    elegidos: {% if form %}JSON.parse(document.getElementById('vale-elegidos').textContent){% else %}[]{% endif %},
+    norm(t) { return (t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() },
+    get categoriasDeLaDireccion() { return this.categorias.filter(c => !this.direccion || c.direccion === this.direccion) },
+    get visibles() {
+        const q = this.norm(this.q);
+        return this.bienes.filter(b => !this.elegidos.includes(b.id)
+            && (!this.direccion || b.direccion === this.direccion)
+            && (this.categoria === '' || (this.categoria === 'sin' ? !b.categoria : b.categoria === this.categoria))
+            && (q === '' || this.norm(b.texto).includes(q)))
+    },
+    get seleccionados() { return this.elegidos.map(id => this.bienes.find(b => b.id === id)).filter(Boolean) },
+    nombreCategoria(id) { const c = this.categorias.find(c => c.id === id); return c ? c.nombre : '' },
+    agregar(id) { if (!this.elegidos.includes(id)) this.elegidos.push(id) },
+    quitar(id) { this.elegidos = this.elegidos.filter(x => x !== id) },
+}" x-init="$watch('direccion', () => { categoria = ''; elegidos = [] })">
     {% url 'seguimientos_oficios:prestamos' as volver_url %}
     {% include "components/form_header.html" with module_label="Oficios" mode_label="Nuevo vale" title="Vale de préstamo" description="Elige los bienes, quién los recibe y la fecha límite. El sistema genera el folio y el documento para imprimir y firmar." icon="hand-coins" back_url=volver_url back_label="Volver a préstamos" %}
     {% if not form %}
@@ -24,8 +44,37 @@
             <div class="sm:col-span-2">
                 <span class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ form.bienes.label }}</span>
                 {% if sin_bienes %}<p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">No hay bienes disponibles. Da de alta bienes en la sección Bienes o registra la devolución de los que están prestados.</p>{% endif %}
-                <div class="max-h-56 space-y-1 overflow-y-auto rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-xs">
-                    {% for opcion in form.bienes %}<label class="flex items-center gap-2 py-1">{{ opcion.tag }}<span>{{ opcion.choice_label }}</span></label>{% endfor %}
+                <div class="space-y-2 rounded-xl border border-gray-200 bg-gray-50/70 p-3 text-xs">
+                    <div class="flex flex-wrap gap-2">
+                        <select x-model="categoria" aria-label="Categoría" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
+                            <option value="">Todas las categorías</option>
+                            <template x-for="c in categoriasDeLaDireccion" :key="c.id"><option :value="c.id" x-text="c.nombre"></option></template>
+                            <option value="sin">Sin categoría</option>
+                        </select>
+                        <input type="search" x-model="q" placeholder="Buscar por nombre, serie o inventario…" aria-label="Buscar bien" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
+                    </div>
+                    <div class="max-h-48 overflow-y-auto rounded-xl border border-gray-200 bg-white">
+                        <template x-for="b in visibles" :key="b.id">
+                            <button type="button" @click="agregar(b.id)" class="flex w-full items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 text-left hover:bg-gray-50">
+                                <span><span x-text="b.texto"></span> <span class="text-gray-400" x-show="b.categoria" x-text="'· ' + nombreCategoria(b.categoria)"></span></span>
+                                <span class="shrink-0 font-black uppercase tracking-widest text-brand-primary">Agregar</span>
+                            </button>
+                        </template>
+                        <p x-show="visibles.length === 0" class="px-3 py-3 text-gray-400">No hay bienes disponibles con ese filtro.</p>
+                    </div>
+                    <div>
+                        <p class="mb-1 font-bold uppercase text-gray-500">Se prestarán (<span x-text="elegidos.length"></span>)</p>
+                        <ul class="flex flex-wrap gap-2">
+                            <template x-for="b in seleccionados" :key="b.id">
+                                <li class="flex items-center gap-2 rounded-lg bg-brand-primary px-3 py-1.5 text-white">
+                                    <input type="hidden" name="bienes" :value="b.id">
+                                    <span x-text="b.texto"></span>
+                                    <button type="button" @click="quitar(b.id)" class="font-black" aria-label="Quitar">×</button>
+                                </li>
+                            </template>
+                        </ul>
+                        <p x-show="elegidos.length === 0" class="text-gray-400">Aún no eliges ningún bien.</p>
+                    </div>
                 </div>
                 {% for e in form.bienes.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
             </div>

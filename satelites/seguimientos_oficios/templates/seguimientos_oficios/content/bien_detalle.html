@@ -16,6 +16,8 @@
             {% if puede_gestionar %}<a class="inline-flex items-center rounded-xl border border-brand-primary bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-brand-primary transition hover:bg-brand-primary hover:text-white" href="{% url 'seguimientos_oficios:bien_editar' bien.pk %}" hx-get="{% url 'seguimientos_oficios:bien_editar' bien.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}
         </div>
         <dl class="mt-4 grid grid-cols-1 gap-4 text-xs sm:grid-cols-3">
+            <div><dt class="font-bold uppercase text-gray-500">Categoría</dt><dd>{{ bien.categoria|default:"—" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Marca y modelo</dt><dd>{{ bien.marca_modelo|default:"—" }}</dd></div>
             <div><dt class="font-bold uppercase text-gray-500">Número de serie o etiqueta</dt><dd>{{ bien.identificador|default:"—" }}</dd></div>
             <div><dt class="font-bold uppercase text-gray-500">Folio de inventario</dt><dd>{{ bien.folio_inventario|default:"—" }}</dd></div>
             <div><dt class="font-bold uppercase text-gray-500">Dirección</dt><dd>{{ bien.direccion }}</dd></div>

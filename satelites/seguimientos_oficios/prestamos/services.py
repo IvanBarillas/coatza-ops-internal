@@ -91,11 +91,16 @@ def registrar_devolucion(prestamo, *, usuario, fecha=None, observaciones=""):
 
 ESTADOS_CON_MOTIVO = (Bien.Estado.EN_REPARACION, Bien.Estado.BAJA)
 MOTIVO_MINIMO = 5
-CAMPOS_BIEN = ("nombre", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado")
+CAMPOS_BIEN = ("nombre", "categoria", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado")
+
+
+def _valor_bien(bien, campo):
+    valor = getattr(bien, campo)
+    return str(valor) if campo == "categoria" and valor else "" if campo == "categoria" else valor
 
 
 def foto_bien(bien):
-    return {campo: getattr(bien, campo) for campo in CAMPOS_BIEN}
+    return {campo: _valor_bien(bien, campo) for campo in CAMPOS_BIEN}
 
 
 def exigir_motivo_de_estado(estado_anterior, estado_nuevo, motivo):
@@ -113,8 +118,8 @@ def registrar_alta_bien(bien, *, usuario):
 def registrar_cambios_bien(bien, antes, *, usuario, motivo=""):
     """Deja en la bitácora qué cambió (valor anterior y nuevo) y el motivo, si lo hay."""
     cambios = {
-        campo: {"antes": antes[campo], "despues": getattr(bien, campo)}
-        for campo in CAMPOS_BIEN if antes[campo] != getattr(bien, campo)
+        campo: {"antes": antes[campo], "despues": _valor_bien(bien, campo)}
+        for campo in CAMPOS_BIEN if antes[campo] != _valor_bien(bien, campo)
     }
     if not cambios:
         return None

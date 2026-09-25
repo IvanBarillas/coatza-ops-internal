@@ -24,6 +24,7 @@
         <a href="#nomenclaturas" @click.prevent="seccion = 'nomenclaturas'" :class="seccion === 'nomenclaturas' ? 'border-gray-950 bg-gray-950 text-white' : 'bg-white text-gray-600'" class="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-black uppercase tracking-widest ">Nomenclaturas</a>
         <a href="#gestores" @click.prevent="seccion = 'gestores'" :class="seccion === 'gestores' ? 'border-gray-950 bg-gray-950 text-white' : 'bg-white text-gray-600'" class="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-black uppercase tracking-widest ">Gestores</a>
         <a href="#categorias" @click.prevent="seccion = 'categorias'" :class="seccion === 'categorias' ? 'border-gray-950 bg-gray-950 text-white' : 'bg-white text-gray-600'" class="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-black uppercase tracking-widest ">Categorías</a>
+        <a href="#bienes" @click.prevent="seccion = 'bienes'" :class="seccion === 'bienes' ? 'border-gray-950 bg-gray-950 text-white' : 'bg-white text-gray-600'" class="rounded-full border border-gray-200 px-4 py-1.5 text-xs font-black uppercase tracking-widest">Categorías de bienes</a>
     </nav>
     {% endif %}
 
@@ -119,6 +120,33 @@
         <form method="post" action="{% url 'seguimientos_oficios:categoria_crear' direccion.pk %}" class="mt-5 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
             {% csrf_token %}
             <input type="text" name="nombre" placeholder="Nombre de la categoría" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Agregar</button>
+        </form>
+    </section>
+    {% endif %}
+
+    {% if direccion %}
+    <section id="bienes" x-show="seccion === 'bienes'" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
+        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Categorías de bienes</h2>
+        <p class="mb-4 text-xs text-gray-400">Familias con las que esta dirección agrupa sus bienes (p. ej. Cómputo, Energía eléctrica). Sirven para encontrarlos rápido al generar un vale. Se asignan al dar de alta o editar cada bien.</p>
+        <ul class="space-y-3 text-xs">
+            {% for g in categorias_bien %}
+            <li class="flex flex-wrap items-center gap-3 {% if not g.is_active %}opacity-60{% endif %}">
+                <form method="post" action="{% url 'seguimientos_oficios:categoria_bien_actualizar' g.pk %}" class="flex flex-1 flex-wrap items-center gap-2">
+                    {% csrf_token %}
+                    <input type="text" name="nombre" value="{{ g.nombre }}" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                    <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950">Guardar</button>
+                </form>
+                <form method="post" action="{% url 'seguimientos_oficios:categoria_bien_actualizar' g.pk %}">
+                    {% csrf_token %}<input type="hidden" name="accion" value="estado">
+                    <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest {% if g.is_active %}text-red-600{% else %}text-emerald-700{% endif %}">{% if g.is_active %}Desactivar{% else %}Activar{% endif %}</button>
+                </form>
+            </li>
+            {% empty %}<li class="text-gray-500">Sin categorías de bienes.</li>{% endfor %}
+        </ul>
+        <form method="post" action="{% url 'seguimientos_oficios:categoria_bien_crear' direccion.pk %}" class="mt-5 flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+            {% csrf_token %}
+            <input type="text" name="nombre" placeholder="Nombre de la categoría (p. ej. Cómputo)" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
             <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Agregar</button>
         </form>
     </section>
