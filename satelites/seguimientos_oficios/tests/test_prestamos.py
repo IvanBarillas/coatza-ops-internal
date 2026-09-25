@@ -250,7 +250,8 @@ class VistasPrestamosTests(PrestamosBase):
         self.assertNotContains(menu, reverse("seguimientos_oficios:prestamos"))
         UserAppRole.objects.filter(user=self.user).update(role="prestamos", permissions_list=P.ROLE_MAPPING["prestamos"])
         menu = self.client.get(reverse("seguimientos_oficios:documento_list"))
-        self.assertContains(menu, reverse("seguimientos_oficios:prestamos"))  # selector de áreas
+        self.assertContains(menu, reverse("seguimientos_oficios:inicio"))  # con varias áreas, el menú lleva al panel
+        self.assertContains(self.client.get(reverse("seguimientos_oficios:inicio")), reverse("seguimientos_oficios:prestamos"))
         area = self.client.get(reverse("seguimientos_oficios:prestamos"))
         for nombre in ("prestamos", "vales", "bienes", "vale_crear"):
             self.assertContains(area, reverse(f"seguimientos_oficios:{nombre}"))

@@ -16,7 +16,8 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .prestamos.forms import DevolucionForm
-from .areas import construir_menu
+from .areas import areas_disponibles, construir_menu
+from .panel import tarjetas
 from .forms import AdjuntoForm, GestorEntregaForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
@@ -32,9 +33,12 @@ from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos
 POR_PAGINA = 25
 
 
-def _render(request, nombre, contexto):
-    items, areas, area = construir_menu(request, contexto.get("area_actual"))
-    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": items, "sidebar_areas": areas, "area_actual": area}
+def _render(request, nombre, contexto, sin_menu=False):
+    if sin_menu:
+        contexto = {**contexto, "show_module_sidebar": False}
+    else:
+        items, areas, area = construir_menu(request, contexto.get("area_actual"))
+        contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": items, "sidebar_areas": areas, "area_actual": area}
     destino = request.headers.get("HX-Target", "")
     if request.headers.get("HX-Request") == "true":
         if destino == "workbench":
@@ -557,13 +561,16 @@ def categoria_actualizar_view(request, pk):
 @login_required
 @proteger_vista(APP_SLUG, "has_access_module")
 def inicio_view(request):
-    """Entrada del módulo (la que abre el Hub): lleva a cada persona a la vista que su rol permite."""
-    for llave, destino in (
-        ("can_view_oficios", "documento_list"), ("can_view_tracking", "seguimiento"), ("can_view_own_pendings", "gestor"),
-    ):
-        if permitido(request, llave):
-            return redirect(f"seguimientos_oficios:{destino}")
-    raise PermissionDenied
+    """Entrada del módulo (la que abre el Hub).
+
+    Con una sola área lleva directo a su primera opción; con varias muestra el panel para elegir.
+    """
+    disponibles = areas_disponibles(request)
+    if not disponibles:
+        raise PermissionDenied
+    if len(disponibles) == 1:
+        return redirect(disponibles[0]["href"])
+    return _render(request, "inicio", {"tarjetas": tarjetas(request, disponibles)}, sin_menu=True)
 
 
 @login_required
