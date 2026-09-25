@@ -89,3 +89,15 @@ class ContraparteTests(BaseAdjuntos):
         )
         self.assertContains(self.client.get(reverse("seguimientos_oficios:documento_detail", args=[enviado.pk])), "Destinatario")
         self.assertContains(self.client.get(reverse("seguimientos_oficios:documento_detail", args=[recibido.pk])), "Remitente")
+
+    def test_al_registrar_lleva_al_detalle_para_adjuntar_el_archivo(self):
+        respuesta = self.client.post(self.url, self.datos(sentido="recibido", asunto="Recién llegado", folio="EG/1/2026"))
+        documento = Documento.objects.get(asunto="Recién llegado")
+        self.assertRedirects(respuesta, reverse("seguimientos_oficios:documento_detail", args=[documento.pk]))
+        self.assertContains(self.client.get(respuesta.url), "Subir")
+
+    def test_el_registro_no_pide_director_y_lo_captura_solo(self):
+        self.assertNotIn("director_nombre", self.client.get(self.url).context["form"].fields)
+        self.assertNotContains(self.client.get(self.url), "Director")
+        self.client.post(self.url, self.datos(asunto="Con director automático"))
+        self.assertTrue(Documento.objects.filter(asunto="Con director automático").exists())

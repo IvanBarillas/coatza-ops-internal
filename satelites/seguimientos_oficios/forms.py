@@ -2,7 +2,7 @@ from django import forms
 
 import uuid
 
-from .integracion import dependencias_del_core, usuarios_con_acceso
+from .integracion import dependencias_del_core
 from .models import ClaseDocumento, Direccion, Documento, Gestor, Nomenclatura
 
 
@@ -32,6 +32,12 @@ def _resolver_contraparte(form, datos, propia_uuid=None):
 
 
 class DocumentoForm(forms.ModelForm):
+    def validate_unique(self):
+        """La unicidad del folio la valida el servicio, con un mensaje claro."""
+
+    def validate_constraints(self):
+        """Ídem: evita el mensaje genérico de la restricción de folio único."""
+
     def clean(self):
         datos = super().clean()
         _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
@@ -40,16 +46,18 @@ class DocumentoForm(forms.ModelForm):
             self.add_error("gestor", "Solo los documentos enviados llevan gestor.")
         elif gestor and direccion and gestor.direccion_id != direccion.pk:
             self.add_error("gestor", "El gestor no pertenece a la dirección elegida.")
+        if sentido == "enviado" and direccion and direccion.folio_manual and not (datos.get("folio") or "").strip():
+            self.add_error("folio", "Escriba el folio del oficio.")
         return datos
 
     class Meta:
         model = Documento
-        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "director_nombre", "gestor", "folio", "asunto"]
+        fields = ["sentido", "clase", "direccion", "fecha", "contraparte", "gestor", "folio", "asunto"]
         widgets = {
             "fecha": forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"),
             "sentido": forms.Select(attrs={"x-model": "sentido"}),
         }
-        labels = {"director_nombre": "Director", "direccion": "Dirección que registra"}
+        labels = {"direccion": "Dirección que registra"}
 
     def __init__(self, *args, direcciones=None, gestores=None, **kwargs):
         super().__init__(*args, **kwargs)
@@ -67,32 +75,40 @@ class DocumentoForm(forms.ModelForm):
         self.fields["gestor"].required = False
         self.fields["gestor"].empty_label = "Sin asignar"
         self.fields["gestor"].help_text = "Quien llevará el oficio a la dependencia (solo enviados)."
-        self.fields["director_nombre"].help_text = "Vacío = titular actual de la dirección."
-        self.fields["folio"].help_text = "Solo recibidos. En enviados se genera según la nomenclatura de la clase."
+        self.fields["folio"].required = False
+        self.fields["folio"].help_text = "Escríbelo tal como aparece en el oficio."
+        self.hay_folio_manual = any(d.folio_manual for d in self.fields["direccion"].queryset)
         for campo in self.fields.values():
             campo.widget.attrs.setdefault(
-                "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+                "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
             )
 
 
 class EntregaForm(forms.Form):
     fecha_entrega = forms.DateField(
-        label="Fecha de entrega", widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
+        label="Fecha de entrega",
+        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
     )
-    receptor = forms.CharField(label="Recibió la entrega", max_length=200)
+    receptor = forms.CharField(
+        label="Recibió la entrega", max_length=200,
+        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
+    )
 
 
 class CancelacionForm(forms.Form):
     motivo = forms.CharField(
         label="Motivo de la cancelación", min_length=10,
-        widget=forms.Textarea(attrs={"rows": 3}),
+        widget=forms.Textarea(attrs={"rows": 3, "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}),
         help_text="Ej. Error en el número de serie del equipo X.",
     )
 
 
 class AdjuntoForm(forms.Form):
     rol = forms.CharField(required=False, widget=forms.HiddenInput)
-    archivo = forms.FileField(label="Archivo PDF", widget=forms.ClearableFileInput(attrs={"accept": "application/pdf"}))
+    archivo = forms.FileField(
+        label="Archivo PDF",
+        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
+    )
 
 
 class FiltroDocumentosForm(forms.Form):
@@ -117,41 +133,7 @@ class FiltroDocumentosForm(forms.Form):
             (str(g.pk), g.nombre) for g in gestores
         ]
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
-
-
-class BandejaConfigForm(forms.Form):
-    ruta_recibidos = forms.CharField(label="Carpeta de recibidos", required=False, max_length=255)
-    ruta_firmados = forms.CharField(label="Carpeta de firmados", required=False, max_length=255)
-    ruta_evidencias = forms.CharField(label="Carpeta de evidencias", required=False, max_length=255)
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        for campo in self.fields.values():
-            campo.widget.attrs.update({
-                "class": "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm",
-                "placeholder": "innovacion/oficios",
-            })
-
-    def _validar(self, campo):
-        from . import bandeja
-
-        valor = self.cleaned_data.get(campo, "").strip()
-        if not valor:
-            return ""
-        try:
-            return bandeja.ruta_normalizada(bandeja.resolver(valor))
-        except bandeja.BandejaError as error:
-            raise forms.ValidationError(str(error)) from error
-
-    def clean_ruta_recibidos(self):
-        return self._validar("ruta_recibidos")
-
-    def clean_ruta_firmados(self):
-        return self._validar("ruta_firmados")
-
-    def clean_ruta_evidencias(self):
-        return self._validar("ruta_evidencias")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
 class DireccionForm(forms.ModelForm):
@@ -162,8 +144,8 @@ class DireccionForm(forms.ModelForm):
 
     class Meta:
         model = Direccion
-        fields = ["nombre", "is_active"]
-        labels = {"is_active": "Activa"}
+        fields = ["nombre", "folio_manual", "is_active"]
+        labels = {"is_active": "Activa", "folio_manual": "Folio manual"}
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -173,8 +155,8 @@ class DireccionForm(forms.ModelForm):
         if self.instance.dependencia_uuid:
             self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
         for nombre, campo in self.fields.items():
-            if nombre != "is_active":
-                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+            if nombre not in ("is_active", "folio_manual"):
+                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def save(self, commit=True):
         valor = self.cleaned_data.get("dependencia")
@@ -196,7 +178,7 @@ class NomenclaturaForm(forms.ModelForm):
             usadas = direccion.nomenclaturas.values_list("clase", flat=True)
             self.fields["clase"].choices = [(v, e) for v, e in ClaseDocumento.choices if v not in usadas]
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def clean(self):
         datos = super().clean()
@@ -236,28 +218,29 @@ class DocumentoEdicionForm(forms.Form):
             self.initial.setdefault("contraparte_dependencia", str(documento.contraparte_dependencia_uuid))
         self.order_fields(["contraparte_dependencia", "contraparte", "asunto", "fecha", "folio", "gestor", "motivo"])
         if documento.sentido == "enviado":
-            self.fields.pop("folio")
+            if not documento.folio_manual:
+                self.fields.pop("folio")
+            if "folio" in self.fields:
+                self.fields["folio"].label = "Folio del oficio"
             self.fields["gestor"].queryset = Gestor.objects.filter(
                 direccion=documento.direccion, is_active=True, is_deleted=False
             )
         else:
             self.fields.pop("gestor")
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
 class GestorForm(forms.ModelForm):
     class Meta:
         model = Gestor
-        fields = ["nombre", "usuario"]
+        fields = ["nombre"]
 
     def __init__(self, *args, direccion=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.direccion = direccion or getattr(self.instance, "direccion", None)
-        self.fields["usuario"].queryset = usuarios_con_acceso("seguimientos_oficios")
-        self.fields["usuario"].required = False
         self.fields["nombre"].widget.attrs.setdefault(
-            "class", "w-full rounded-xl border border-gray-300 px-3 py-2 text-sm"
+            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
         )
 
     def clean_nombre(self):
@@ -267,8 +250,3 @@ class GestorForm(forms.ModelForm):
             raise forms.ValidationError("Ya existe un gestor con ese nombre en esta dirección.")
         return nombre
 
-    def clean_usuario(self):
-        usuario = self.cleaned_data.get("usuario")
-        if usuario and Gestor.objects.filter(direccion=self.direccion, usuario=usuario).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError("Ese usuario ya está vinculado a otro gestor de esta dirección.")
-        return usuario

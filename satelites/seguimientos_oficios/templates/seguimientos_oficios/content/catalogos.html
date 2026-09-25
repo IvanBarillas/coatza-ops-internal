@@ -1,24 +1,22 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-4xl space-y-4">
-    <div class="flex flex-wrap items-center justify-between gap-3">
-        <h1 class="text-xl font-black text-slate-800">Direcciones y nomenclaturas</h1>
-        <a href="{% url 'seguimientos_oficios:direccion_crear' %}" hx-get="{% url 'seguimientos_oficios:direccion_crear' %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl bg-brand-primary px-4 py-2 text-sm font-bold text-white">Nueva dirección</a>
-    </div>
+<div class="mx-auto w-full max-w-4xl space-y-4 font-mono">
+    {% url 'seguimientos_oficios:direccion_crear' as nueva_url %}
+    {% include "components/list_header.html" with module_label="Oficios" status_label="Catálogos" title="Direcciones" description="Direcciones, nomenclaturas de folio y gestores." icon="layers" action_url=nueva_url action_label="Nueva dirección" %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}
-    <div class="overflow-x-auto rounded-2xl border border-gray-200 bg-white">
-        <table class="min-w-full text-sm">
-            <thead class="text-left text-xs uppercase text-slate-500"><tr><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Carpeta</th><th class="px-4 py-3">Vinculada al Core</th><th class="px-4 py-3">Nomenclaturas</th><th class="px-4 py-3">Gestores</th><th class="px-4 py-3">Estado</th></tr></thead>
+    <div class="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+        <table class="min-w-full text-xs">
+            <thead class="text-left text-xs font-black uppercase tracking-widest text-gray-500"><tr><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Carpeta</th><th class="px-4 py-3">Vinculada al Core</th><th class="px-4 py-3">Nomenclaturas</th><th class="px-4 py-3">Gestores</th><th class="px-4 py-3">Estado</th></tr></thead>
             <tbody>
             {% for d in direcciones %}
                 <tr class="border-t border-gray-100">
                     <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.nombre }}</a></td>
-                    <td class="px-4 py-3 text-slate-500">{{ d.slug }}</td>
+                    <td class="px-4 py-3 text-gray-500">{{ d.slug }}</td>
                     <td class="px-4 py-3">{% if d.dependencia_uuid %}Sí{% else %}<span class="text-amber-700">No</span>{% endif %}</td>
                     <td class="px-4 py-3">{{ d.nomenclaturas.all|length }}</td>
                     <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}#gestores" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.gestores.all|length }} · administrar</a></td>
                     <td class="px-4 py-3">{% if d.is_active %}Activa{% else %}Inactiva{% endif %}</td>
                 </tr>
-            {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-slate-500">Aún no hay direcciones.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Aún no hay direcciones.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>

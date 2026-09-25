@@ -1,11 +1,8 @@
-import logging
 import os
 from datetime import datetime
 from pathlib import Path
 
 from .integracion import valor_entorno
-
-logger = logging.getLogger(__name__)
 
 LIMITE_LISTADO = 200
 
@@ -20,23 +17,19 @@ def raiz():
 
 
 def resolver(ruta_relativa, *, debe_existir=True):
-    """Carpeta absoluta dentro de la raíz de la bandeja; rechaza salidas por '..' o enlaces simbólicos."""
+    """Carpeta absoluta dentro de la carpeta base de importación; rechaza '..' y enlaces simbólicos que salgan de ella."""
     base = raiz()
     if base is None:
-        raise BandejaError("El servidor no tiene definida la raíz de la bandeja (OFICIOS_BANDEJA_RAIZ).")
+        raise BandejaError("Falta definir OFICIOS_BANDEJA_RAIZ, la carpeta base desde la que se importan PDF.")
     relativa = (ruta_relativa or "").strip().strip("/")
     if not relativa:
         raise BandejaError("Indique la carpeta.")
     destino = (base / relativa).resolve()
     if destino != base and not destino.is_relative_to(base):
-        raise BandejaError("La carpeta debe estar dentro de la raíz de la bandeja.")
+        raise BandejaError("La carpeta debe estar dentro de OFICIOS_BANDEJA_RAIZ.")
     if debe_existir and not destino.is_dir():
         raise BandejaError("La carpeta no existe o no es accesible desde el servidor.")
     return destino
-
-
-def ruta_normalizada(carpeta):
-    return str(carpeta.relative_to(raiz()))
 
 
 def listar_pdfs(carpeta):
@@ -75,23 +68,3 @@ def leer(carpeta, nombre, *, tamano_maximo):
         return ruta.read_bytes()
     except OSError as error:
         raise BandejaError(f"No se pudo leer el archivo: {error.strerror or error}") from error
-
-
-def archivar(carpeta, nombre):
-    """Mueve el archivo ya adjuntado a procesados/AAAA-MM/ para que no vuelva a listarse."""
-    origen = _archivo_seguro(carpeta, nombre)
-    destino_dir = carpeta / "procesados" / f"{datetime.now():%Y-%m}"
-    destino_dir.mkdir(parents=True, exist_ok=True)
-    destino, contador = destino_dir / nombre, 1
-    while destino.exists():
-        destino = destino_dir / f"{Path(nombre).stem}-{contador}.pdf"
-        contador += 1
-    os.replace(origen, destino)
-    return destino
-
-
-def archivar_sin_fallar(carpeta, nombre):
-    try:
-        archivar(carpeta, nombre)
-    except (BandejaError, OSError):
-        logger.warning("No se pudo mover '%s' a procesados en %s", nombre, carpeta, exc_info=True)

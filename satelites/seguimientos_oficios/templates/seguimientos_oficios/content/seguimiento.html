@@ -1,0 +1,55 @@
+{% include "seguimientos_oficios/contextual/_menu_movil.html" %}
+{% url 'seguimientos_oficios:seguimiento' as seguimiento_url %}
+<div class="w-full space-y-4 font-mono text-left">
+    {% include "components/list_header.html" with module_label="Oficios" status_label="Semáforo" title="Seguimiento" description="Oficios enviados que siguen pendientes: por entregar o sin evidencia. El color indica cuánto llevan esperando." icon="activity" %}
+
+    <div class="grid grid-cols-3 gap-3">
+        {% for s in semaforos %}
+        <a href="{{ seguimiento_url }}?{{ s.query }}" hx-get="{{ seguimiento_url }}?{{ s.query }}" hx-target="#page-content" hx-push-url="true"
+           {% if s.activo %}aria-current="true"{% endif %}
+           class="rounded-2xl border p-4 text-center shadow-sm transition {% if s.clave == 'rojo' %}border-red-200 bg-red-50 text-red-700{% elif s.clave == 'ambar' %}border-amber-200 bg-amber-50 text-amber-700{% else %}border-emerald-200 bg-emerald-50 text-emerald-700{% endif %} {% if s.activo %}ring-2 ring-gray-950{% endif %}">
+            <div class="text-3xl font-black">{{ s.total }}</div>
+            <div class="mt-1 text-xs font-black uppercase tracking-widest">{{ s.nombre }}</div>
+        </a>
+        {% endfor %}
+    </div>
+    <p class="text-xs text-gray-400">Verde: menos de {{ umbral_ambar }} días · Ámbar: {{ umbral_ambar }} a {{ umbral_rojo|add:"-1" }} días · Rojo: {{ umbral_rojo }} días o más. Se cuenta desde la entrega, o desde el registro si aún no se entrega.</p>
+
+    {% if gestores_resumen %}
+    <div class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="font-bold uppercase text-gray-500">Quién los trae:</span>
+        {% for g in gestores_resumen %}
+        <a href="{{ seguimiento_url }}?{{ g.query }}" hx-get="{{ seguimiento_url }}?{{ g.query }}" hx-target="#page-content" hx-push-url="true"
+           class="rounded-full border px-3 py-1 font-bold {% if g.activo %}border-amber-500 bg-amber-100 text-amber-900{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50{% endif %}">{{ g.nombre }} · {{ g.total }}</a>
+        {% endfor %}
+        {% if filtrado %}<a href="{{ seguimiento_url }}" hx-get="{{ seguimiento_url }}" hx-target="#page-content" hx-push-url="true" class="rounded-full border border-gray-200 bg-white px-3 py-1 font-bold text-gray-600">Quitar filtros</a>{% endif %}
+    </div>
+    {% endif %}
+
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {% for c in columnas %}
+        <section class="rounded-2xl border border-gray-200/80 bg-gray-50/60 p-3">
+            <header class="mb-3 px-1">
+                <h2 class="text-xs font-black uppercase tracking-widest text-gray-700">{{ c.titulo }} <span class="ml-1 rounded-md bg-gray-950 px-2 py-0.5 text-white">{{ c.documentos|length }}</span></h2>
+                <p class="mt-1 text-xs text-gray-400">{{ c.ayuda }}</p>
+            </header>
+            <ul class="space-y-2">
+                {% for d in c.documentos %}
+                <li class="rounded-xl border bg-white p-3 shadow-sm {% if d.color == 'rojo' %}border-l-4 border-red-200 border-l-red-500{% elif d.color == 'ambar' %}border-l-4 border-amber-200 border-l-amber-500{% else %}border-l-4 border-emerald-200 border-l-emerald-500{% endif %}">
+                    <div class="flex items-center justify-between gap-2">
+                        <a class="font-black text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.folio|default:"s/f" }}</a>
+                        <span class="rounded-md px-2 py-0.5 text-xs font-black uppercase {% if d.color == 'rojo' %}bg-red-100 text-red-700{% elif d.color == 'ambar' %}bg-amber-100 text-amber-700{% else %}bg-emerald-100 text-emerald-700{% endif %}">{{ d.dias }} día{{ d.dias|pluralize }}</span>
+                    </div>
+                    <div class="mt-1 text-xs font-bold text-gray-700">{{ d.asunto|truncatechars:90 }}</div>
+                    <div class="mt-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                        <span>Para: {{ d.contraparte }}</span>
+                        <span class="font-bold {% if d.gestor %}text-gray-700{% else %}text-amber-700{% endif %}">{% if d.gestor %}Lo trae {{ d.gestor }}{% else %}Sin gestor{% endif %}</span>
+                    </div>
+                    <div class="mt-1 text-xs text-gray-400">{{ d.direccion_nombre }}{% if d.fecha_entrega %} · entregado el {{ d.fecha_entrega|date:"d/m/Y" }}{% if d.receptor_entrega %} a {{ d.receptor_entrega }}{% endif %}{% endif %}</div>
+                </li>
+                {% empty %}<li class="rounded-xl border border-dashed border-gray-300 p-6 text-center text-xs text-gray-400">Nada pendiente aquí.</li>{% endfor %}
+            </ul>
+        </section>
+        {% endfor %}
+    </div>
+</div>

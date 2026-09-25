@@ -34,7 +34,7 @@ class BaseAdjuntos(TestCase):
         cls.user = get_user_model().objects.create_user(email="adj@example.test")
         UserProfile.objects.create(user=cls.user, area=area)
         UserAppRole.objects.create(user=cls.user, app=cls.app, role="editor", permissions_list=P.ROLE_MAPPING["editor"])
-        cls.direccion = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep.pk)
+        cls.direccion = Direccion.objects.create(nombre="Innovación", dependencia_uuid=cls.dep.pk, folio_manual=False)
         Nomenclatura.objects.create(direccion=cls.direccion, clase="oficio", plantilla="IN-{n:03d}/{anio}")
 
     def setUp(self):

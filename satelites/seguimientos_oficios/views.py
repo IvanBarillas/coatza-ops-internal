@@ -1,3 +1,6 @@
+import uuid
+from collections import Counter
+
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.http import FileResponse, Http404
@@ -11,16 +14,16 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, BandejaConfigForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
-from .integracion import proteger_vista, usuarios_con_acceso
+from .forms import AdjuntoForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroDocumentosForm
+from .integracion import proteger_vista
 from .selectors import (
+    color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
-    documentos_de_gestor, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
+    documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from . import bandeja
-from .models import Adjunto, Direccion, Gestor, Nomenclatura
+from .models import Adjunto, Direccion, Documento, Gestor, Nomenclatura
 from .storage import almacen
-from .services import roles_permitidos, adjuntar_desde_bandeja, editar_documento, adjuntar_pdf, listar_bandeja, ruta_bandeja_de, cancelar_documento, crear_documento, marcar_entregado
+from .services import quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
 
 POR_PAGINA = 25
@@ -101,18 +104,18 @@ def documento_create_view(request):
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data
         try:
-            crear_documento(
+            documento = crear_documento(
                 usuario=request.user, direccion=datos["direccion"], sentido=datos["sentido"],
                 clase=datos["clase"], contraparte=datos["contraparte"], asunto=datos["asunto"],
                 contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"],
-                fecha=datos["fecha"], folio=datos["folio"], director_nombre=datos["director_nombre"],
+                fecha=datos["fecha"], folio=datos["folio"],
                 gestor=datos["gestor"],
             )
         except ValidationError as error:
             form.add_error(None, error)
         else:
-            messages.success(request, "Documento registrado.")
-            return redirect("seguimientos_oficios:documento_list")
+            messages.success(request, "Documento registrado. Ya puedes adjuntar su archivo.")
+            return redirect("seguimientos_oficios:documento_detail", pk=documento.pk)
     return _render(request, "documento_form", {"form": form})
 
 
@@ -130,7 +133,9 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "cancelacion_form": cancelacion_form or CancelacionForm(),
         "puede_entregar": _permitido(request, "can_update_status")
         and documento.estado == documento.Estado.GENERADO and documento.sentido == documento.Sentido.ENVIADO,
-        "adjuntos": documento.adjuntos.all(),
+        "adjuntos": documento.adjuntos.filter(eliminado=False),
+        "adjuntos_quitados": documento.adjuntos.filter(eliminado=True).order_by("eliminado_en"),
+        "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
         "roles_adjuntables": (
             [(r, Adjunto.Rol(r).label) for r in roles_permitidos(documento)]
@@ -215,7 +220,7 @@ def documento_adjuntar_view(request, pk):
 @proteger_vista(APP_SLUG, "has_access_module")
 def adjunto_descargar_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
-    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    adjunto = get_object_or_404(documento.adjuntos.filter(eliminado=False), pk=adjunto_pk)
     almacen_ = almacen()
     if not almacen_.exists(adjunto.ruta):
         raise Http404("El archivo no está en el almacén.")
@@ -223,84 +228,6 @@ def adjunto_descargar_view(request, pk, adjunto_pk):
     respuesta["Content-Disposition"] = content_disposition_header(False, adjunto.nombre_original)
     respuesta["X-Content-Type-Options"] = "nosniff"
     return respuesta
-
-
-@login_required
-@proteger_vista(APP_SLUG, "can_upload_files")
-def documento_bandeja_view(request, pk):
-    documento = documento_visible(request, pk)
-    try:
-        rol = request.GET.get("rol") or None
-        archivos, error = listar_bandeja(documento, rol), ""
-    except ValidationError as excepcion:
-        archivos, error = [], "; ".join(excepcion.messages)
-    return render(request, "seguimientos_oficios/htmx/bandeja_lista.html",
-                  {"documento": documento, "archivos": archivos, "error": error, "rol": request.GET.get("rol", "")})
-
-
-@login_required
-@require_POST
-@proteger_vista(APP_SLUG, "can_upload_files")
-def documento_adjuntar_bandeja_view(request, pk):
-    documento = documento_visible(request, pk)
-    try:
-        _, duplicado = adjuntar_desde_bandeja(
-            documento, usuario=request.user, nombre=request.POST.get("nombre", ""), rol=request.POST.get("rol") or None
-        )
-    except ValidationError as error:
-        messages.error(request, "; ".join(error.messages))
-    else:
-        messages.success(request, "Archivo adjuntado desde la bandeja.")
-        if duplicado:
-            messages.warning(request, f"Este archivo ya está en otro documento ({duplicado.documento.folio or 'sin folio'}).")
-    return redirect("seguimientos_oficios:documento_detail", pk=pk)
-
-
-def _estado_bandeja(ruta):
-    if not ruta:
-        return {"ruta": "", "ok": None, "detalle": "Sin configurar"}
-    try:
-        return {"ruta": ruta, "ok": True, "detalle": f"{len(bandeja.listar_pdfs(bandeja.resolver(ruta)))} PDF"}
-    except bandeja.BandejaError as error:
-        return {"ruta": ruta, "ok": False, "detalle": str(error)}
-
-
-@login_required
-@proteger_vista(APP_SLUG, "can_configure_bandeja")
-def configuracion_view(request):
-    filas = []
-    for direccion in direcciones_visibles(request):
-        filas.append({
-            "direccion": direccion,
-            "form": BandejaConfigForm(initial={
-                "ruta_recibidos": direccion.ruta_recibidos, "ruta_firmados": direccion.ruta_firmados,
-                "ruta_evidencias": direccion.ruta_evidencias,
-            }),
-            "recibidos": _estado_bandeja(direccion.ruta_recibidos),
-            "firmados": _estado_bandeja(direccion.ruta_firmados),
-            "evidencias": _estado_bandeja(direccion.ruta_evidencias),
-        })
-    raiz = bandeja.raiz()
-    return _render(request, "configuracion", {"filas": filas, "raiz": str(raiz) if raiz else ""})
-
-
-@login_required
-@require_POST
-@proteger_vista(APP_SLUG, "can_configure_bandeja")
-def configuracion_guardar_view(request, pk):
-    direccion = get_object_or_404(direcciones_visibles(request), pk=pk)
-    form = BandejaConfigForm(request.POST)
-    if form.is_valid():
-        direccion.ruta_recibidos = form.cleaned_data["ruta_recibidos"]
-        direccion.ruta_firmados = form.cleaned_data["ruta_firmados"]
-        direccion.ruta_evidencias = form.cleaned_data["ruta_evidencias"]
-        direccion.save()
-        messages.success(request, f"Bandeja de {direccion.nombre} guardada.")
-    else:
-        for errores in form.errors.values():
-            for error in errores:
-                messages.error(request, f"{direccion.nombre}: {error}")
-    return redirect("seguimientos_oficios:configuracion")
 
 
 @login_required
@@ -324,8 +251,7 @@ def direccion_editar_view(request, pk=None):
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
             nomenclatura_form=NomenclaturaForm(direccion=direccion),
-            gestores=direccion.gestores.select_related("usuario").order_by("nombre"),
-            usuarios=usuarios_con_acceso(APP_SLUG),
+            gestores=direccion.gestores.order_by("nombre"),
         )
     return _render(request, "direccion_form", contexto)
 
@@ -433,16 +359,6 @@ def gestor_actualizar_view(request, pk):
 
 
 @login_required
-@proteger_vista(APP_SLUG, "can_view_own_pendings")
-def mis_pendientes_view(request):
-    from .models import Gestor
-
-    vinculado = Gestor.objects.filter(usuario=request.user, is_active=True, is_deleted=False).exists()
-    documentos = documentos_de_gestor(request).order_by("created_at")
-    return _render(request, "mis_pendientes", {"documentos": documentos, "vinculado": vinculado})
-
-
-@login_required
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def busqueda_view(request):
     consulta = request.GET.get("q", "").strip()[:200]
@@ -460,7 +376,7 @@ def busqueda_view(request):
 @proteger_vista(APP_SLUG, "has_access_module")
 def visor_view(request, pk, adjunto_pk):
     documento = documento_visible(request, pk)
-    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    adjunto = get_object_or_404(documento.adjuntos.filter(eliminado=False), pk=adjunto_pk)
     try:
         pagina = max(1, int(request.GET.get("pagina", 1)))
     except ValueError:
@@ -471,3 +387,66 @@ def visor_view(request, pk, adjunto_pk):
         "documento": documento, "adjunto": adjunto, "pagina": pagina,
         "src": reverse("seguimientos_oficios:adjunto_descargar", args=[documento.pk, adjunto.pk]) + "#" + fragmento,
     })
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_remove_files")
+def adjunto_quitar_view(request, pk, adjunto_pk):
+    documento = documento_visible(request, pk)
+    adjunto = get_object_or_404(documento.adjuntos, pk=adjunto_pk)
+    try:
+        quitar_adjunto(adjunto, usuario=request.user, motivo=request.POST.get("motivo", ""))
+    except ValidationError as error:
+        messages.error(request, "; ".join(error.messages))
+    else:
+        messages.success(request, "Archivo quitado. Queda registrado en el historial.")
+    return redirect("seguimientos_oficios:documento_detail", pk=pk)
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_tracking")
+def seguimiento_view(request):
+    todos = documentos_seguimiento(request)
+    filtrados = todos
+    gestor = request.GET.get("gestor", "")
+    if gestor == "sin":
+        filtrados = todos.filter(gestor__isnull=True)
+    elif gestor:
+        try:
+            filtrados = todos.filter(gestor_id=uuid.UUID(gestor))
+        except ValueError:
+            gestor = ""
+    documentos = list(filtrados)
+    for documento in documentos:
+        documento.dias = documento.dias_pendiente
+        documento.color = color_semaforo(documento.dias)
+    conteos = Counter(d.color for d in documentos)
+    semaforo = request.GET.get("semaforo", "")
+    if semaforo in ("verde", "ambar", "rojo"):
+        documentos = [d for d in documentos if d.color == semaforo]
+    else:
+        semaforo = ""
+    documentos.sort(key=lambda d: -d.dias)
+    ambar, rojo = semaforo_umbrales()
+    contexto = {
+        "semaforos": [
+            {"clave": c, "nombre": n, "total": conteos.get(c, 0), "activo": semaforo == c,
+             "query": _query(request, quitar=("semaforo",)) if semaforo == c else _query(request, semaforo=c)}
+            for c, n in (("rojo", "Rojo"), ("ambar", "Ámbar"), ("verde", "Verde"))
+        ],
+        "columnas": [
+            {"titulo": "Por entregar", "ayuda": "Generados: ya tienen folio y aún no se entregan.",
+             "documentos": [d for d in documentos if d.estado == Documento.Estado.GENERADO]},
+            {"titulo": "Entregados sin evidencia", "ayuda": "Ya se entregaron; falta subir la evidencia.",
+             "documentos": [d for d in documentos if d.estado == Documento.Estado.ENTREGADO]},
+        ],
+        "gestores_resumen": [
+            {"nombre": nombre, "total": total, "query": _query(request, gestor=gestor_id or "sin"),
+             "activo": (gestor_id and str(gestor_id) == gestor) or (gestor_id is None and gestor == "sin")}
+            for gestor_id, nombre, total in resumen_gestores(todos)
+        ],
+        "filtrado": bool(gestor or semaforo), "query_limpiar": "",
+        "umbral_ambar": ambar, "umbral_rojo": rojo, "total": len(documentos),
+    }
+    return _render(request, "seguimiento", contexto)

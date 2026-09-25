@@ -5,7 +5,6 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from django.utils import timezone
 
-from . import bandeja
 from .integracion import director_de_dependencia, encolar_tarea, nombre_de_usuario
 from .models import Adjunto, AdjuntoOCR, ConsecutivoFolio, Documento, HistorialDocumento, Nomenclatura
 from .storage import almacen, ruta_del_adjunto
@@ -21,6 +20,24 @@ def _validar_gestor(gestor, direccion, sentido):
         raise ValidationError("Solo los documentos enviados llevan gestor.")
     if gestor.direccion_id != direccion.pk or not gestor.is_active or gestor.is_deleted:
         raise ValidationError("El gestor no pertenece a la dirección o está inactivo.")
+
+
+def _folio_capturado(direccion, folio):
+    folio = (folio or "").strip()
+    if not folio:
+        raise ValidationError("Escriba el folio del oficio.")
+    if Documento.objects.filter(direccion=direccion, sentido=Documento.Sentido.ENVIADO, folio=folio).exists():
+        raise ValidationError(f"Ya existe un oficio enviado con el folio {folio} en esta dirección.")
+    return folio
+
+
+def sincronizar_contador(nomenclatura, anio, consecutivo):
+    """Sube el contador hasta el mayor folio conocido, para que el siguiente automático continúe la serie."""
+    ConsecutivoFolio.objects.get_or_create(nomenclatura=nomenclatura, anio=anio)
+    contador = ConsecutivoFolio.objects.select_for_update().get(nomenclatura=nomenclatura, anio=anio)
+    if consecutivo > contador.ultimo:
+        contador.ultimo = consecutivo
+        contador.save(update_fields=["ultimo"])
 
 
 def _siguiente_folio(direccion, clase, anio):
@@ -41,18 +58,29 @@ def crear_documento(*, usuario, direccion, sentido, clase, contraparte, asunto, 
                     folio="", director_nombre="", gestor=None, contraparte_dependencia_uuid=None):
     _validar_gestor(gestor, direccion, sentido)
     anio = consecutivo = None
-    if sentido == Documento.Sentido.ENVIADO:
+    nomenclatura, folio_manual = None, False
+    if sentido == Documento.Sentido.ENVIADO and direccion.folio_manual:
+        folio, folio_manual = _folio_capturado(direccion, folio), True
+        nomenclatura = Nomenclatura.objects.filter(
+            direccion=direccion, clase=clase, is_active=True, is_deleted=False
+        ).first()
+        interpretado = nomenclatura.interpretar(folio) if nomenclatura else None
+        if interpretado:
+            consecutivo, anio = interpretado[0], interpretado[1] or fecha.year
+    elif sentido == Documento.Sentido.ENVIADO:
         consecutivo, folio = _siguiente_folio(direccion, clase, fecha.year)
         anio = fecha.year
     documento = Documento.objects.create(
         sentido=sentido, clase=clase, direccion=direccion, direccion_nombre=direccion.nombre,
         contraparte=contraparte, contraparte_dependencia_uuid=contraparte_dependencia_uuid,
         asunto=asunto, fecha=fecha, folio=folio,
-        anio=anio, consecutivo=consecutivo, creado_por=usuario,
+        anio=anio, consecutivo=consecutivo, creado_por=usuario, folio_manual=folio_manual,
         estado=(Documento.Estado.GENERADO if sentido == Documento.Sentido.ENVIADO else Documento.Estado.REGISTRADO),
         director_nombre=director_nombre or director_de_dependencia(direccion.dependencia_uuid),
         gestor=gestor,
     )
+    if folio_manual and consecutivo:
+        sincronizar_contador(nomenclatura, anio, consecutivo)
     HistorialDocumento.objects.create(
         documento=documento, accion=HistorialDocumento.Accion.CREADO,
         usuario=usuario, usuario_nombre=nombre_de_usuario(usuario),
@@ -165,7 +193,7 @@ def registrar_adjunto(documento, *, rol, contenido, nombre, usuario, origen, con
                      usuario_nombre=None):
     """Guarda el PDF y su registro; no valida el estado (lo hacen quienes lo llaman)."""
     sha256 = hashlib.sha256(contenido).hexdigest()
-    duplicado = Adjunto.objects.filter(sha256=sha256).exclude(documento=documento).select_related("documento").first()
+    duplicado = Adjunto.objects.filter(sha256=sha256, eliminado=False).exclude(documento=documento).select_related("documento").first()
     ruta = ruta_del_adjunto(documento, rol, sha256)
     almacen_ = almacen()
     if not almacen_.exists(ruta):
@@ -203,50 +231,6 @@ def _preparar_ocr(adjunto, *, encolar=True):
         transaction.on_commit(lambda: encolar_tarea(TAREA_OCR, str(adjunto.pk), timeout=TIMEOUT_TAREA))
 
 
-def ruta_bandeja_de(documento, rol=None):
-    direccion = documento.direccion
-    rol = rol or (roles_permitidos(documento) or [None])[0]
-    return {
-        Adjunto.Rol.ORIGINAL: direccion.ruta_recibidos,
-        Adjunto.Rol.FIRMADO: direccion.ruta_firmados,
-        Adjunto.Rol.EVIDENCIA: direccion.ruta_evidencias,
-    }.get(rol, "")
-
-
-def _carpeta_de(documento, rol):
-    ruta = ruta_bandeja_de(documento, rol)
-    if not ruta:
-        raise ValidationError("La dirección no tiene configurada la carpeta de la bandeja para este tipo de archivo.")
-    try:
-        return bandeja.resolver(ruta)
-    except bandeja.BandejaError as error:
-        raise ValidationError(str(error)) from error
-
-
-def listar_bandeja(documento, rol=None):
-    rol = _elegir_rol(documento, rol)
-    carpeta = _carpeta_de(documento, rol)
-    try:
-        return bandeja.listar_pdfs(carpeta)
-    except bandeja.BandejaError as error:
-        raise ValidationError(str(error)) from error
-
-
-@transaction.atomic
-def adjuntar_desde_bandeja(documento, *, usuario, nombre, rol=None):
-    rol = _elegir_rol(documento, rol)
-    carpeta = _carpeta_de(documento, rol)
-    try:
-        contenido = bandeja.leer(carpeta, nombre, tamano_maximo=TAMANO_MAXIMO)
-    except bandeja.BandejaError as error:
-        raise ValidationError(str(error)) from error
-    resultado = adjuntar_pdf(
-        documento, usuario=usuario, archivo=ContentFile(contenido, name=nombre), origen="bandeja", rol=rol
-    )
-    transaction.on_commit(lambda: bandeja.archivar_sin_fallar(carpeta, nombre))
-    return resultado
-
-
 CAMPOS_EDITABLES = ("contraparte", "contraparte_dependencia_uuid", "asunto", "fecha")
 
 
@@ -265,7 +249,7 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
     if documento.sentido == Documento.Sentido.RECIBIDO:
         permitidos = CAMPOS_EDITABLES + ("folio",)
     else:
-        permitidos = CAMPOS_EDITABLES + ("gestor",)
+        permitidos = CAMPOS_EDITABLES + ("gestor",) + (("folio",) if documento.folio_manual else ())
     diferencias = {}
     for campo, nuevo in cambios.items():
         if campo not in permitidos:
@@ -276,6 +260,13 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         if nuevo != actual:
             if campo == "gestor":
                 _validar_gestor(nuevo, documento.direccion, documento.sentido)
+            if campo == "folio" and documento.sentido == Documento.Sentido.ENVIADO:
+                if not nuevo:
+                    raise ValidationError("El folio de un oficio enviado no puede quedar vacío.")
+                if Documento.objects.filter(
+                    direccion=documento.direccion, sentido=Documento.Sentido.ENVIADO, folio=nuevo
+                ).exclude(pk=documento.pk).exists():
+                    raise ValidationError(f"Ya existe un oficio enviado con el folio {nuevo} en esta dirección.")
             diferencias[campo] = (actual, nuevo)
     if not diferencias:
         raise ValidationError("No hay cambios que guardar.")
@@ -293,3 +284,30 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
         "motivo": (motivo or "").strip(),
     })
     return documento
+
+
+@transaction.atomic
+def quitar_adjunto(adjunto, *, usuario, motivo):
+    """Retira un archivo subido por error. Queda registrado (quién, cuándo y por qué); el PDF no se destruye."""
+    documento = Documento.objects.select_for_update().get(pk=adjunto.documento_id)
+    adjunto = Adjunto.objects.get(pk=adjunto.pk)
+    motivo = (motivo or "").strip()
+    if len(motivo) < MOTIVO_MINIMO:
+        raise ValidationError(f"El motivo debe tener al menos {MOTIVO_MINIMO} caracteres.")
+    if adjunto.eliminado:
+        raise ValidationError("El archivo ya fue quitado.")
+    if documento.estado == Documento.Estado.CANCELADO:
+        raise ValidationError("Un documento cancelado no se modifica.")
+    Adjunto.objects.filter(pk=adjunto.pk).update(
+        eliminado=True, eliminado_motivo=motivo, eliminado_en=timezone.now(),
+        eliminado_por_nombre=nombre_de_usuario(usuario),
+    )
+    datos = {"adjunto": adjunto.nombre_original, "rol": adjunto.rol, "sha256": adjunto.sha256, "motivo": motivo}
+    quedan_evidencias = documento.adjuntos.filter(rol=Adjunto.Rol.EVIDENCIA, eliminado=False).exists()
+    if (adjunto.rol == Adjunto.Rol.EVIDENCIA and documento.estado == Documento.Estado.CONCLUIDO
+            and documento.sentido == Documento.Sentido.ENVIADO and not quedan_evidencias):
+        documento.estado = Documento.Estado.ENTREGADO
+        documento.save()
+        datos.update(estado_anterior=Documento.Estado.CONCLUIDO, estado_nuevo=documento.estado)
+    _historial(documento, HistorialDocumento.Accion.QUITADO, usuario, datos)
+    return Adjunto.objects.get(pk=adjunto.pk)

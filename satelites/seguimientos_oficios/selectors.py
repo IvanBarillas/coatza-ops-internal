@@ -4,7 +4,7 @@ from django.core.paginator import Paginator
 from django.db import connection
 from django.db.models import Count, Q
 
-from .integracion import dependencias_autorizadas
+from .integracion import dependencias_autorizadas, valor_entorno
 from .models import Adjunto, AdjuntoOCR, Direccion, Documento
 from .textos import coincidencias, terminos
 
@@ -29,11 +29,26 @@ def permitido(request, llave):
     return request.axentra_is_root or llave in request.axentra_permissions_list
 
 
-def documentos_de_gestor(request):
-    """Pendientes asignados al gestor vinculado al usuario; independiente del alcance por dependencia."""
+PENDIENTES = (Documento.Estado.GENERADO, Documento.Estado.ENTREGADO)
+
+
+def semaforo_umbrales():
+    return int(valor_entorno("OFICIOS_SEMAFORO_AMBAR", "7")), int(valor_entorno("OFICIOS_SEMAFORO_ROJO", "15"))
+
+
+def color_semaforo(dias):
+    ambar, rojo = semaforo_umbrales()
+    return "rojo" if dias >= rojo else "ambar" if dias >= ambar else "verde"
+
+
+def documentos_seguimiento(request):
+    """Enviados pendientes (Generado o Entregado) de las direcciones que el usuario puede seguir."""
+    direcciones = Direccion.objects.filter(is_active=True, is_deleted=False)
+    if not request.axentra_is_root:
+        ids = dependencias_autorizadas(request.user, app_slug=APP_SLUG, permiso="can_view_tracking")
+        direcciones = direcciones.filter(dependencia_uuid__in=ids)
     return Documento.objects.filter(
-        is_deleted=False, gestor__usuario=request.user,
-        estado__in=(Documento.Estado.GENERADO, Documento.Estado.ENTREGADO),
+        is_deleted=False, sentido=Documento.Sentido.ENVIADO, estado__in=PENDIENTES, direccion__in=direcciones
     ).select_related("direccion", "gestor")
 
 
@@ -44,8 +59,8 @@ def documento_visible(request, pk):
         documento = documentos_visibles(request).filter(pk=pk).first()
         if documento:
             return documento
-    if permitido(request, "can_view_own_pendings"):
-        documento = documentos_de_gestor(request).filter(pk=pk).first()
+    if permitido(request, "can_view_tracking"):
+        documento = documentos_seguimiento(request).filter(pk=pk).first()
         if documento:
             return documento
     raise Http404("Documento no disponible.")
@@ -57,10 +72,11 @@ def _coincidencias_ocr(termino):
         from django.contrib.postgres.search import SearchQuery, SearchVector
 
         return (
-            AdjuntoOCR.objects.annotate(vector=SearchVector("texto_normalizado", config="spanish"))
+            AdjuntoOCR.objects.filter(adjunto__eliminado=False)
+            .annotate(vector=SearchVector("texto_normalizado", config="spanish"))
             .filter(vector=SearchQuery(termino, config="spanish", search_type="websearch"))
         )
-    return AdjuntoOCR.objects.filter(texto_normalizado__contains=termino)
+    return AdjuntoOCR.objects.filter(adjunto__eliminado=False, texto_normalizado__contains=termino)
 
 
 def buscar_documentos(queryset, filtros):
@@ -138,12 +154,12 @@ def buscar_con_coincidencias(request, consulta, pagina=None, por_pagina=15):
     paginador = Paginator(documentos, por_pagina).get_page(pagina)
     ids = [d.pk for d in paginador]
     encontrados = defaultdict(list)
-    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
+    ocrs = AdjuntoOCR.objects.filter(adjunto__documento_id__in=ids, adjunto__eliminado=False, estado=AdjuntoOCR.Estado.LISTO).select_related("adjunto")
     for ocr in ocrs.order_by("adjunto__created_at"):
         for numero, fragmento in coincidencias(ocr.texto, ocr.texto_normalizado, consulta):
             encontrados[ocr.adjunto.documento_id].append({"adjunto": ocr.adjunto, "pagina": numero, "fragmento": fragmento})
     primeros = {}
-    for adjunto in Adjunto.objects.filter(documento_id__in=ids).order_by("-created_at"):
+    for adjunto in Adjunto.objects.filter(documento_id__in=ids, eliminado=False).order_by("-created_at"):
         primeros[adjunto.documento_id] = adjunto
     resultados = [
         {"documento": d, "coincidencias": encontrados[d.pk][:4], "primer_adjunto": primeros.get(d.pk)}

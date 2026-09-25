@@ -1,12 +1,12 @@
-<div class="flex h-full flex-col rounded-2xl border border-gray-200 bg-white">
-    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 text-sm">
+<div class="flex h-full flex-col rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+    <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-4 py-3 text-xs">
         <div class="min-w-0">
-            <div class="truncate font-black text-slate-800">{{ documento.folio|default:"Sin folio" }} · {{ documento.direccion_nombre }}</div>
-            <div class="truncate text-xs text-slate-500">{{ adjunto.get_rol_display }} · {{ adjunto.nombre_original }} · abierto en la página {{ pagina }}</div>
+            <div class="truncate font-black text-gray-800">{{ documento.folio|default:"Sin folio" }} · {{ documento.direccion_nombre }}</div>
+            <div class="truncate text-xs text-gray-500">{{ adjunto.get_rol_display }} · {{ adjunto.nombre_original }} · abierto en la página {{ pagina }}</div>
         </div>
         <div class="flex gap-2 text-xs font-bold">
-            <a class="rounded-xl border border-gray-300 px-3 py-1.5 text-slate-600" href="{% url 'seguimientos_oficios:documento_detail' documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' documento.pk %}" hx-target="#page-content" hx-push-url="true">Ver documento</a>
-            <a class="rounded-xl border border-gray-300 px-3 py-1.5 text-slate-600" target="_blank" rel="noopener" href="{{ src }}">Abrir en pestaña</a>
+            <a class="inline-flex items-center rounded-xl border border-brand-primary bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-brand-primary transition hover:bg-brand-primary hover:text-white" href="{% url 'seguimientos_oficios:documento_detail' documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' documento.pk %}" hx-target="#page-content" hx-push-url="true">Ver documento</a>
+            <a class="inline-flex items-center rounded-xl bg-brand-primary px-4 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110" target="_blank" rel="noopener" href="{{ src }}">Abrir en pestaña</a>
         </div>
     </div>
     <iframe title="Vista previa del PDF" src="{{ src }}" class="min-h-[70vh] w-full flex-1 rounded-b-2xl"></iframe>

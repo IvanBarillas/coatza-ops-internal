@@ -4,6 +4,7 @@ import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 
 from .textos import normalizar
@@ -39,17 +40,9 @@ class Direccion(BaseOficios):
         "Carpeta de archivos", max_length=160, unique=True, null=True, editable=False,
         help_text="Nombre de carpeta en el almacén; se fija al crear la dirección y no cambia si se renombra.",
     )
-    ruta_recibidos = models.CharField(
-        "Carpeta de recibidos", max_length=255, blank=True,
-        help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios recibidos.",
-    )
-    ruta_firmados = models.CharField(
-        "Carpeta de firmados", max_length=255, blank=True,
-        help_text="Ruta relativa a la raíz de la bandeja donde se escanean los oficios enviados ya firmados.",
-    )
-    ruta_evidencias = models.CharField(
-        "Carpeta de evidencias", max_length=255, blank=True,
-        help_text="Ruta relativa a la raíz de la bandeja donde se escanean las evidencias de entrega.",
+    folio_manual = models.BooleanField(
+        "Folio manual", default=True,
+        help_text="Activo: quien registra un oficio enviado escribe su folio. Inactivo: se genera con la nomenclatura.",
     )
     dependencia_uuid = models.UUIDField(
         "Dependencia del Core",
@@ -142,10 +135,6 @@ class Gestor(BaseOficios):
 
     direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="gestores")
     nombre = models.CharField("Nombre", max_length=150)
-    usuario = models.ForeignKey(
-        settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
-        verbose_name="Usuario", help_text="Si el gestor tiene cuenta, ve sus pendientes en 'Mis pendientes'.",
-    )
 
     class Meta:
         db_table = "oficios_gestor"
@@ -154,10 +143,6 @@ class Gestor(BaseOficios):
         verbose_name_plural = "Gestores"
         constraints = [
             models.UniqueConstraint(fields=["direccion", "nombre"], name="oficios_gestor_unico"),
-            models.UniqueConstraint(
-                fields=["direccion", "usuario"], condition=Q(usuario__isnull=False),
-                name="oficios_gestor_usuario_unico",
-            ),
         ]
 
     def __str__(self):
@@ -209,6 +194,7 @@ class Documento(BaseOficios):
     asunto = models.CharField("Asunto", max_length=300)
     fecha = models.DateField("Fecha del documento")
     folio = models.CharField("Folio", max_length=80, blank=True, db_index=True)
+    folio_manual = models.BooleanField("Folio capturado a mano", default=False)
     anio = models.PositiveSmallIntegerField(null=True, blank=True)
     consecutivo = models.PositiveIntegerField(null=True, blank=True)
     gestor = models.ForeignKey(
@@ -243,17 +229,15 @@ class Documento(BaseOficios):
 
     @property
     def dias_pendiente(self):
-        from datetime import date
-
         if self.estado not in (self.Estado.GENERADO, self.Estado.ENTREGADO):
             return None
-        desde = self.fecha_entrega or self.created_at.date()
-        return (date.today() - desde).days
+        desde = self.fecha_entrega or timezone.localtime(self.created_at).date()
+        return (timezone.localdate() - desde).days
 
     def save(self, *args, **kwargs):
         self.busqueda = normalizar(" ".join((self.folio, self.asunto, self.contraparte, self.director_nombre)))
         if not self._state.adding:
-            protegidos = self.INMUTABLES + (("folio",) if self.sentido == self.Sentido.ENVIADO else ())
+            protegidos = self.INMUTABLES + (("folio",) if self.sentido == self.Sentido.ENVIADO and not self.folio_manual else ())
             original = type(self).objects.filter(pk=self.pk).values(*protegidos).first()
             if original:
                 cambiados = [c for c in protegidos if original[c] != getattr(self, c)]
@@ -272,6 +256,7 @@ class HistorialDocumento(models.Model):
         CREADO = "creado", "Creado"
         EDITADO = "editado", "Editado"
         ADJUNTADO = "adjuntado", "Adjunto agregado"
+        QUITADO = "quitado", "Archivo quitado"
         ELIMINADO = "eliminado", "Eliminado"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -319,6 +304,10 @@ class Adjunto(models.Model):
     )
     subido_por_nombre = models.CharField(max_length=200, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    eliminado = models.BooleanField(default=False, db_index=True)
+    eliminado_motivo = models.TextField(blank=True)
+    eliminado_por_nombre = models.CharField(max_length=200, blank=True)
+    eliminado_en = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "oficios_adjunto"

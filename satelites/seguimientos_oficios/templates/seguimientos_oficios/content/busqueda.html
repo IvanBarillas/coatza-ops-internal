@@ -1,48 +1,50 @@
+<div class="w-full font-mono text-left">
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:busqueda' as busqueda_url %}
-<h1 class="mb-3 text-xl font-black text-slate-800">Búsqueda en documentos</h1>
+<div class="mb-4">{% include "components/list_header.html" with module_label="Oficios" title="Búsqueda" description="Encuentra una palabra dentro de los PDF (OCR) y en los datos de cada documento, con la página donde aparece." icon="search" %}</div>
 <form method="get" action="{{ busqueda_url }}" hx-get="{{ busqueda_url }}" hx-target="#page-content" hx-push-url="true" class="mb-4 flex flex-wrap gap-2">
-    <input type="search" name="q" value="{{ consulta }}" placeholder="Palabra o frase dentro de los documentos, folio, asunto…" aria-label="Buscar" class="min-w-0 flex-1 rounded-xl border border-gray-300 px-3 py-2 text-sm" autofocus>
-    <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2 text-sm font-bold text-white">Buscar</button>
+    <input type="search" name="q" value="{{ consulta }}" placeholder="Palabra o frase dentro de los documentos, folio, asunto…" aria-label="Buscar" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white" autofocus>
+    <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
 </form>
 
 {% if not consulta %}
-<p class="text-sm text-slate-500">Escribe una palabra para buscarla en el texto de todos los PDF (OCR), sin importar acentos ni mayúsculas, y en los datos de cada documento. Al elegir un resultado, el PDF se abre a la derecha en la hoja donde aparece.</p>
+<p class="text-xs text-gray-500">Escribe una palabra para buscarla en el texto de todos los PDF (OCR), sin importar acentos ni mayúsculas, y en los datos de cada documento. Al elegir un resultado, el PDF se abre a la derecha en la hoja donde aparece.</p>
 {% else %}
 <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
     <section>
-        <p class="mb-2 text-xs text-slate-500">{{ paginador.paginator.count }} documento{{ paginador.paginator.count|pluralize }} con “{{ consulta }}”</p>
+        <p class="mb-2 text-xs text-gray-500">{{ paginador.paginator.count }} documento{{ paginador.paginator.count|pluralize }} con “{{ consulta }}”</p>
         <ul class="space-y-3">
             {% for r in resultados %}
-            <li class="rounded-2xl border border-gray-200 bg-white p-4 text-sm">
+            <li class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-4 text-xs">
                 <div class="flex flex-wrap items-center justify-between gap-2">
                     <a class="font-black text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' r.documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' r.documento.pk %}" hx-target="#page-content" hx-push-url="true">{{ r.documento.folio|default:"Sin folio" }}</a>
                     {% include "seguimientos_oficios/content/_estado_badge.html" with documento=r.documento %}
                 </div>
-                <div class="text-xs text-slate-500">{{ r.documento.get_clase_display }} · {{ r.documento.get_sentido_display }} · {{ r.documento.direccion_nombre }} · {{ r.documento.fecha|date:"d/m/Y" }}</div>
-                <div class="mt-1 font-bold text-slate-700">{{ r.documento.asunto }}</div>
+                <div class="text-xs text-gray-500">{{ r.documento.get_clase_display }} · {{ r.documento.get_sentido_display }} · {{ r.documento.direccion_nombre }} · {{ r.documento.fecha|date:"d/m/Y" }}</div>
+                <div class="mt-1 font-bold text-gray-700">{{ r.documento.asunto }}</div>
                 {% for c in r.coincidencias %}
                 <button type="button" hx-get="{% url 'seguimientos_oficios:visor' r.documento.pk c.adjunto.pk %}?pagina={{ c.pagina }}&amp;q={{ consulta|urlencode }}" hx-target="#visor" hx-swap="innerHTML show:#visor:top"
-                        class="mt-2 block w-full rounded-xl border border-gray-200 bg-slate-50 px-3 py-2 text-left text-xs text-slate-600 hover:bg-amber-50">
+                        class="mt-2 block w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-left text-xs text-gray-600 hover:bg-amber-50">
                     <span class="mr-1 font-black text-brand-primary">Pág. {{ c.pagina }}</span>{{ c.fragmento }}
                 </button>
                 {% empty %}
-                <p class="mt-2 text-xs text-slate-500">Coincide en los datos del documento.
+                <p class="mt-2 text-xs text-gray-500">Coincide en los datos del documento.
                     {% if r.primer_adjunto %}<button type="button" class="font-bold text-brand-primary underline" hx-get="{% url 'seguimientos_oficios:visor' r.documento.pk r.primer_adjunto.pk %}?pagina=1" hx-target="#visor" hx-swap="innerHTML show:#visor:top">Ver el PDF</button>{% endif %}</p>
                 {% endfor %}
             </li>
-            {% empty %}<li class="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-slate-500">Sin resultados. Prueba con otra palabra; los PDF recién subidos aparecen cuando termina su OCR.</li>{% endfor %}
+            {% empty %}<li class="rounded-2xl border border-dashed border-gray-300 p-6 text-center text-gray-500">Sin resultados. Prueba con otra palabra; los PDF recién subidos aparecen cuando termina su OCR.</li>{% endfor %}
         </ul>
         {% if paginador.paginator.num_pages > 1 %}
-        <nav class="mt-4 flex items-center justify-center gap-3 text-sm">
-            {% if paginador.has_previous %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ paginador.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ paginador.previous_page_number }}">Anterior</a>{% endif %}
-            <span class="text-slate-500">Página {{ paginador.number }} de {{ paginador.paginator.num_pages }}</span>
-            {% if paginador.has_next %}<a class="rounded-xl border border-gray-300 px-4 py-2 font-bold" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ paginador.next_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ paginador.next_page_number }}">Siguiente</a>{% endif %}
+        <nav class="mt-4 flex items-center justify-center gap-3 text-xs">
+            {% if paginador.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ paginador.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ paginador.previous_page_number }}">Anterior</a>{% endif %}
+            <span class="text-gray-500">Página {{ paginador.number }} de {{ paginador.paginator.num_pages }}</span>
+            {% if paginador.has_next %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-300 hover:text-gray-950" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ paginador.next_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ paginador.next_page_number }}">Siguiente</a>{% endif %}
         </nav>
         {% endif %}
     </section>
     <aside id="visor" class="min-h-[20rem] lg:sticky lg:top-2 lg:h-[calc(100vh-8rem)]">
-        <div class="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-300 p-6 text-center text-sm text-slate-500">Elige un resultado para ver el PDF aquí.</div>
+        <div class="flex h-full items-center justify-center rounded-2xl border border-dashed border-gray-300 p-6 text-center text-xs text-gray-500">Elige un resultado para ver el PDF aquí.</div>
     </aside>
 </div>
 {% endif %}
+</div>
