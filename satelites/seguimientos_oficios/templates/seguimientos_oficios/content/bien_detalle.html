@@ -1,3 +1,4 @@
+{% load oficios_fechas %}
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 <div class="mx-auto w-full max-w-4xl space-y-4 font-mono text-left">
     {% url 'seguimientos_oficios:bienes' as volver_url %}
@@ -56,7 +57,7 @@
             <li class="border-l-4 border-gray-200 pl-3">
                 <div class="font-bold text-gray-700">{{ h.get_accion_display }} · {{ h.usuario_nombre|default:"—" }}</div>
                 <div class="text-gray-400">{{ h.created_at|date:"d/m/Y H:i" }}</div>
-                {% if h.datos.folio %}<div class="text-gray-500">Vale {{ h.datos.folio }}{% if h.datos.recibe %} · {{ h.datos.recibe }}{% endif %}{% if h.datos.fecha_limite %} · límite {{ h.datos.fecha_limite }}{% endif %}{% if h.datos.devolucion %} · devuelto {{ h.datos.devolucion }}{% endif %}</div>{% endif %}
+                {% if h.datos.folio %}<div class="text-gray-500">Vale {{ h.datos.folio }}{% if h.datos.recibe %} · {{ h.datos.recibe }}{% endif %}{% if h.datos.fecha_limite %} · límite {{ h.datos.fecha_limite|fecha_iso }}{% endif %}{% if h.datos.devolucion %} · devuelto {{ h.datos.devolucion|fecha_iso }}{% endif %}</div>{% endif %}
                 {% for campo, cambio in h.datos.cambios.items %}<div class="text-gray-500"><b>{{ campo }}</b>: {{ cambio.antes|default:"—" }} → {{ cambio.despues|default:"—" }}</div>{% endfor %}
                 {% if h.datos.motivo %}<div class="text-gray-500">Motivo: {{ h.datos.motivo }}</div>{% endif %}
                 {% if h.datos.observaciones %}<div class="text-gray-500">Observaciones: {{ h.datos.observaciones }}</div>{% endif %}

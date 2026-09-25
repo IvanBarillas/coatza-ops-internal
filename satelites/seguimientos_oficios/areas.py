@@ -9,7 +9,6 @@ RUTAS_DE_PRESTAMOS = {
     "prestamos", "vales", "vale_crear", "vale_imprimir", "vale_devolucion",
     "bienes", "bien_crear", "bien_detalle", "bien_editar",
 }
-GENERALES = {"catalogos"}
 
 
 def _nombre_de_ruta(nombre_completo):
@@ -23,10 +22,9 @@ def area_de(nombre_ruta):
 def construir_menu(request, area_forzada=None):
     """Devuelve (opciones del área actual, selector de áreas, área actual) según los permisos del usuario."""
     actual = request.resolver_match.view_name if request.resolver_match else ""
-    por_area = {"oficios": [], "prestamos": [], "general": []}
+    por_area = {"oficios": [], "prestamos": []}
     for item in getattr(request, "axentra_sidebar_menu", []):
-        ruta = _nombre_de_ruta(item["url"])
-        area = "general" if ruta in GENERALES else area_de(item["url"])
+        area = area_de(item["url"])
         por_area[area].append({
             "icon": item["icon"], "name": item["name"], "href": reverse(item["url"]),
             "active": item["url"] == actual,
@@ -43,4 +41,4 @@ def construir_menu(request, area_forzada=None):
             for c, n, i in disponibles
         ]
     datos = next(((c, n, i) for c, n, i in AREAS if c == area_actual), AREAS[0])
-    return por_area[area_actual] + por_area["general"], selector, {"clave": datos[0], "nombre": datos[1], "icon": datos[2]}
+    return por_area[area_actual], selector, {"clave": datos[0], "nombre": datos[1], "icon": datos[2]}

@@ -257,7 +257,8 @@ def direccion_editar_view(request, pk=None):
         guardada = form.save()
         messages.success(request, f"Dirección {guardada.nombre} guardada.")
         return redirect("seguimientos_oficios:direccion_editar", pk=guardada.pk)
-    contexto = {"form": form, "direccion": direccion}
+    seccion = request.GET.get("seccion")
+    contexto = {"form": form, "direccion": direccion, "seccion": seccion if seccion in SECCIONES_DE_DIRECCION else "nomenclaturas"}
     if direccion:
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
@@ -269,8 +270,12 @@ def direccion_editar_view(request, pk=None):
     return _render(request, "direccion_form", contexto)
 
 
-def _volver_a_direccion(pk):
-    return redirect("seguimientos_oficios:direccion_editar", pk=pk)
+SECCIONES_DE_DIRECCION = ("nomenclaturas", "gestores", "categorias")
+
+
+def _volver_a_direccion(pk, seccion="nomenclaturas"):
+    """Vuelve a la dirección abriendo la sección donde se estaba trabajando."""
+    return redirect(f"{reverse('seguimientos_oficios:direccion_editar', kwargs={'pk': pk})}?seccion={seccion}")
 
 
 @login_required
@@ -288,7 +293,7 @@ def nomenclatura_crear_view(request, pk):
         for errores in form.errors.values():
             for error in errores:
                 messages.error(request, error)
-    return _volver_a_direccion(pk)
+    return _volver_a_direccion(pk, "nomenclaturas")
 
 
 @login_required
@@ -309,7 +314,7 @@ def nomenclatura_actualizar_view(request, pk):
             for errores in form.errors.values():
                 for error in errores:
                     messages.error(request, error)
-    return _volver_a_direccion(nomenclatura.direccion_id)
+    return _volver_a_direccion(nomenclatura.direccion_id, "nomenclaturas")
 
 
 @login_required
@@ -347,7 +352,7 @@ def gestor_crear_view(request, pk):
         for errores in form.errors.values():
             for error in errores:
                 messages.error(request, error)
-    return _volver_a_direccion(pk)
+    return _volver_a_direccion(pk, "gestores")
 
 
 @login_required
@@ -368,7 +373,7 @@ def gestor_actualizar_view(request, pk):
             for errores in form.errors.values():
                 for error in errores:
                     messages.error(request, error)
-    return _volver_a_direccion(gestor.direccion_id)
+    return _volver_a_direccion(gestor.direccion_id, "gestores")
 
 
 @login_required
@@ -519,7 +524,7 @@ def categoria_crear_view(request, pk):
         for errores in form.errors.values():
             for error in errores:
                 messages.error(request, error)
-    return _volver_a_direccion(pk)
+    return _volver_a_direccion(pk, "categorias")
 
 
 @login_required
@@ -540,7 +545,7 @@ def categoria_actualizar_view(request, pk):
             for errores in form.errors.values():
                 for error in errores:
                     messages.error(request, error)
-    return _volver_a_direccion(categoria.direccion_id)
+    return _volver_a_direccion(categoria.direccion_id, "categorias")
 
 
 @login_required

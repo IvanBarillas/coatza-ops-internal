@@ -28,7 +28,7 @@ class AreasDelMenuTests(PrestamosBase):
         prestamos = self.menu("bienes")
         self.assertEqual(prestamos.context["area_actual"]["clave"], "prestamos")
         nombres = [i["name"] for i in prestamos.context["sidebar_items"]]
-        self.assertEqual([n for n in nombres if n != "Catálogos"], ["Seguimiento de préstamos", "Vales", "Bienes", "Nuevo vale"])
+        self.assertEqual(nombres, ["Seguimiento de préstamos", "Vales", "Bienes", "Nuevo vale"])
         self.assertEqual([a["clave"] for a in prestamos.context["sidebar_areas"]], ["oficios", "prestamos"])
 
     def test_el_vale_abierto_desde_su_detalle_mantiene_el_area_de_prestamos(self):
@@ -45,6 +45,33 @@ class AreasDelMenuTests(PrestamosBase):
     def test_marca_la_opcion_activa(self):
         pagina = self.menu("vales")
         self.assertEqual([i["name"] for i in pagina.context["sidebar_items"] if i["active"]], ["Vales"])
+
+
+class CatalogosEnOficiosTests(PrestamosBase):
+    def setUp(self):
+        super().setUp()
+        UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
+
+    def menu(self, nombre):
+        return self.client.get(reverse(f"seguimientos_oficios:{nombre}"))
+
+    def test_catalogos_solo_aparece_en_oficios(self):
+        oficios = [i["name"] for i in self.menu("documento_list").context["sidebar_items"]]
+        self.assertIn("Catálogos", oficios)
+        pagina = self.menu("catalogos")
+        self.assertEqual(pagina.context["area_actual"]["clave"], "oficios")
+        self.assertNotIn("Catálogos", [i["name"] for i in self.menu("bienes").context["sidebar_items"]])
+
+    def test_direccion_abre_la_seccion_pedida_y_solo_esa_por_defecto(self):
+        url = reverse("seguimientos_oficios:direccion_editar", args=[self.direccion.pk])
+        self.assertEqual(self.client.get(url).context["seccion"], "nomenclaturas")
+        self.assertEqual(self.client.get(url + "?seccion=gestores").context["seccion"], "gestores")
+        self.assertEqual(self.client.get(url + "?seccion=otra").context["seccion"], "nomenclaturas")
+
+    def test_agregar_categoria_vuelve_a_la_seccion_de_categorias(self):
+        url = reverse("seguimientos_oficios:categoria_crear", args=[self.direccion.pk])
+        respuesta = self.client.post(url, {"nombre": "Panteones"})
+        self.assertTrue(respuesta["Location"].endswith("?seccion=categorias"))
 
 
 class TableroDePrestamosTests(PrestamosBase):
