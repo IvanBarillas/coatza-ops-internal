@@ -64,8 +64,8 @@ class GestorMovilTests(BaseAdjuntos):
         super().setUp()
         self.usuario = get_user_model().objects.create_user(email="juan@example.test", first_name="Juan")
         UserAppRole.objects.create(user=self.usuario, app=self.app, role="gestor", permissions_list=P.ROLE_MAPPING["gestor"])
-        self.juan = Gestor.objects.create(direccion=self.direccion, nombre="Juan", usuario=self.usuario)
-        self.maria = Gestor.objects.create(direccion=self.direccion, nombre="María")
+        self.juan = Gestor.objects.create(direccion=self.direccion, usuario=self.usuario)
+        self.maria = self.gestor("María")
 
     def enviar(self, asunto, gestor):
         return crear_documento(
@@ -167,14 +167,15 @@ class GestorMovilTests(BaseAdjuntos):
         UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
         self.client.force_login(self.user)
         sin_membresia = get_user_model().objects.create_user(email="fuera@example.test")
-        actualizar = reverse("seguimientos_oficios:gestor_actualizar", args=[self.maria.pk])
-        for candidato in (sin_membresia, self.usuario):
-            self.client.post(actualizar, {"nombre": "María", "usuario": str(candidato.pk)})
-            self.maria.refresh_from_db()
-            self.assertIsNone(self.maria.usuario)
-        otro = get_user_model().objects.create_user(email="maria@example.test", first_name="María")
+        legado = Gestor.objects.create(direccion=self.direccion, nombre="Legado")
+        actualizar = reverse("seguimientos_oficios:gestor_actualizar", args=[legado.pk])
+        for candidato in (sin_membresia, self.usuario, None):
+            self.client.post(actualizar, {"usuario": str(candidato.pk) if candidato else ""})
+            legado.refresh_from_db()
+            self.assertIsNone(legado.usuario)
+        otro = get_user_model().objects.create_user(email="maria@example.test", first_name="María", last_name="Ruiz")
         UserAppRole.objects.create(user=otro, app=self.app, role="gestor", permissions_list=P.ROLE_MAPPING["gestor"])
-        self.client.post(actualizar, {"nombre": "María", "usuario": str(otro.pk)})
-        self.maria.refresh_from_db()
-        self.assertEqual(self.maria.usuario, otro)
+        self.client.post(actualizar, {"usuario": str(otro.pk)})
+        legado.refresh_from_db()
+        self.assertEqual((legado.usuario, legado.nombre), (otro, "María Ruiz"))
         self.assertContains(self.client.get(reverse("seguimientos_oficios:direccion_editar", args=[self.direccion.pk])), "maria@example.test")

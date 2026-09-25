@@ -20,7 +20,7 @@ from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
     color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
-    categorias_visibles, documentos_de_gestor, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
+    categorias_visibles, documentos_de_gestor, gestores_asignables, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
 from .models import Adjunto, AdjuntoOCR, Categoria, Direccion, Documento, Gestor, Nomenclatura
 from .storage import almacen
@@ -103,7 +103,7 @@ def documento_list_view(request):
 def documento_create_view(request):
     direcciones = direcciones_visibles(request)
     form = DocumentoForm(
-        request.POST or None, direcciones=direcciones, gestores=gestores_visibles(request),
+        request.POST or None, direcciones=direcciones, gestores=gestores_asignables(request),
         categorias=categorias_visibles(request),
     )
     if request.method == "POST" and form.is_valid():

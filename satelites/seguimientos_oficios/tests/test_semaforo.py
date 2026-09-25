@@ -17,7 +17,7 @@ from .base import BaseAdjuntos, pdf
 class SemaforoTests(BaseAdjuntos):
     def setUp(self):
         super().setUp()
-        self.juan = Gestor.objects.create(direccion=self.direccion, nombre="Juan")
+        self.juan = self.gestor("Juan")
         self.observador = get_user_model().objects.create_user(email="ve@example.test")
         area = AreaOperativa.objects.create(nombre="Oficina 2", dependencia=self.dep, sede_fisica=Sede.objects.first())
         UserProfile.objects.create(user=self.observador, area=area)

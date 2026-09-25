@@ -165,6 +165,11 @@ def gestores_visibles(request):
     ).select_related("direccion")
 
 
+def gestores_asignables(request):
+    """Gestores a los que se puede asignar un oficio: activos y con usuario vinculado."""
+    return gestores_visibles(request).filter(usuario__isnull=False)
+
+
 def categorias_visibles(request):
     from .models import Categoria
 

@@ -128,8 +128,12 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
   escuelas). Catálogo por dirección en Catálogos, elegible al registrar y al editar (con rastro en el historial),
   visible en lista, detalle y búsqueda, y filtrable en ambas. Las categorías no se borran: se desactivan, y un
   documento ya clasificado conserva la suya aunque se desactive.
-- Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es un catálogo por dirección (en Catálogos),
-  solo aplica a enviados, se asigna al registrar y se reasigna al editar, con rastro en el historial.
+- Gestor: quien lleva el oficio a la dependencia y trae la evidencia. Es siempre un **usuario existente** con
+  membresía en el módulo: en Catálogos (por dirección) se elige el usuario y el nombre sale de su cuenta (si dos
+  comparten nombre se distinguen por correo); los roles se siguen asignando en Seguridad. Solo aplica a enviados, se
+  asigna al registrar y se reasigna al editar, con rastro en el historial. Solo se pueden asignar gestores con usuario;
+  los que quedaron sin usuario de versiones anteriores se marcan como tales, no se pueden asignar y los oficios que ya
+  los tenían los conservan.
 - **Seguimiento** (menú *Seguimiento*, permiso `can_view_tracking`, rol `seguimiento` de solo consulta): tablero de los
   oficios enviados pendientes, en dos columnas (*Por entregar* = Generado y *Entregados sin evidencia*) con semáforo
   por antigüedad (verde, ámbar desde 7 días, rojo desde 15; ajustable con `OFICIOS_SEMAFORO_AMBAR` y

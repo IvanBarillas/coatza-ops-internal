@@ -31,7 +31,7 @@ class CatalogosTests(BaseAdjuntos):
     def test_la_lista_enlaza_a_los_gestores_de_cada_direccion(self):
         from satelites.seguimientos_oficios.models import Gestor
 
-        Gestor.objects.create(direccion=self.direccion, nombre="Juan")
+        self.gestor("Juan")
         self.como_owner()
         lista = self.client.get(reverse("seguimientos_oficios:catalogos"))
         editar = reverse("seguimientos_oficios:direccion_editar", args=[self.direccion.pk])

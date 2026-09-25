@@ -16,13 +16,15 @@ from .tasks import TAREA_OCR, TIMEOUT_TAREA
 MOTIVO_MINIMO = 10
 
 
-def _validar_gestor(gestor, direccion, sentido):
+def _validar_gestor(gestor, direccion, sentido, actual=None):
     if gestor is None:
         return
     if sentido != Documento.Sentido.ENVIADO:
         raise ValidationError("Solo los documentos enviados llevan gestor.")
     if gestor.direccion_id != direccion.pk or not gestor.is_active or gestor.is_deleted:
         raise ValidationError("El gestor no pertenece a la dirección o está inactivo.")
+    if gestor.usuario_id is None and gestor != actual:
+        raise ValidationError("El gestor no tiene un usuario vinculado; vincúlelo en Catálogos.")
 
 
 def _validar_categoria(categoria, direccion, actual=None):
@@ -293,7 +295,7 @@ def editar_documento(documento, *, usuario, cambios, motivo=""):
             nuevo = nuevo.strip()
         if nuevo != actual:
             if campo == "gestor":
-                _validar_gestor(nuevo, documento.direccion, documento.sentido)
+                _validar_gestor(nuevo, documento.direccion, documento.sentido, actual)
             if campo == "categoria":
                 _validar_categoria(nuevo, documento.direccion, actual)
             if campo == "folio" and documento.sentido == Documento.Sentido.ENVIADO:

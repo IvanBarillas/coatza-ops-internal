@@ -156,6 +156,18 @@ class Gestor(BaseOficios):
     def __str__(self):
         return self.nombre
 
+    def nombre_desde_usuario(self):
+        from .integracion import nombre_de_usuario
+
+        base = nombre_de_usuario(self.usuario)
+        repetido = Gestor.objects.filter(direccion=self.direccion, nombre__iexact=base).exclude(pk=self.pk).exists()
+        return f"{base} ({self.usuario.email})" if repetido else base
+
+    def save(self, *args, **kwargs):
+        if self.usuario_id:
+            self.nombre = self.nombre_desde_usuario()
+        super().save(*args, **kwargs)
+
 
 class Categoria(BaseOficios):
     """Tema con el que una dirección clasifica sus documentos (p. ej. panteones, escuelas)."""

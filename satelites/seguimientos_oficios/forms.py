@@ -239,7 +239,8 @@ class DocumentoEdicionForm(forms.Form):
             if "folio" in self.fields:
                 self.fields["folio"].label = "Folio del oficio"
             self.fields["gestor"].queryset = Gestor.objects.filter(
-                direccion=documento.direccion, is_active=True, is_deleted=False
+                Q(usuario__isnull=False) | Q(pk=documento.gestor_id),
+                direccion=documento.direccion, is_active=True, is_deleted=False,
             )
         else:
             self.fields.pop("gestor")
@@ -248,28 +249,24 @@ class DocumentoEdicionForm(forms.Form):
 
 
 class GestorForm(forms.ModelForm):
+    """Un gestor es siempre un usuario existente con membresía en el módulo; el nombre sale de su cuenta."""
+
     class Meta:
         model = Gestor
-        fields = ["nombre", "usuario"]
+        fields = ["usuario"]
+        labels = {"usuario": "Usuario"}
 
     def __init__(self, *args, direccion=None, **kwargs):
         super().__init__(*args, **kwargs)
         self.direccion = direccion or getattr(self.instance, "direccion", None)
         self.fields["usuario"].queryset = usuarios_con_acceso("seguimientos_oficios")
-        self.fields["usuario"].required = False
-        self.fields["nombre"].widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
-
-    def clean_nombre(self):
-        nombre = " ".join(self.cleaned_data["nombre"].split())
-        repetido = Gestor.objects.filter(direccion=self.direccion, nombre__iexact=nombre).exclude(pk=self.instance.pk)
-        if repetido.exists():
-            raise forms.ValidationError("Ya existe un gestor con ese nombre en esta dirección.")
-        return nombre
+        self.fields["usuario"].required = True
+        self.fields["usuario"].empty_label = "Elija un usuario"
 
     def clean_usuario(self):
-        usuario = self.cleaned_data.get("usuario")
-        if usuario and Gestor.objects.filter(direccion=self.direccion, usuario=usuario).exclude(pk=self.instance.pk).exists():
-            raise forms.ValidationError("Ese usuario ya está vinculado a otro gestor de esta dirección.")
+        usuario = self.cleaned_data["usuario"]
+        if Gestor.objects.filter(direccion=self.direccion, usuario=usuario).exclude(pk=self.instance.pk).exists():
+            raise forms.ValidationError("Ese usuario ya es gestor de esta dirección.")
         return usuario
 
 class FiltroBusquedaForm(FiltroDocumentosForm):

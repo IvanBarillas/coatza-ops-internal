@@ -1,3 +1,4 @@
+from django.contrib.auth import get_user_model
 import datetime
 
 from django.core.exceptions import ValidationError
@@ -14,8 +15,8 @@ from .base import BaseAdjuntos
 class SeguimientoTests(BaseAdjuntos):
     def setUp(self):
         super().setUp()
-        self.juan = Gestor.objects.create(direccion=self.direccion, nombre="Juan")
-        self.maria = Gestor.objects.create(direccion=self.direccion, nombre="María")
+        self.juan = self.gestor("Juan")
+        self.maria = self.gestor("María")
         self.client.force_login(self.user)
 
     def enviar(self, asunto, gestor=None, sentido="enviado"):
@@ -77,7 +78,7 @@ class SeguimientoTests(BaseAdjuntos):
 
     def test_gestor_debe_ser_de_la_direccion_activo_y_solo_en_enviados(self):
         otra = Direccion.objects.create(nombre="Egresos")
-        ajeno = Gestor.objects.create(direccion=otra, nombre="Pedro")
+        ajeno = self.gestor("Pedro", otra)
         with self.assertRaises(ValidationError):
             self.enviar("X", ajeno)
         with self.assertRaises(ValidationError):
@@ -104,15 +105,17 @@ class SeguimientoTests(BaseAdjuntos):
         self.assertContains(detalle, "Juan")
 
     def test_gestores_se_administran_solo_con_permiso_de_catalogos(self):
+        usuario = get_user_model().objects.create_user(email="ana@example.test", first_name="Ana", last_name="López")
+        UserAppRole.objects.create(user=usuario, app=self.app, role="gestor", permissions_list=P.ROLE_MAPPING["gestor"])
         crear = reverse("seguimientos_oficios:gestor_crear", args=[self.direccion.pk])
-        self.client.post(crear, {"nombre": "Intruso"})
-        self.assertFalse(Gestor.objects.filter(nombre="Intruso").exists())
+        self.client.post(crear, {"usuario": str(usuario.pk)})
+        self.assertFalse(Gestor.objects.filter(usuario=usuario).exists())
         UserAppRole.objects.filter(user=self.user).update(role="owner", permissions_list=P.ROLE_MAPPING["owner"])
-        self.client.post(crear, {"nombre": "  Ana   López "})
-        self.assertTrue(Gestor.objects.filter(nombre="Ana López").exists())
-        self.client.post(crear, {"nombre": "ana lópez"})
-        self.assertEqual(Gestor.objects.filter(direccion=self.direccion, nombre__iexact="ana lópez").count(), 1)
-        ana = Gestor.objects.get(nombre="Ana López")
+        self.client.post(crear, {"usuario": str(usuario.pk)})
+        ana = Gestor.objects.get(usuario=usuario)
+        self.assertEqual(ana.nombre, "Ana López")
+        self.client.post(crear, {"usuario": str(usuario.pk)})
+        self.assertEqual(Gestor.objects.filter(usuario=usuario).count(), 1)
         self.client.post(reverse("seguimientos_oficios:gestor_actualizar", args=[ana.pk]), {"accion": "estado"})
         ana.refresh_from_db()
         self.assertFalse(ana.is_active)
