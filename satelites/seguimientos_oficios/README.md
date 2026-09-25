@@ -199,3 +199,12 @@ distintas de las categorías de documentos. La lista de Bienes se filtra por cat
 lista de casillas se elige la categoría en un combo (o *Sin categoría* / *Todas*), se busca por nombre, serie o inventario
 (sin importar acentos) y se **agregan** los bienes uno a uno a la lista «Se prestarán»; la selección se conserva al cambiar de
 categoría, así un mismo vale puede llevar bienes de varias.
+
+## Roles del módulo
+
+El rol `editor` (director, subdirector, jefe de área) hace **todo el flujo de su dirección**: registrar y cancelar oficios, subir
+archivos, seguimiento, préstamos (vales y bienes) y soporte técnico (diagnósticos, dictámenes y resguardos). No administra
+Catálogos ni cancela concluidos: eso es del `owner`. Los roles `prestamos` y `soporte` siguen existiendo para quien solo hace una
+parte, y `gestor`, `seguimiento` y `viewer` son de consulta o de entrega. Un rol nuevo para el equipo técnico que combine
+préstamos y soporte queda por decidir. Al ampliar un rol hay que sincronizar las membresías existentes:
+`python manage.py oficios_sincronizar_permisos --rol editor --aplicar` (solo agrega permisos, nunca quita).

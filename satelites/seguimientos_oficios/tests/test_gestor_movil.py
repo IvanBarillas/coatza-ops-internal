@@ -12,7 +12,7 @@ from satelites.seguimientos_oficios.models import Documento, Gestor
 from satelites.seguimientos_oficios.permissions import SeguimientosOficiosPermissions as P
 from satelites.seguimientos_oficios.services import _leer_pdf, crear_documento
 
-from .base import PDF, BaseAdjuntos, pdf
+from .base import PDF, SOLO_OFICIOS, BaseAdjuntos, pdf
 
 
 def foto(formato="JPEG", tamano=(600, 400), orientacion=None, nombre="acuse.jpg"):
@@ -101,6 +101,7 @@ class GestorMovilTests(BaseAdjuntos):
         inicio = reverse("seguimientos_oficios:inicio")
         self.entrar()
         self.assertRedirects(self.client.get(inicio), reverse("seguimientos_oficios:gestor"), fetch_redirect_response=False)
+        UserAppRole.objects.filter(user=self.user).update(permissions_list=SOLO_OFICIOS)  # una sola área: entra directo
         self.client.force_login(self.user)
         self.assertRedirects(self.client.get(inicio), reverse("seguimientos_oficios:documento_list"), fetch_redirect_response=False)
         seguimiento = get_user_model().objects.create_user(email="ve@example.test")

@@ -12,6 +12,9 @@ from satelites.seguimientos_oficios.models import Adjunto, Direccion, Gestor, No
 from satelites.seguimientos_oficios.permissions import SeguimientosOficiosPermissions as P
 from satelites.seguimientos_oficios.services import adjuntar_pdf, crear_documento, marcar_entregado
 
+# Lo que el editor podía hacer antes de sumarle préstamos y soporte técnico: sirve para probar a quien solo lleva oficios.
+SOLO_OFICIOS = [p for p in P.ROLE_MAPPING["editor"] if p not in ("can_view_loans", "can_manage_loans", "can_view_support", "can_manage_support")]
+
 PDF = b"%PDF-1.4\n%contenido de prueba\n"
 
 
