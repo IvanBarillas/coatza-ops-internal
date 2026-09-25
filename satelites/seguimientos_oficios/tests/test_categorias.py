@@ -137,6 +137,9 @@ class CategoriasTests(BaseAdjuntos):
             self.assertNotIn(sobra, cabecera)
         self.assertContains(pagina, "De: X")
         self.assertContains(pagina, "Oficio · Recibido")
+        # área con scroll propio y encabezado fijo para que "Todos" no sea una lista interminable
+        self.assertContains(pagina, "max-h-[62vh] overflow-auto")
+        self.assertContains(pagina, "sticky top-0")
         # la categoría sigue disponible como filtro y en el detalle, no como columna
         self.assertContains(pagina, "Todas las categorías")
         detalle = self.client.get(reverse("seguimientos_oficios:documento_detail", args=[Documento.objects.get(asunto="Del panteón").pk]))

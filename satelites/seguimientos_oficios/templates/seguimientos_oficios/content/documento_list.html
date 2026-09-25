@@ -52,9 +52,9 @@
 </form>
 
 <p class="mb-2 text-xs text-gray-500">{{ total }} documento{{ total|pluralize }}</p>
-<div class="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+<div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
     <table class="min-w-full text-xs">
-        <thead class="text-left text-xs font-black uppercase tracking-widest text-gray-500">
+        <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
             <tr>
                 <th class="whitespace-nowrap px-3 py-3">Fecha</th><th class="px-3 py-3">Folio</th>
                 <th class="px-3 py-3">Asunto</th><th class="px-3 py-3">Gestor</th><th class="px-3 py-3">Estado</th>
