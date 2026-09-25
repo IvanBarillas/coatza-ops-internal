@@ -91,7 +91,7 @@ def registrar_devolucion(prestamo, *, usuario, fecha=None, observaciones=""):
 
 ESTADOS_CON_MOTIVO = (Bien.Estado.EN_REPARACION, Bien.Estado.BAJA)
 MOTIVO_MINIMO = 5
-CAMPOS_BIEN = ("nombre", "identificador", "folio_inventario", "descripcion", "estado")
+CAMPOS_BIEN = ("nombre", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado")
 
 
 def foto_bien(bien):

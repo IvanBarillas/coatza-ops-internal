@@ -44,6 +44,10 @@ class Direccion(BaseOficios):
         "Vales de préstamo", default=False,
         help_text="Activo: la dirección presta bienes con vale (catálogo de bienes y seguimiento de préstamos).",
     )
+    soporte_habilitado = models.BooleanField(
+        "Soporte técnico", default=False,
+        help_text="Activo: la dirección emite diagnósticos y dictámenes de alta y baja (área Soporte técnico).",
+    )
     folio_manual = models.BooleanField(
         "Folio manual", default=True,
         help_text="Activo: quien registra un oficio enviado escribe su folio. Inactivo: se genera con la nomenclatura.",
@@ -82,13 +86,13 @@ class Direccion(BaseOficios):
 class Nomenclatura(BaseOficios):
     """Formato de folio de una clase de documento enviado por una dirección."""
 
-    PLANTILLA_VALIDA = re.compile(r"\{(n|n:0\d+d|anio)\}")
+    PLANTILLA_VALIDA = re.compile(r"\{(n|n:0\d+d|anio|anio2)\}")
 
     direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="nomenclaturas")
     clase = models.CharField("Clase de documento", max_length=25, choices=ClaseDocumento.choices)
     plantilla = models.CharField(
         "Plantilla", max_length=60, default="{n:03d}/{anio}",
-        help_text="Ej. IN-{n:03d}/{anio} da IN-001/2026. Tokens: {n}, {n:03d} y {anio}.",
+        help_text="Ej. IN-{n:03d}/{anio} da IN-001/2026. Tokens: {n}, {n:03d}, {anio} (2026) y {anio2} (26).",
     )
 
     class Meta:
@@ -106,7 +110,7 @@ class Nomenclatura(BaseOficios):
     def clean(self):
         resto = self.PLANTILLA_VALIDA.sub("", self.plantilla or "")
         if "{n" not in self.plantilla or "{" in resto or "}" in resto:
-            raise ValidationError({"plantilla": "Plantilla inválida: use {n}, {n:03d} y {anio}."})
+            raise ValidationError({"plantilla": "Plantilla inválida: use {n}, {n:03d}, {anio} y {anio2}."})
 
     @property
     def ejemplo(self):
@@ -115,7 +119,7 @@ class Nomenclatura(BaseOficios):
         return self.formatear(1, date.today().year)
 
     def formatear(self, numero, anio):
-        return self.plantilla.format(n=numero, anio=anio)
+        return self.plantilla.format(n=numero, anio=anio, anio2=f"{anio % 100:02d}")
 
     def interpretar(self, texto, *, buscar=False, tolerante=False):
         """(numero, anio) si el texto sigue la plantilla; anio es None si la plantilla no lo lleva."""
@@ -125,13 +129,16 @@ class Nomenclatura(BaseOficios):
                 patron += r"(?P<n>\d+)"
             elif pieza == "{anio}":
                 patron += r"(?P<anio>\d{4})"
+            elif pieza == "{anio2}":
+                patron += r"(?P<anio2>\d{2})"
             else:
                 patron += re.escape(pieza).replace("/", "[/_-]" if tolerante else "/")
         coincidencia = (re.search if buscar else re.fullmatch)(patron, texto or "")
         if not coincidencia:
             return None
         grupos = coincidencia.groupdict()
-        return int(grupos["n"]), int(grupos["anio"]) if grupos.get("anio") else None
+        anio = int(grupos["anio"]) if grupos.get("anio") else 2000 + int(grupos["anio2"]) if grupos.get("anio2") else None
+        return int(grupos["n"]), anio
 
 
 class Gestor(BaseOficios):
@@ -413,6 +420,7 @@ class Bien(BaseOficios):
     direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="bienes")
     nombre = models.CharField("Bien", max_length=150)
     identificador = models.CharField("Número de serie o etiqueta", max_length=120, blank=True)
+    marca_modelo = models.CharField("Marca y modelo", max_length=150, blank=True)
     folio_inventario = models.CharField("Folio de inventario", max_length=60, blank=True)
     descripcion = models.TextField("Descripción", blank=True)
     estado = models.CharField("Estado", max_length=15, choices=Estado.choices, default=Estado.DISPONIBLE, db_index=True)
@@ -506,6 +514,8 @@ class HistorialBien(models.Model):
         PRESTAMO = "prestamo", "Prestado"
         DEVOLUCION = "devolucion", "Devuelto"
         LIBERADO = "liberado", "Vale cancelado"
+        DIAGNOSTICO = "diagnostico", "Diagnóstico técnico"
+        DICTAMEN = "dictamen", "Dictamen de baja"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     bien = models.ForeignKey(Bien, on_delete=models.PROTECT, related_name="historial")
@@ -526,3 +536,35 @@ class HistorialBien(models.Model):
 
     def delete(self, *args, **kwargs):
         raise ValueError("La bitácora del bien no se puede borrar.")
+
+
+class Dictamen(BaseOficios):
+    """Contenido de un diagnóstico técnico o dictamen (uno a uno con su documento; el folio sale del documento)."""
+
+    documento = models.OneToOneField(Documento, on_delete=models.PROTECT, related_name="dictamen")
+    ticket = models.CharField("Ticket de la mesa de ayuda", max_length=60, blank=True)
+    elaboro_nombre = models.CharField(max_length=200)
+    elaboro_cargo = models.CharField(max_length=200, blank=True)
+    autoriza_nombre = models.CharField(max_length=200, blank=True)
+    autoriza_cargo = models.CharField(max_length=200, blank=True)
+    datos = models.JSONField("Contenido", default=dict)
+
+    class Meta:
+        db_table = "oficios_dictamen"
+
+
+class DictamenBien(models.Model):
+    """Equipo que ampara un diagnóstico o dictamen: texto congelado y, si es del catálogo, su vínculo."""
+
+    dictamen = models.ForeignKey(Dictamen, on_delete=models.PROTECT, related_name="equipos")
+    bien = models.ForeignKey(Bien, null=True, blank=True, on_delete=models.PROTECT, related_name="dictamenes")
+    orden = models.PositiveSmallIntegerField(default=0)
+    equipo = models.CharField(max_length=150)
+    marca_modelo = models.CharField(max_length=150, blank=True)
+    serie = models.CharField(max_length=120, blank=True)
+    folio_inventario = models.CharField(max_length=60, blank=True)
+    departamento = models.CharField(max_length=150, blank=True)
+
+    class Meta:
+        db_table = "oficios_dictamen_bien"
+        ordering = ["orden"]

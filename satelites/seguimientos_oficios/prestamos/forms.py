@@ -14,7 +14,7 @@ CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text
 class BienForm(forms.ModelForm):
     class Meta:
         model = Bien
-        fields = ["direccion", "nombre", "identificador", "folio_inventario", "descripcion", "estado"]
+        fields = ["direccion", "nombre", "marca_modelo", "identificador", "folio_inventario", "descripcion", "estado"]
         widgets = {"descripcion": forms.Textarea(attrs={"rows": 2})}
 
     motivo = forms.CharField(

@@ -1,0 +1,145 @@
+from django import forms
+from django.utils import timezone
+
+from ..forms import _agregar_contraparte, _resolver_contraparte
+from ..integracion import director_de_dependencia
+from ..prestamos.forms import CLASE
+from .services import CLASIFICACIONES, DISPOSICIONES, RECOMENDACIONES
+
+CAMPOS_EQUIPO = ("equipo", "marca_modelo", "serie", "folio_inventario", "departamento")
+CARGO_TECNICO = "Técnico de Soporte en TI"
+
+
+def leer_equipos(post, bienes):
+    """Renglones de equipos del formulario (`eq-N-campo`) ya limpios. Los vacíos se omiten.
+
+    Si el renglón trae un bien del catálogo (`eq-N-bien`), ese bien manda: debe estar entre los permitidos.
+    """
+    permitidos = {str(b.pk): b for b in bienes}
+    indices = sorted({int(k.split("-")[1]) for k in post if k.startswith("eq-") and k.split("-")[1].isdigit()})
+    equipos, errores = [], []
+    for i in indices:
+        fila = {c: (post.get(f"eq-{i}-{c}") or "").strip()[:150] for c in CAMPOS_EQUIPO}
+        bien_id = post.get(f"eq-{i}-bien") or ""
+        if not any(fila.values()) and not bien_id:
+            continue
+        if bien_id:
+            bien = permitidos.get(bien_id)
+            if bien is None:
+                errores.append("Uno de los bienes elegidos ya no está disponible.")
+                continue
+            fila["bien"] = bien
+            fila["equipo"] = fila["equipo"] or bien.nombre
+            fila["marca_modelo"] = fila["marca_modelo"] or bien.marca_modelo
+            fila["serie"] = fila["serie"] or bien.identificador
+            fila["folio_inventario"] = fila["folio_inventario"] or bien.folio_inventario
+        if not fila["equipo"]:
+            errores.append("Cada equipo necesita al menos su descripción.")
+            continue
+        equipos.append(fila)
+    return equipos, errores
+
+
+def _fecha():
+    return forms.DateField(widget=forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d"))
+
+
+class SoporteBase(forms.Form):
+    direccion = forms.ModelChoiceField(label="Dirección que emite", queryset=None)
+    ticket = forms.CharField(label="Ticket de la mesa de ayuda", max_length=60, required=False)
+    elaboro_cargo = forms.CharField(label="Cargo de quien elabora", max_length=200, initial=CARGO_TECNICO)
+    OCULTOS = ("direccion",)
+    FIRMAS = ("elaboro_cargo", "autoriza_nombre", "autoriza_cargo")
+
+    @property
+    def grupos(self):
+        """Campos por bloque de la pantalla: datos, opciones (radios) y firmas; la dirección va aparte."""
+        campos = [c for c in self if c.name != "direccion"]
+        return {
+            "datos": [c for c in campos if c.name not in self.FIRMAS and not isinstance(c.field.widget, forms.RadioSelect)],
+            "opciones": [c for c in campos if isinstance(c.field.widget, forms.RadioSelect)],
+            "firmas": [c for c in campos if c.name in self.FIRMAS],
+        }
+
+    def __init__(self, *args, direcciones, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["direccion"].queryset = direcciones
+        self.mostrar_direccion = direcciones.count() != 1
+        if not self.mostrar_direccion:
+            self.fields["direccion"].initial = direcciones.first().pk
+            self.fields["direccion"].widget = forms.HiddenInput()
+        for nombre, campo in self.fields.items():
+            if nombre not in self.OCULTOS or (nombre == "direccion" and self.mostrar_direccion):
+                campo.widget.attrs.setdefault("class", CLASE)
+
+
+class _ConAutoriza(forms.Form):
+    def _agregar_autoriza(self, direcciones):
+        self.fields["autoriza_nombre"] = forms.CharField(label="Autoriza (nombre)", max_length=200)
+        self.fields["autoriza_cargo"] = forms.CharField(
+            label="Autoriza (cargo)", max_length=200,
+            help_text="Jefe de departamento, subdirector o director.",
+        )
+        primera = direcciones.first() if direcciones.count() == 1 else None
+        if primera:
+            self.fields["autoriza_nombre"].initial = director_de_dependencia(primera.dependencia_uuid)
+        for nombre in ("autoriza_nombre", "autoriza_cargo"):
+            self.fields[nombre].widget.attrs.setdefault("class", CLASE)
+
+
+class DiagnosticoForm(SoporteBase):
+    solicitante = forms.CharField(label="Solicitó (nombre)", max_length=200)
+    fecha_recibido = _fecha()
+    tipo_bien = forms.CharField(label="Tipo de bien", max_length=120, required=False)
+    fallo = forms.CharField(label="Fallo", widget=forms.Textarea(attrs={"rows": 2}))
+    causa = forms.CharField(label="Causa", widget=forms.Textarea(attrs={"rows": 2}))
+    solucion = forms.CharField(label="Solución", widget=forms.Textarea(attrs={"rows": 2}))
+    observaciones = forms.CharField(label="Observaciones", required=False, widget=forms.Textarea(attrs={"rows": 3}))
+    recomendacion = forms.ChoiceField(label="Recomendación sobre el bien", choices=RECOMENDACIONES, widget=forms.RadioSelect)
+    OCULTOS = ("direccion", "recomendacion")
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["fecha_recibido"].label = "Fecha de recibido"
+        self.fields["fecha_recibido"].initial = timezone.localdate()
+        self.fields["fecha_recibido"].widget.attrs.setdefault("class", CLASE)
+
+
+class BajaForm(SoporteBase, _ConAutoriza):
+    contraparte = forms.CharField(max_length=200, required=False)
+    diagnostico = forms.CharField(label="Diagnóstico", widget=forms.Textarea(attrs={"rows": 4}))
+    solicitante = forms.CharField(label="Solicitó el dictamen (nombre)", max_length=200)
+    clasificacion = forms.ChoiceField(label="Clasificación de no utilidad", choices=CLASIFICACIONES, widget=forms.RadioSelect)
+    disposicion = forms.ChoiceField(label="Recomendación de disposición final", choices=DISPOSICIONES, widget=forms.RadioSelect)
+    OCULTOS = ("direccion", "clasificacion", "disposicion")
+
+    def __init__(self, *args, direcciones, **kwargs):
+        super().__init__(*args, direcciones=direcciones, **kwargs)
+        _agregar_contraparte(self, "Área que identifica y solicita el dictamen")
+        self.fields["contraparte_dependencia"].widget.attrs.setdefault("class", CLASE)
+        self.fields["contraparte"].widget.attrs.setdefault("class", CLASE)
+        self._agregar_autoriza(direcciones)
+
+    def clean(self):
+        datos = super().clean()
+        _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
+        return datos
+
+
+class AltaForm(SoporteBase, _ConAutoriza):
+    contraparte = forms.CharField(max_length=200, required=False)
+    solicitud = forms.CharField(label="Solicitud", widget=forms.Textarea(attrs={"rows": 4}))
+    justificacion = forms.CharField(label="Justificación", widget=forms.Textarea(attrs={"rows": 4}))
+    dictamen = forms.CharField(label="Dictamen", widget=forms.Textarea(attrs={"rows": 4}))
+
+    def __init__(self, *args, direcciones, **kwargs):
+        super().__init__(*args, direcciones=direcciones, **kwargs)
+        _agregar_contraparte(self, "Dirección o departamento al que se dirige")
+        self.fields["contraparte_dependencia"].widget.attrs.setdefault("class", CLASE)
+        self.fields["contraparte"].widget.attrs.setdefault("class", CLASE)
+        self._agregar_autoriza(direcciones)
+
+    def clean(self):
+        datos = super().clean()
+        _resolver_contraparte(self, datos, getattr(datos.get("direccion"), "dependencia_uuid", None))
+        return datos

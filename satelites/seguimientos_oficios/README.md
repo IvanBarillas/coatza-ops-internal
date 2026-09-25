@@ -147,3 +147,25 @@ Sin `--aplicar` solo simula y reporta; con `--aplicar` escribe. No mueve ni borr
 - Editar (`can_edit_oficio`): asunto, remitente o destinatario y fecha (en enviados, dentro del año del
   folio); en recibidos también el folio del remitente. Un cancelado no se edita. Cada cambio guarda el valor
   anterior, el nuevo, quién y el motivo opcional.
+
+## Soporte técnico (diagnósticos y dictámenes)
+
+Área del menú *Soporte técnico*, con interruptor por dirección (**Soporte técnico** en Catálogos → dirección; apagado por
+defecto), permisos `can_view_support` / `can_manage_support` y rol `soporte` (técnico). Emite tres documentos, cada uno un
+Documento enviado con folio automático de su **nomenclatura** (editable por dirección en Catálogos; además de `{n}`,
+`{n:03d}` y `{anio}` acepta `{anio2}` para el año de dos dígitos, p. ej. `DIB-STI-TM{n:03d}-{anio2}` da `DIB-STI-TM001-26`):
+
+- **Diagnóstico técnico** (clase `diagnostico_tecnico`): un equipo, fallo, causa, solución, observaciones y recomendación
+  (mantenimiento, reasignación o baja). Si el equipo es del catálogo, queda anotado en la bitácora del bien.
+- **Dictamen de baja** (`dictamen_baja`): uno o varios equipos, clasificación de no utilidad y disposición final. Lo firma el
+  técnico y lo autoriza el jefe de departamento, subdirector o director (nombre y cargo capturados; basta con emitirlo, no hay
+  paso de autorización en el sistema). Los equipos elegidos del catálogo pasan a estado **Baja** con su bitácora; no se
+  puede dar de baja un bien prestado, ya dado de baja ni repetido. Los equipos fuera del catálogo solo se anotan.
+  Cancelar el documento **no** revierte el estado de los bienes: se reactivan desde el bien, con su motivo.
+- **Dictamen de alta** (`dictamen_alta`): carta con solicitud, justificación y dictamen dirigida al departamento al que se le
+  entregó el bien, para que lo solicite en Ingresos. **No crea el bien** en el catálogo.
+
+El ticket de la mesa de ayuda es texto libre. Las impresiones (HTML con CSS de carta, logotipos en
+`static/seguimientos_oficios/formatos/`) se guardan como PDF desde el navegador; el documento se firma, se escanea y se sube
+como *Documento firmado* (con OCR y búsqueda). Un documento emitido no se edita: se cancela y se emite otro. Los formatos de
+referencia (Word) viven en `formatos_referencia/`, fuera de git.
