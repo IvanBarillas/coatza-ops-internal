@@ -177,7 +177,9 @@ class VistasPrestamosTests(PrestamosBase):
         self.assertContains(detalle, "Registrar devolución")
         self.assertContains(detalle, "Imprimir vale")
         self.assertContains(detalle, "Starlink")
-        lista = self.client.get(reverse("seguimientos_oficios:prestamos"))
+        tablero = self.client.get(reverse("seguimientos_oficios:prestamos"))
+        self.assertContains(tablero, documento.folio)
+        lista = self.client.get(reverse("seguimientos_oficios:vales"))
         self.assertContains(lista, documento.folio)
         self.assertEqual({t["clave"]: t["total"] for t in lista.context["tabs"]}["abiertos"], 1)
         formulario = self.client.get(reverse("seguimientos_oficios:vale_crear"))
@@ -214,17 +216,18 @@ class VistasPrestamosTests(PrestamosBase):
 
     def test_bienes_alta_edicion_duplicados_y_situacion(self):
         crear = reverse("seguimientos_oficios:bien_crear")
-        datos = {"direccion": str(self.direccion.pk), "nombre": "Router", "identificador": "R-1", "folio_inventario": "INV-100", "descripcion": "", "estado": "disponible"}
+        datos = {"direccion": str(self.direccion.pk), "nombre": "Router", "identificador": "R-1", "folio_inventario": "INV-100", "descripcion": "", "estado": "disponible", "motivo": ""}
         self.assertEqual(self.client.post(crear, datos).status_code, 200)
         self.assertFalse(Bien.objects.filter(nombre="Router").exists())
-        self.assertEqual(self.client.post(crear, {**datos, "folio_inventario": "INV-200"}).status_code, 302)
+        respuesta = self.client.post(crear, {**datos, "folio_inventario": "INV-200"})
         router = Bien.objects.get(nombre="Router")
+        self.assertRedirects(respuesta, reverse("seguimientos_oficios:bien_detalle", args=[router.pk]))
         editar = reverse("seguimientos_oficios:bien_editar", args=[router.pk])
-        self.client.post(editar, {**datos, "nombre": "Router principal", "folio_inventario": "INV-200", "estado": "en_reparacion"})
+        self.client.post(editar, {**datos, "nombre": "Router principal", "folio_inventario": "INV-200", "estado": "en_reparacion", "motivo": "No enciende"})
         router.refresh_from_db()
         self.assertEqual((router.nombre, router.estado), ("Router principal", "en_reparacion"))
         self.vale([self.starlink])
-        self.client.post(reverse("seguimientos_oficios:bien_editar", args=[self.starlink.pk]), {**datos, "nombre": "Starlink", "identificador": "SL-001", "folio_inventario": "INV-100", "estado": "baja"})
+        self.client.post(reverse("seguimientos_oficios:bien_editar", args=[self.starlink.pk]), {**datos, "nombre": "Starlink", "identificador": "SL-001", "folio_inventario": "INV-100", "estado": "baja", "motivo": "Obsoleto"})
         self.starlink.refresh_from_db()
         self.assertEqual(self.starlink.estado, "disponible")
         lista = self.client.get(reverse("seguimientos_oficios:bienes"))
@@ -236,14 +239,16 @@ class VistasPrestamosTests(PrestamosBase):
 
     def test_solo_el_rol_de_prestamos_ve_el_menu_y_las_pantallas(self):
         UserAppRole.objects.filter(user=self.user).update(role="editor", permissions_list=P.ROLE_MAPPING["editor"])
-        for nombre in ("prestamos", "bienes", "vale_crear", "bien_crear"):
+        for nombre in ("prestamos", "vales", "bienes", "vale_crear", "bien_crear"):
             self.assertIn(self.client.get(reverse(f"seguimientos_oficios:{nombre}")).status_code, (302, 403), nombre)
         menu = self.client.get(reverse("seguimientos_oficios:documento_list"))
         self.assertNotContains(menu, reverse("seguimientos_oficios:prestamos"))
         UserAppRole.objects.filter(user=self.user).update(role="prestamos", permissions_list=P.ROLE_MAPPING["prestamos"])
         menu = self.client.get(reverse("seguimientos_oficios:documento_list"))
-        self.assertContains(menu, reverse("seguimientos_oficios:prestamos"))
-        self.assertContains(menu, reverse("seguimientos_oficios:bienes"))
+        self.assertContains(menu, reverse("seguimientos_oficios:prestamos"))  # selector de áreas
+        area = self.client.get(reverse("seguimientos_oficios:prestamos"))
+        for nombre in ("prestamos", "vales", "bienes", "vale_crear"):
+            self.assertContains(area, reverse(f"seguimientos_oficios:{nombre}"))
 
     def test_quien_solo_consulta_no_puede_generar_ni_devolver(self):
         documento, prestamo = self.vale()

@@ -16,6 +16,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .prestamos.forms import DevolucionForm
+from .areas import construir_menu
 from .forms import AdjuntoForm, GestorEntregaForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
@@ -31,21 +32,9 @@ from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos
 POR_PAGINA = 25
 
 
-def _sidebar_items(request):
-    actual = request.resolver_match.view_name if request.resolver_match else ""
-    return [
-        {
-            "icon": item["icon"],
-            "name": item["name"],
-            "href": reverse(item["url"]),
-            "active": item["url"] == actual,
-        }
-        for item in getattr(request, "axentra_sidebar_menu", [])
-    ]
-
-
 def _render(request, nombre, contexto):
-    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": _sidebar_items(request)}
+    items, areas, area = construir_menu(request, contexto.get("area_actual"))
+    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": items, "sidebar_areas": areas, "area_actual": area}
     destino = request.headers.get("HX-Target", "")
     if request.headers.get("HX-Request") == "true":
         if destino == "workbench":
@@ -146,7 +135,7 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "adjuntos_quitados": documento.adjuntos.filter(eliminado=True).order_by("eliminado_en"),
         "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
-        "prestamo": prestamo,
+        "prestamo": prestamo, "area_actual": "prestamos" if prestamo else None,
         "puede_devolver": bool(prestamo and prestamo.abierto and _permitido(request, "can_manage_loans")),
         "devolucion_form": DevolucionForm(),
         "roles_adjuntables": (

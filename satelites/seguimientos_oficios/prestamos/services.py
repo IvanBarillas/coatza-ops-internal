@@ -4,8 +4,9 @@ from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
-from ..models import Bien, ClaseDocumento, Documento, HistorialDocumento, Prestamo, PrestamoBien
+from ..models import Bien, ClaseDocumento, Documento, HistorialBien, HistorialDocumento, Prestamo, PrestamoBien
 from ..services import _historial, crear_documento
+from . import bitacora
 
 
 def _fecha(valor):
@@ -50,6 +51,11 @@ def crear_vale(*, usuario, direccion, bienes, fecha_entrega, fecha_limite, contr
         "resumen": f"Préstamo de {len(nombres)} bien(es) del {_fecha(fecha_entrega)} al {_fecha(fecha_limite)}",
         "bienes": nombres, "fecha_limite": fecha_limite.isoformat(),
     })
+    for bien in bloqueados:
+        bitacora.registrar(bien, HistorialBien.Accion.PRESTAMO, usuario, {
+            "folio": documento.folio, "recibe": contraparte, "desde": fecha_entrega.isoformat(),
+            "fecha_limite": fecha_limite.isoformat(),
+        })
     return documento, prestamo
 
 
@@ -75,4 +81,43 @@ def registrar_devolucion(prestamo, *, usuario, fecha=None, observaciones=""):
         "resumen": f"Devolución completa el {_fecha(fecha)}", "bienes": nombres,
         "devolucion": fecha.isoformat(), "observaciones": prestamo.observaciones_devolucion,
     })
+    for renglon in prestamo.renglones.select_related("bien"):
+        bitacora.registrar(renglon.bien, HistorialBien.Accion.DEVOLUCION, usuario, {
+            "folio": prestamo.documento.folio, "recibe": prestamo.documento.contraparte,
+            "devolucion": fecha.isoformat(), "observaciones": prestamo.observaciones_devolucion,
+        })
     return prestamo
+
+
+ESTADOS_CON_MOTIVO = (Bien.Estado.EN_REPARACION, Bien.Estado.BAJA)
+MOTIVO_MINIMO = 5
+CAMPOS_BIEN = ("nombre", "identificador", "folio_inventario", "descripcion", "estado")
+
+
+def foto_bien(bien):
+    return {campo: getattr(bien, campo) for campo in CAMPOS_BIEN}
+
+
+def exigir_motivo_de_estado(estado_anterior, estado_nuevo, motivo):
+    """Reparación y baja exigen motivo; volver a disponible lo deja opcional."""
+    if estado_nuevo != estado_anterior and estado_nuevo in ESTADOS_CON_MOTIVO and len((motivo or "").strip()) < MOTIVO_MINIMO:
+        raise ValidationError(f"Indique el motivo (mínimo {MOTIVO_MINIMO} caracteres) para pasar el bien a reparación o baja.")
+
+
+@transaction.atomic
+def registrar_alta_bien(bien, *, usuario):
+    return bitacora.registrar(bien, HistorialBien.Accion.ALTA, usuario, foto_bien(bien))
+
+
+@transaction.atomic
+def registrar_cambios_bien(bien, antes, *, usuario, motivo=""):
+    """Deja en la bitácora qué cambió (valor anterior y nuevo) y el motivo, si lo hay."""
+    cambios = {
+        campo: {"antes": antes[campo], "despues": getattr(bien, campo)}
+        for campo in CAMPOS_BIEN if antes[campo] != getattr(bien, campo)
+    }
+    if not cambios:
+        return None
+    exigir_motivo_de_estado(antes["estado"], bien.estado, motivo)
+    accion = HistorialBien.Accion.ESTADO if "estado" in cambios else HistorialBien.Accion.EDITADO
+    return bitacora.registrar(bien, accion, usuario, {"cambios": cambios, "motivo": (motivo or "").strip()})

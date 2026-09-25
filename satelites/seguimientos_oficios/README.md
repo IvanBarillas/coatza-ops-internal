@@ -19,6 +19,7 @@ membresía a los usuarios.
 |---|---|---|
 | `OFICIOS_ARCHIVOS_ROOT` | Almacén de PDF adjuntos, por contenido (`AAAA/MM/xx/<sha256>.pdf`) | `MEDIA_ROOT/oficios` |
 | `OFICIOS_BANDEJA_RAIZ` | Carpeta base desde la que el comando `oficios_importar_historico` lee los PDF (solo importación; la subida normal usa el selector de archivos del navegador) | vacío |
+| `OFICIOS_PRESTAMO_AVISO_DIAS` | Días para la fecha límite desde los que un préstamo aparece como *por vencer* | `3` |
 | `OFICIOS_SEMAFORO_AMBAR` / `OFICIOS_SEMAFORO_ROJO` | Días pendientes desde los que un oficio pasa a ámbar y a rojo en el seguimiento | `7` / `15` |
 | `OFICIOS_OCR_COMANDO` | Ejecutable de OCR | `ocrmypdf` |
 | `OFICIOS_OCR_IDIOMA` | Idioma de Tesseract | `spa` |

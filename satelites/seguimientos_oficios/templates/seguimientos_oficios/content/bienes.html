@@ -8,10 +8,13 @@
     {% endif %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}
 
-    <div class="flex flex-wrap gap-2" role="tablist">
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-5" role="tablist">
         {% for t in tabs %}
         <a href="{{ lista_url }}?{{ t.query }}" hx-get="{{ lista_url }}?{{ t.query }}" hx-target="#page-content" hx-push-url="true" role="tab"
-           class="rounded-full border px-4 py-1.5 text-xs font-black uppercase tracking-widest {% if t.activa %}border-brand-primary bg-brand-primary text-white{% else %}border-gray-200 bg-white text-gray-600 hover:bg-gray-50{% endif %}">{{ t.nombre }} <span class="ml-1 opacity-80">{{ t.total }}</span></a>
+           class="rounded-2xl border p-3 text-center shadow-sm transition {% if t.color == 'emerald' %}border-emerald-200 bg-emerald-50 text-emerald-700{% elif t.color == 'amber' %}border-amber-200 bg-amber-50 text-amber-700{% elif t.color == 'blue' %}border-blue-200 bg-blue-50 text-blue-700{% else %}border-gray-200 bg-white text-gray-600{% endif %} {% if t.activa %}ring-2 ring-gray-950{% endif %}">
+            <div class="text-2xl font-black">{{ t.total }}</div>
+            <div class="mt-0.5 text-xs font-black uppercase tracking-widest">{{ t.nombre }}</div>
+        </a>
         {% endfor %}
     </div>
     <form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true" class="flex flex-wrap gap-2">
@@ -28,7 +31,7 @@
             <tbody>
             {% for b in pagina %}
                 <tr class="border-t border-gray-100 align-top">
-                    <td class="px-3 py-3"><div class="font-bold text-gray-800">{{ b.nombre }}</div><div class="text-gray-400">{{ b.identificador|default:"Sin serie" }}</div></td>
+                    <td class="px-3 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:bien_detalle' b.pk %}" hx-get="{% url 'seguimientos_oficios:bien_detalle' b.pk %}" hx-target="#page-content" hx-push-url="true">{{ b.nombre }}</a><div class="text-gray-400">{{ b.identificador|default:"Sin serie" }}</div></td>
                     <td class="whitespace-nowrap px-3 py-3">{{ b.folio_inventario|default:"—" }}</td>
                     <td class="px-3 py-3">
                         {% if b.situacion == "prestado" %}
