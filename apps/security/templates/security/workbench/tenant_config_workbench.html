@@ -1,11 +1,6 @@
 <div id="workbench-layout" class="flex h-full overflow-hidden animate-fade-in">
 
-    <aside
-        id="module-sidebar"
-        class="hidden lg:flex lg:w-72 shrink-0 bg-white border-r border-gray-200 overflow-y-auto"
-    >
-        {% include "security/contextual/configuration_sidebar.html" %}
-    </aside>
+    {% include "shell/_module_sidebar.html" with sidebar_template="security/contextual/configuration_sidebar.html" %}
 
     <section class="flex flex-col flex-1 min-w-0 overflow-hidden bg-slate-50">
 

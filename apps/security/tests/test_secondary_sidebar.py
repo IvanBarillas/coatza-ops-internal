@@ -33,9 +33,11 @@ class CollapsibleModuleSidebarTests(SimpleTestCase):
 
     def test_workbench_renders_toggle_and_shell_loads_controller(self):
         workbench = get_template("shell/workbench.html").template.source
+        toggle = get_template("shell/_module_sidebar_toggle.html").template.source
         base = get_template("shell/base.html").template.source
 
-        self.assertIn("data-axentra-sidebar-toggle", workbench)
+        self.assertIn("data-axentra-sidebar-toggle", toggle)
+        self.assertIn("shell/_module_sidebar_toggle.html", workbench)
         self.assertIn('id="module-sidebar"', workbench)
         self.assertIn("axentra-sidebar-collapse.js", base)
         # El estado inicial se aplica en <head> para evitar el parpadeo expandido.
@@ -52,3 +54,22 @@ class CollapsibleModuleSidebarTests(SimpleTestCase):
         ):
             with self.subTest(template=name):
                 self.assertIn("ax-sb-hide", get_template(name).template.source)
+
+    def test_every_workbench_partial_uses_the_shared_sidebar_with_toggle(self):
+        """Los parciales de #workbench (swap HTMX desde el menu global) deben
+        pasar por el include compartido; un <aside> propio se quedaria sin boton."""
+        from pathlib import Path
+
+        root = Path(__file__).resolve().parents[3]
+        partials = list((root / "apps").glob("**/templates/**/workbench/*_workbench.html"))
+        self.assertTrue(partials)
+
+        for path in partials:
+            source = path.read_text(encoding="utf-8")
+            with self.subTest(template=str(path.relative_to(root))):
+                self.assertNotIn('id="module-sidebar"', source)
+                if "_sidebar.html" in source:
+                    self.assertIn("shell/_module_sidebar.html", source)
+
+        shared = get_template("shell/_module_sidebar.html").template.source
+        self.assertIn("shell/_module_sidebar_toggle.html", shared)

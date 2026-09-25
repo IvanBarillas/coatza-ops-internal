@@ -7,15 +7,7 @@
             <aside id="module-sidebar" class="flex w-72 shrink-0 bg-white border-r border-gray-200 overflow-y-auto overflow-x-hidden">
                 {% block module_sidebar %}{% endblock %}
             </aside>
-            <button type="button"
-                    data-axentra-sidebar-toggle
-                    aria-controls="module-sidebar"
-                    aria-expanded="true"
-                    aria-label="Contraer menú lateral"
-                    title="Contraer menú lateral"
-                    class="absolute top-4 -right-3 z-20 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-accent">
-                <i data-lucide="chevrons-left" class="h-3.5 w-3.5"></i>
-            </button>
+            {% include "shell/_module_sidebar_toggle.html" %}
         </div>
     {% endif %}
     <section class="flex flex-col flex-1 min-w-0 overflow-hidden bg-slate-50">
