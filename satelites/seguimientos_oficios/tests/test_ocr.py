@@ -3,24 +3,33 @@ import tempfile
 from pathlib import Path
 from unittest import mock
 
+from django.core.files.base import ContentFile
 from django.core.management import call_command
 from django.test import override_settings
 
 from satelites.seguimientos_oficios import ocr, tasks
 from satelites.seguimientos_oficios.models import AdjuntoOCR
 from satelites.seguimientos_oficios.services import adjuntar_pdf
-from satelites.seguimientos_oficios.storage import almacen
+from satelites.seguimientos_oficios.storage import almacen, ruta_copia_ocr
 
 from .base import BaseAdjuntos, pdf
 
 FALSO_OCRMYPDF = """#!/bin/sh
-case "$*" in *--force-ocr*) ;; *) echo "falta --force-ocr" >&2; exit 1 ;; esac
+# Simula ocrmypdf: escribe la copia (último argumento) y el sidecar; registra cada invocación.
 for ultimo; do :; done
-echo "pdf con capa de texto" > "$ultimo"
+modo=""
 while [ "$#" -gt 0 ]; do
-  [ "$1" = "--sidecar" ] && { shift; echo "Texto reconocido del oficio" > "$1"; }
+  case "$1" in --force-ocr|--skip-text) modo="$1" ;; esac
+  [ "$1" = "--sidecar" ] && { shift; sidecar="$1"; }
   shift
 done
+echo "$modo" >> "$(dirname "$0")/invocaciones.txt"
+echo "pdf con capa de texto ($modo)" > "$ultimo"
+if [ "$modo" = "--skip-text" ] && [ -f "$(dirname "$0")/digital" ]; then
+  printf '[OCR skipped on page(s) 1]\\f' > "$sidecar"
+else
+  echo "Texto reconocido del oficio" > "$sidecar"
+fi
 """
 
 
@@ -97,6 +106,7 @@ class OcrTests(BaseAdjuntos):
             script.chmod(script.stat().st_mode | stat.S_IEXEC)
             with override_settings(OFICIOS_OCR_COMANDO=str(script)):
                 self.assertIn("Texto reconocido", ocr.extraer_texto(Path(tmp) / "entrada.pdf"))
+            self.assertEqual((Path(tmp) / "invocaciones.txt").read_text().split(), ["--skip-text"])
 
 
     def test_el_motor_deja_la_copia_con_texto_donde_se_le_pide(self):
@@ -107,7 +117,7 @@ class OcrTests(BaseAdjuntos):
             destino = Path(tmp) / "carpeta" / "nueva" / "copia.pdf"
             with override_settings(OFICIOS_OCR_COMANDO=str(script)):
                 ocr.extraer_texto(Path(tmp) / "entrada.pdf", destino)
-            self.assertEqual(destino.read_text().strip(), "pdf con capa de texto")
+            self.assertEqual(destino.read_text().strip(), "pdf con capa de texto (--skip-text)")
 
     def test_la_tarea_registra_la_copia_solo_si_se_genero(self):
         adjunto = self.adjunto()
@@ -120,7 +130,7 @@ class OcrTests(BaseAdjuntos):
         with mock.patch.object(ocr, "extraer_texto", side_effect=motor_que_escribe):
             tasks.procesar_ocr(adjunto.pk)
         adjunto.ocr.refresh_from_db()
-        self.assertTrue(adjunto.ocr.ruta_buscable.endswith("__buscable.pdf"))
+        self.assertIn("/ocr/", adjunto.ocr.ruta_buscable)
         self.assertTrue(almacen().exists(adjunto.ocr.ruta_buscable))
 
         with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
@@ -160,3 +170,54 @@ class OcrTests(BaseAdjuntos):
         with mock.patch("satelites.seguimientos_oficios.services.encolar_tarea"):
             segundo, _ = adjuntar_pdf(self.documento("recibido"), usuario=self.user, archivo=pdf("copia.pdf"))
         self.assertEqual(segundo.ocr.ruta_buscable, primero.ocr.ruta_buscable)
+
+
+    def _script(self, tmp, digital=False):
+        script = Path(tmp) / "falso-ocrmypdf"
+        script.write_text(FALSO_OCRMYPDF)
+        script.chmod(script.stat().st_mode | stat.S_IEXEC)
+        if digital:
+            (Path(tmp) / "digital").write_text("1")
+        return script
+
+    def test_un_escaneo_se_procesa_una_sola_vez_conservando_las_imagenes(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = self._script(tmp)
+            destino = Path(tmp) / "copia.pdf"
+            with override_settings(OFICIOS_OCR_COMANDO=str(script)):
+                texto = ocr.extraer_texto(Path(tmp) / "entrada.pdf", destino)
+            self.assertEqual((Path(tmp) / "invocaciones.txt").read_text().split(), ["--skip-text"])
+            self.assertIn("Texto reconocido", texto)
+            self.assertIn("--skip-text", destino.read_text())
+
+    def test_si_hay_paginas_con_texto_digital_se_rehace_forzando_el_ocr(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            script = self._script(tmp, digital=True)
+            destino = Path(tmp) / "copia.pdf"
+            with override_settings(OFICIOS_OCR_COMANDO=str(script)):
+                texto = ocr.extraer_texto(Path(tmp) / "entrada.pdf", destino)
+            self.assertEqual((Path(tmp) / "invocaciones.txt").read_text().split(), ["--skip-text", "--force-ocr"])
+            self.assertNotIn("OCR skipped", texto)
+            self.assertIn("--force-ocr", destino.read_text())
+
+    def test_reprocesar_buscables_rehace_las_copias_que_pesan_mas_del_doble(self):
+        adjunto = self.adjunto()
+        copia = ruta_copia_ocr(adjunto.ruta)
+        almacen().save(copia, ContentFile(b"%PDF-1.4 " + b"x" * 5000))
+        AdjuntoOCR.objects.filter(adjunto=adjunto).update(estado="listo", texto="viejo", ruta_buscable=copia)
+        ligera = almacen().path(copia)
+
+        def motor(ruta, salida=None):
+            Path(salida).parent.mkdir(parents=True, exist_ok=True)
+            Path(salida).write_bytes(b"%PDF-1.4 ligera")
+            return "nuevo"
+
+        with mock.patch.object(ocr, "extraer_texto", side_effect=motor):
+            call_command("oficios_reprocesar_ocr", "--buscables", stdout=mock.MagicMock())
+        self.assertEqual(AdjuntoOCR.objects.get(adjunto=adjunto).texto, "nuevo")
+        self.assertLess(Path(ligera).stat().st_size, 100)
+        # una copia razonable ya no se toca
+        AdjuntoOCR.objects.filter(adjunto=adjunto).update(texto="estable")
+        with mock.patch.object(ocr, "extraer_texto", side_effect=motor):
+            call_command("oficios_reprocesar_ocr", "--buscables", stdout=mock.MagicMock())
+        self.assertEqual(AdjuntoOCR.objects.get(adjunto=adjunto).texto, "estable")

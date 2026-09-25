@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from . import ocr
 from .models import AdjuntoOCR
-from .storage import almacen
+from .storage import almacen, ruta_copia_ocr
 
 TAREA_OCR = "satelites.seguimientos_oficios.tasks.procesar_ocr"
 TIMEOUT_TAREA = 1800
@@ -19,7 +19,7 @@ def procesar_ocr(adjunto_id):
         return "omitido"
     registro = AdjuntoOCR.objects.select_related("adjunto").get(adjunto_id=adjunto_id)
     registro.intentos += 1
-    ruta_buscable = registro.adjunto.ruta.removesuffix(".pdf") + "__buscable.pdf"
+    ruta_buscable = ruta_copia_ocr(registro.adjunto.ruta)
     try:
         texto = ocr.extraer_texto(almacen().path(registro.adjunto.ruta), almacen().path(ruta_buscable))
     except (ocr.OcrNoDisponible, ocr.OcrFallido) as error:
