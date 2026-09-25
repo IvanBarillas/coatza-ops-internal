@@ -17,6 +17,7 @@
     </div>
     <div x-show="abierto" x-cloak class="mt-3 grid grid-cols-1 gap-3 border-t border-gray-100 pt-3 sm:grid-cols-2 lg:grid-cols-4">
         <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.clase.id_for_label }}">Clase de documento</label>{{ form.clase }}</div>
+        <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.categoria.id_for_label }}">Categoría</label>{{ form.categoria }}</div>
         {% if varias_direcciones %}<div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.direccion.id_for_label }}">Dirección</label>{{ form.direccion }}</div>{% endif %}
         <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.desde.id_for_label }}">Desde</label>{{ form.desde }}</div>
         <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form.hasta.id_for_label }}">Hasta</label>{{ form.hasta }}</div>
@@ -45,7 +46,7 @@
                     <a class="font-black text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' r.documento.pk %}" hx-get="{% url 'seguimientos_oficios:documento_detail' r.documento.pk %}" hx-target="#page-content" hx-push-url="true">{{ r.documento.folio|default:"Sin folio" }}</a>
                     {% include "seguimientos_oficios/content/_estado_badge.html" with documento=r.documento %}
                 </div>
-                <div class="text-xs text-gray-500">{{ r.documento.get_clase_display }} · {{ r.documento.get_sentido_display }} · {{ r.documento.direccion_nombre }} · {{ r.documento.fecha|date:"d/m/Y" }}</div>
+                <div class="text-xs text-gray-500">{{ r.documento.get_clase_display }}{% if r.documento.categoria %} · {{ r.documento.categoria }}{% endif %} · {{ r.documento.get_sentido_display }} · {{ r.documento.direccion_nombre }} · {{ r.documento.fecha|date:"d/m/Y" }}</div>
                 <div class="mt-1 font-bold text-gray-700">{{ r.documento.asunto }}</div>
                 {% for c in r.coincidencias %}
                 <button type="button" hx-get="{% url 'seguimientos_oficios:visor' r.documento.pk c.adjunto.pk %}?pagina={{ c.pagina }}&amp;q={{ consulta|urlencode }}" hx-target="#visor" hx-swap="innerHTML show:#visor:top"

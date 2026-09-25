@@ -14,14 +14,14 @@ from django.core.exceptions import ValidationError
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from .forms import AdjuntoForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
+from .forms import AdjuntoForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista
 from .selectors import (
     color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
-    documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
+    categorias_visibles, documentos_seguimiento, documentos_visibles, gestores_visibles, permitido, resumen_gestores, tab_activa,
 )
-from .models import Adjunto, AdjuntoOCR, Direccion, Documento, Gestor, Nomenclatura
+from .models import Adjunto, AdjuntoOCR, Categoria, Direccion, Documento, Gestor, Nomenclatura
 from .storage import almacen
 from .services import quitar_adjunto, roles_permitidos, editar_documento, adjuntar_pdf, cancelar_documento, crear_documento, marcar_entregado
 
@@ -67,7 +67,8 @@ def _query(request, *, quitar=(), **poner):
 def documento_list_view(request):
     direcciones = direcciones_visibles(request)
     filtro = FiltroDocumentosForm(
-        request.GET or None, direcciones=direcciones, gestores=gestores_visibles(request)
+        request.GET or None, direcciones=direcciones, gestores=gestores_visibles(request),
+        categorias=categorias_visibles(request),
     )
     limpio = filtro.cleaned_data if filtro.is_valid() else {}
     todos = documentos_visibles(request)
@@ -100,7 +101,10 @@ def documento_list_view(request):
 @proteger_vista(APP_SLUG, "can_create_oficio")
 def documento_create_view(request):
     direcciones = direcciones_visibles(request)
-    form = DocumentoForm(request.POST or None, direcciones=direcciones, gestores=gestores_visibles(request))
+    form = DocumentoForm(
+        request.POST or None, direcciones=direcciones, gestores=gestores_visibles(request),
+        categorias=categorias_visibles(request),
+    )
     if request.method == "POST" and form.is_valid():
         datos = form.cleaned_data
         try:
@@ -109,7 +113,7 @@ def documento_create_view(request):
                 clase=datos["clase"], contraparte=datos["contraparte"], asunto=datos["asunto"],
                 contraparte_dependencia_uuid=datos["contraparte_dependencia_uuid"],
                 fecha=datos["fecha"], folio=datos["folio"],
-                gestor=datos["gestor"],
+                gestor=datos["gestor"], categoria=datos["categoria"],
             )
         except ValidationError as error:
             form.add_error(None, error)
@@ -262,6 +266,7 @@ def direccion_editar_view(request, pk=None):
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
             nomenclatura_form=NomenclaturaForm(direccion=direccion),
             gestores=direccion.gestores.order_by("nombre"),
+            categorias=direccion.categorias.order_by("nombre"),
         )
     return _render(request, "direccion_form", contexto)
 
@@ -313,7 +318,7 @@ def nomenclatura_actualizar_view(request, pk):
 @proteger_vista(APP_SLUG, "can_edit_oficio")
 def documento_editar_view(request, pk):
     documento = documento_visible(request, pk)
-    inicial = {c: getattr(documento, c) for c in ("contraparte", "asunto", "fecha", "folio", "gestor")}
+    inicial = {c: getattr(documento, c) for c in ("contraparte", "asunto", "fecha", "folio", "gestor", "categoria")}
     form = DocumentoEdicionForm(request.POST or None, initial=inicial, documento=documento)
     if request.method == "POST" and form.is_valid():
         datos = dict(form.cleaned_data)
@@ -372,13 +377,13 @@ def gestor_actualizar_view(request, pk):
 @proteger_vista(APP_SLUG, "can_view_oficios")
 def busqueda_view(request):
     direcciones = direcciones_visibles(request)
-    form = FiltroBusquedaForm(request.GET or None, direcciones=direcciones)
+    form = FiltroBusquedaForm(request.GET or None, direcciones=direcciones, categorias=categorias_visibles(request))
     limpio = form.cleaned_data if form.is_valid() else {}
     consulta = request.GET.get("q", "").strip()[:200]
     sentido = request.GET.get("sentido", "")
     if sentido not in Documento.Sentido.values:
         sentido = ""
-    filtros = {c: limpio[c] for c in ("clase", "direccion", "desde", "hasta") if limpio.get(c)}
+    filtros = {c: limpio[c] for c in ("clase", "direccion", "desde", "hasta", "categoria") if limpio.get(c)}
     if sentido:
         filtros["sentido"] = sentido
     paginador, resultados = (None, [])
@@ -389,7 +394,7 @@ def busqueda_view(request):
     contexto = {
         "form": form, "consulta": consulta, "paginador": paginador, "resultados": resultados, "sentido": sentido,
         "query_sin_pagina": _query(request),
-        "filtros_activos": any(request.GET.get(c) for c in ("clase", "direccion", "desde", "hasta")),
+        "filtros_activos": any(request.GET.get(c) for c in ("clase", "direccion", "desde", "hasta", "categoria")),
         "query_limpiar": urlencode({"q": consulta, **({"sentido": sentido} if sentido else {})}),
         "varias_direcciones": direcciones.count() > 1,
         "ambitos": [
@@ -499,3 +504,42 @@ def lector_pdf_view(request, pk, adjunto_pk):
     return render(request, "seguimientos_oficios/visor_pdf.html", {
         "adjunto": adjunto, "pagina": pagina, "consulta": request.GET.get("q", "")[:200], "url_pdf": url,
     })
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def categoria_crear_view(request, pk):
+    direccion = get_object_or_404(Direccion, pk=pk)
+    form = CategoriaForm(request.POST, direccion=direccion)
+    if form.is_valid():
+        categoria = form.save(commit=False)
+        categoria.direccion = direccion
+        categoria.save()
+        messages.success(request, f"Categoría {categoria.nombre} agregada.")
+    else:
+        for errores in form.errors.values():
+            for error in errores:
+                messages.error(request, error)
+    return _volver_a_direccion(pk)
+
+
+@login_required
+@require_POST
+@proteger_vista(APP_SLUG, "can_manage_catalogs")
+def categoria_actualizar_view(request, pk):
+    categoria = get_object_or_404(Categoria, pk=pk)
+    if request.POST.get("accion") == "estado":
+        categoria.is_active = not categoria.is_active
+        categoria.save()
+        messages.success(request, f"Categoría {categoria.nombre} " + ("activada." if categoria.is_active else "desactivada."))
+    else:
+        form = CategoriaForm(request.POST, instance=categoria)
+        if form.is_valid():
+            form.save()
+            messages.success(request, "Nombre actualizado.")
+        else:
+            for errores in form.errors.values():
+                for error in errores:
+                    messages.error(request, error)
+    return _volver_a_direccion(categoria.direccion_id)

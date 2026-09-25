@@ -19,6 +19,7 @@
         {% if documento.sentido == "enviado" %}<div><dt class="text-xs font-bold uppercase text-gray-500">Gestor</dt><dd>{{ documento.gestor|default:"Sin asignar" }}{% if documento.dias_pendiente is not None %} · <span class="text-xs text-gray-400">{{ documento.dias_pendiente }} día{{ documento.dias_pendiente|pluralize }} pendiente{{ documento.dias_pendiente|pluralize }}</span>{% endif %}</dd></div>{% endif %}
         <div><dt class="text-xs font-bold uppercase text-gray-500">{% if documento.sentido == "enviado" %}Destinatario{% else %}Remitente{% endif %}</dt><dd>{{ documento.contraparte }}</dd></div>
         <div><dt class="text-xs font-bold uppercase text-gray-500">Director (al registrar)</dt><dd>{{ documento.director_nombre|default:"—" }}</dd></div>
+        {% if documento.categoria %}<div><dt class="text-xs font-bold uppercase text-gray-500">Categoría</dt><dd>{{ documento.categoria }}</dd></div>{% endif %}
         <div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-gray-500">Asunto</dt><dd>{{ documento.asunto }}</dd></div>
         {% if documento.fecha_entrega %}<div><dt class="text-xs font-bold uppercase text-gray-500">Entregado</dt><dd>{{ documento.fecha_entrega|date:"d/m/Y" }} · recibió {{ documento.receptor_entrega }}</dd></div>{% endif %}
         {% if documento.motivo_cancelacion %}<div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-red-600">Motivo de cancelación</dt><dd>{{ documento.motivo_cancelacion }}</dd></div>{% endif %}

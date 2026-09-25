@@ -149,6 +149,25 @@ class Gestor(BaseOficios):
         return self.nombre
 
 
+class Categoria(BaseOficios):
+    """Tema con el que una dirección clasifica sus documentos (p. ej. panteones, escuelas)."""
+
+    direccion = models.ForeignKey(Direccion, on_delete=models.PROTECT, related_name="categorias")
+    nombre = models.CharField("Nombre", max_length=150)
+
+    class Meta:
+        db_table = "oficios_categoria"
+        ordering = ["nombre"]
+        verbose_name = "Categoría"
+        verbose_name_plural = "Categorías"
+        constraints = [
+            models.UniqueConstraint(fields=["direccion", "nombre"], name="oficios_categoria_unica")
+        ]
+
+    def __str__(self):
+        return self.nombre
+
+
 class ConsecutivoFolio(models.Model):
     nomenclatura = models.ForeignKey(Nomenclatura, on_delete=models.PROTECT, related_name="consecutivos")
     anio = models.PositiveSmallIntegerField("Año")
@@ -200,6 +219,10 @@ class Documento(BaseOficios):
     gestor = models.ForeignKey(
         Gestor, null=True, blank=True, on_delete=models.PROTECT, related_name="documentos",
         verbose_name="Gestor",
+    )
+    categoria = models.ForeignKey(
+        Categoria, null=True, blank=True, on_delete=models.PROTECT, related_name="documentos",
+        verbose_name="Categoría",
     )
     busqueda = models.TextField(editable=False, blank=True, default="")
     estado = models.CharField("Estado", max_length=12, choices=Estado.choices, default=Estado.GENERADO, db_index=True)
