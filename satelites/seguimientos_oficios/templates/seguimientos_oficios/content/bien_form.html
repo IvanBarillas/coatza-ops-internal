@@ -11,7 +11,7 @@
         {% for e in form.non_field_errors %}<p class="mb-3 text-xs text-red-600">{{ e }}</p>{% endfor %}
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {% for campo in form %}{% if campo.name != "direccion" or form.mostrar_direccion %}
-            <div class="{% if campo.name == 'nombre' or campo.name == 'descripcion' %}sm:col-span-2{% endif %}">
+            <div class="{% if campo.name == 'nombre' or campo.name == 'descripcion' or campo.name == 'motivo' %}sm:col-span-2{% endif %}">
                 <label for="{{ campo.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ campo.label }}</label>
                 {{ campo }}
                 {% if campo.help_text %}<p class="mt-1 text-xs text-gray-400">{{ campo.help_text }}</p>{% endif %}

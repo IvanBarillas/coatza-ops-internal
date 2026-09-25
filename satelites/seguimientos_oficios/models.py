@@ -464,10 +464,17 @@ class Prestamo(BaseOficios):
             return "cancelado"
         if self.fecha_devolucion:
             return "devuelto"
+        from .integracion import valor_entorno
+
         hoy = timezone.localdate()
         if self.fecha_limite < hoy:
             return "vencido"
-        return "por_vencer" if self.fecha_limite - hoy <= timedelta(days=3) else "vigente"
+        aviso = timedelta(days=int(valor_entorno("OFICIOS_PRESTAMO_AVISO_DIAS", "3")))
+        return "por_vencer" if self.fecha_limite - hoy <= aviso else "vigente"
+
+    @property
+    def dias_para_vencer(self):
+        return (self.fecha_limite - timezone.localdate()).days
 
     @property
     def dias_de_retraso(self):
@@ -487,3 +494,35 @@ class PrestamoBien(models.Model):
                 fields=["bien"], condition=Q(abierto=True), name="oficios_bien_en_un_solo_prestamo_abierto"
             ),
         ]
+
+
+class HistorialBien(models.Model):
+    """Bitácora de un bien: solo se escribe, no se edita ni se borra."""
+
+    class Accion(models.TextChoices):
+        ALTA = "alta", "Alta"
+        EDITADO = "editado", "Datos editados"
+        ESTADO = "estado", "Cambio de estado"
+        PRESTAMO = "prestamo", "Prestado"
+        DEVOLUCION = "devolucion", "Devuelto"
+        LIBERADO = "liberado", "Vale cancelado"
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    bien = models.ForeignKey(Bien, on_delete=models.PROTECT, related_name="historial")
+    accion = models.CharField(max_length=12, choices=Accion.choices)
+    usuario = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    usuario_nombre = models.CharField(max_length=200, blank=True)
+    datos = models.JSONField(default=dict)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        db_table = "oficios_historial_bien"
+        ordering = ["created_at"]
+
+    def save(self, *args, **kwargs):
+        if not self._state.adding:
+            raise ValueError("La bitácora del bien es de solo escritura.")
+        super().save(*args, **kwargs)
+
+    def delete(self, *args, **kwargs):
+        raise ValueError("La bitácora del bien no se puede borrar.")

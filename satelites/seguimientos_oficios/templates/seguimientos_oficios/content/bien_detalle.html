@@ -1,0 +1,68 @@
+{% load oficios_fechas %}
+{% include "seguimientos_oficios/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-4xl space-y-4 font-mono text-left">
+    {% url 'seguimientos_oficios:bienes' as volver_url %}
+    {% include "components/form_header.html" with module_label="Préstamos" mode_label="Bien" title=bien.nombre description="Datos del bien, sus préstamos y todo lo que le ha pasado." icon="package" back_url=volver_url back_label="Volver a bienes" %}
+    {% include "seguimientos_oficios/content/_mensajes.html" %}
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+                {% if situacion == "prestado" %}<span class="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black uppercase text-amber-700">Prestado</span>
+                {% elif situacion == "disponible" %}<span class="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-black uppercase text-emerald-700">Disponible</span>
+                {% elif situacion == "en_reparacion" %}<span class="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-black uppercase text-blue-700">En reparación</span>
+                {% else %}<span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-black uppercase text-gray-600">Baja</span>{% endif %}
+            </div>
+            {% if puede_gestionar %}<a class="inline-flex items-center rounded-xl border border-brand-primary bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-brand-primary transition hover:bg-brand-primary hover:text-white" href="{% url 'seguimientos_oficios:bien_editar' bien.pk %}" hx-get="{% url 'seguimientos_oficios:bien_editar' bien.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}
+        </div>
+        <dl class="mt-4 grid grid-cols-1 gap-4 text-xs sm:grid-cols-3">
+            <div><dt class="font-bold uppercase text-gray-500">Número de serie o etiqueta</dt><dd>{{ bien.identificador|default:"—" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Folio de inventario</dt><dd>{{ bien.folio_inventario|default:"—" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Dirección</dt><dd>{{ bien.direccion }}</dd></div>
+            {% if bien.descripcion %}<div class="sm:col-span-3"><dt class="font-bold uppercase text-gray-500">Descripción</dt><dd>{{ bien.descripcion }}</dd></div>{% endif %}
+        </dl>
+        {% if prestamo_actual %}
+        <p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">
+            Lo tiene <strong>{{ prestamo_actual.documento.contraparte }}</strong> desde el {{ prestamo_actual.fecha_entrega|date:"d/m/Y" }}, con devolución límite el {{ prestamo_actual.fecha_limite|date:"d/m/Y" }}
+            ({% include "seguimientos_oficios/content/_situacion_prestamo.html" with prestamo=prestamo_actual %}) ·
+            <a class="font-bold underline" href="{% url 'seguimientos_oficios:documento_detail' prestamo_actual.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' prestamo_actual.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ prestamo_actual.documento.folio }}</a>
+        </p>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Historial de préstamos <span class="font-normal text-gray-400">({{ asignaciones|length }})</span></h2>
+        <div class="max-h-72 overflow-auto rounded-xl border border-gray-100">
+            <table class="min-w-full text-xs">
+                <thead class="sticky top-0 bg-gray-50 text-left font-black uppercase tracking-widest text-gray-500"><tr><th class="px-3 py-2">Vale</th><th class="px-3 py-2">Recibió</th><th class="px-3 py-2">Entrega</th><th class="px-3 py-2">Límite</th><th class="px-3 py-2">Situación</th></tr></thead>
+                <tbody>
+                {% for a in asignaciones %}
+                    <tr class="border-t border-gray-100 align-top">
+                        <td class="px-3 py-2"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' a.prestamo.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' a.prestamo.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ a.prestamo.documento.folio }}</a></td>
+                        <td class="px-3 py-2">{{ a.prestamo.documento.contraparte }}</td>
+                        <td class="whitespace-nowrap px-3 py-2">{{ a.prestamo.fecha_entrega|date:"d/m/y" }}</td>
+                        <td class="whitespace-nowrap px-3 py-2">{{ a.prestamo.fecha_limite|date:"d/m/y" }}</td>
+                        <td class="whitespace-nowrap px-3 py-2">{% include "seguimientos_oficios/content/_situacion_prestamo.html" with prestamo=a.prestamo %}</td>
+                    </tr>
+                {% empty %}<tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">Este bien no se ha prestado.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Bitácora de movimientos</h2>
+        <ol class="max-h-96 space-y-3 overflow-y-auto pr-1 text-xs">
+            {% for h in historial %}
+            <li class="border-l-4 border-gray-200 pl-3">
+                <div class="font-bold text-gray-700">{{ h.get_accion_display }} · {{ h.usuario_nombre|default:"—" }}</div>
+                <div class="text-gray-400">{{ h.created_at|date:"d/m/Y H:i" }}</div>
+                {% if h.datos.folio %}<div class="text-gray-500">Vale {{ h.datos.folio }}{% if h.datos.recibe %} · {{ h.datos.recibe }}{% endif %}{% if h.datos.fecha_limite %} · límite {{ h.datos.fecha_limite|fecha_iso }}{% endif %}{% if h.datos.devolucion %} · devuelto {{ h.datos.devolucion|fecha_iso }}{% endif %}</div>{% endif %}
+                {% for campo, cambio in h.datos.cambios.items %}<div class="text-gray-500"><b>{{ campo }}</b>: {{ cambio.antes|default:"—" }} → {{ cambio.despues|default:"—" }}</div>{% endfor %}
+                {% if h.datos.motivo %}<div class="text-gray-500">Motivo: {{ h.datos.motivo }}</div>{% endif %}
+                {% if h.datos.observaciones %}<div class="text-gray-500">Observaciones: {{ h.datos.observaciones }}</div>{% endif %}
+            </li>
+            {% empty %}<li class="text-gray-400">Sin movimientos registrados.</li>{% endfor %}
+        </ol>
+    </section>
+</div>

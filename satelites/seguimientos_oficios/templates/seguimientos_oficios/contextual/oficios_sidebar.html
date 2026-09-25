@@ -2,13 +2,24 @@
     <div class="border-b border-white/10 p-5">
         <div class="flex items-center gap-3">
             <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white">
-                <i data-lucide="file-text" class="h-5 w-5"></i>
+                <i data-lucide="{{ area_actual.icon|default:'file-text' }}" class="h-5 w-5"></i>
             </div>
             <div class="min-w-0">
                 <div class="text-xs font-black uppercase tracking-[0.22em] text-white/60">Oficios</div>
-                <h2 class="truncate text-sm font-black uppercase tracking-tight text-white">Seguimiento</h2>
+                <h2 class="truncate text-sm font-black uppercase tracking-tight text-white">{{ area_actual.nombre|default:"Seguimiento" }}</h2>
             </div>
         </div>
+        {% if sidebar_areas %}
+        <div class="mt-4 grid grid-cols-2 gap-1 rounded-xl bg-black/20 p-1" role="tablist" aria-label="Área">
+            {% for a in sidebar_areas %}
+            <a href="{{ a.href }}" hx-get="{{ a.href }}" hx-target="#workbench" hx-swap="innerHTML" hx-push-url="true" role="tab"
+               {% if a.activa %}aria-selected="true"{% endif %}
+               class="flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-black uppercase tracking-widest transition-colors {% if a.activa %}bg-white/20 text-white{% else %}text-white/60 hover:bg-white/10 hover:text-white{% endif %}">
+                <i data-lucide="{{ a.icon }}" class="h-3.5 w-3.5"></i>{{ a.nombre }}
+            </a>
+            {% endfor %}
+        </div>
+        {% endif %}
     </div>
     <nav class="flex-1 space-y-1 overflow-y-auto p-3">
         {% for item in sidebar_items %}

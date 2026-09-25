@@ -16,6 +16,7 @@ from django.shortcuts import redirect, render
 from django.urls import reverse
 
 from .prestamos.forms import DevolucionForm
+from .areas import construir_menu
 from .forms import AdjuntoForm, GestorEntregaForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
 from .integracion import proteger_vista, usuarios_con_acceso
 from .selectors import (
@@ -31,21 +32,9 @@ from .services import registrar_entrega_gestor, quitar_adjunto, roles_permitidos
 POR_PAGINA = 25
 
 
-def _sidebar_items(request):
-    actual = request.resolver_match.view_name if request.resolver_match else ""
-    return [
-        {
-            "icon": item["icon"],
-            "name": item["name"],
-            "href": reverse(item["url"]),
-            "active": item["url"] == actual,
-        }
-        for item in getattr(request, "axentra_sidebar_menu", [])
-    ]
-
-
 def _render(request, nombre, contexto):
-    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": _sidebar_items(request)}
+    items, areas, area = construir_menu(request, contexto.get("area_actual"))
+    contexto = {**contexto, "show_module_sidebar": True, "sidebar_items": items, "sidebar_areas": areas, "area_actual": area}
     destino = request.headers.get("HX-Target", "")
     if request.headers.get("HX-Request") == "true":
         if destino == "workbench":
@@ -146,7 +135,7 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "adjuntos_quitados": documento.adjuntos.filter(eliminado=True).order_by("eliminado_en"),
         "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
-        "prestamo": prestamo,
+        "prestamo": prestamo, "area_actual": "prestamos" if prestamo else None,
         "puede_devolver": bool(prestamo and prestamo.abierto and _permitido(request, "can_manage_loans")),
         "devolucion_form": DevolucionForm(),
         "roles_adjuntables": (
@@ -268,7 +257,8 @@ def direccion_editar_view(request, pk=None):
         guardada = form.save()
         messages.success(request, f"Dirección {guardada.nombre} guardada.")
         return redirect("seguimientos_oficios:direccion_editar", pk=guardada.pk)
-    contexto = {"form": form, "direccion": direccion}
+    seccion = request.GET.get("seccion")
+    contexto = {"form": form, "direccion": direccion, "seccion": seccion if seccion in SECCIONES_DE_DIRECCION else "nomenclaturas"}
     if direccion:
         contexto.update(
             nomenclaturas=direccion.nomenclaturas.order_by("clase"),
@@ -280,8 +270,12 @@ def direccion_editar_view(request, pk=None):
     return _render(request, "direccion_form", contexto)
 
 
-def _volver_a_direccion(pk):
-    return redirect("seguimientos_oficios:direccion_editar", pk=pk)
+SECCIONES_DE_DIRECCION = ("nomenclaturas", "gestores", "categorias")
+
+
+def _volver_a_direccion(pk, seccion="nomenclaturas"):
+    """Vuelve a la dirección abriendo la sección donde se estaba trabajando."""
+    return redirect(f"{reverse('seguimientos_oficios:direccion_editar', kwargs={'pk': pk})}?seccion={seccion}")
 
 
 @login_required
@@ -299,7 +293,7 @@ def nomenclatura_crear_view(request, pk):
         for errores in form.errors.values():
             for error in errores:
                 messages.error(request, error)
-    return _volver_a_direccion(pk)
+    return _volver_a_direccion(pk, "nomenclaturas")
 
 
 @login_required
@@ -320,7 +314,7 @@ def nomenclatura_actualizar_view(request, pk):
             for errores in form.errors.values():
                 for error in errores:
                     messages.error(request, error)
-    return _volver_a_direccion(nomenclatura.direccion_id)
+    return _volver_a_direccion(nomenclatura.direccion_id, "nomenclaturas")
 
 
 @login_required
@@ -358,7 +352,7 @@ def gestor_crear_view(request, pk):
         for errores in form.errors.values():
             for error in errores:
                 messages.error(request, error)
-    return _volver_a_direccion(pk)
+    return _volver_a_direccion(pk, "gestores")
 
 
 @login_required
@@ -379,7 +373,7 @@ def gestor_actualizar_view(request, pk):
             for errores in form.errors.values():
                 for error in errores:
                     messages.error(request, error)
-    return _volver_a_direccion(gestor.direccion_id)
+    return _volver_a_direccion(gestor.direccion_id, "gestores")
 
 
 @login_required
@@ -530,7 +524,7 @@ def categoria_crear_view(request, pk):
         for errores in form.errors.values():
             for error in errores:
                 messages.error(request, error)
-    return _volver_a_direccion(pk)
+    return _volver_a_direccion(pk, "categorias")
 
 
 @login_required
@@ -551,7 +545,7 @@ def categoria_actualizar_view(request, pk):
             for errores in form.errors.values():
                 for error in errores:
                     messages.error(request, error)
-    return _volver_a_direccion(categoria.direccion_id)
+    return _volver_a_direccion(categoria.direccion_id, "categorias")
 
 
 @login_required

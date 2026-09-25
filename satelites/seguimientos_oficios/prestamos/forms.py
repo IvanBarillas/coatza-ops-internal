@@ -1,10 +1,12 @@
 import datetime
 
 from django import forms
+from django.core.exceptions import ValidationError
 from django.utils import timezone
 
 from ..forms import _agregar_contraparte, _resolver_contraparte
 from ..models import Bien, Gestor
+from .services import exigir_motivo_de_estado
 
 CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
 
@@ -14,6 +16,11 @@ class BienForm(forms.ModelForm):
         model = Bien
         fields = ["direccion", "nombre", "identificador", "folio_inventario", "descripcion", "estado"]
         widgets = {"descripcion": forms.Textarea(attrs={"rows": 2})}
+
+    motivo = forms.CharField(
+        label="Motivo del cambio de estado", required=False, max_length=300,
+        help_text="Obligatorio para pasar a reparación o baja; opcional al volver a disponible.",
+    )
 
     def __init__(self, *args, direcciones, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,9 +50,13 @@ class BienForm(forms.ModelForm):
         datos["folio_inventario"] = folio
         if direccion and folio and Bien.objects.filter(direccion=direccion, folio_inventario=folio).exclude(pk=self.instance.pk).exists():
             self.add_error("folio_inventario", "Ya existe un bien con ese folio de inventario en la dirección.")
-        if not self.instance._state.adding and datos.get("estado") != Bien.Estado.DISPONIBLE:
-            if self.instance.asignaciones.filter(abierto=True).exists():
+        if not self.instance._state.adding:
+            if datos.get("estado") != Bien.Estado.DISPONIBLE and self.instance.asignaciones.filter(abierto=True).exists():
                 self.add_error("estado", "El bien está prestado: registre primero la devolución del vale.")
+            try:
+                exigir_motivo_de_estado(self.initial.get("estado"), datos.get("estado"), datos.get("motivo"))
+            except ValidationError as error:
+                self.add_error("motivo", error)
         return datos
 
 

@@ -156,10 +156,13 @@ def cancelar_documento(documento, *, usuario, motivo, puede_cancelar_concluido=F
         "estado_anterior": anterior, "estado_nuevo": documento.estado, "motivo": motivo,
         "cancelado_en": timezone.now().isoformat(),
     }
-    liberados = [
-        str(r.bien) for r in PrestamoBien.objects.filter(prestamo__documento=documento, abierto=True).select_related("bien")
-    ]
+    abiertos = list(PrestamoBien.objects.filter(prestamo__documento=documento, abierto=True).select_related("bien"))
+    liberados = [str(r.bien) for r in abiertos]
     if liberados:
+        from .prestamos import bitacora
+
+        for renglon in abiertos:
+            bitacora.registrar(renglon.bien, "liberado", usuario, {"folio": documento.folio, "motivo": motivo})
         PrestamoBien.objects.filter(prestamo__documento=documento, abierto=True).update(abierto=False)
         datos["bienes_liberados"] = liberados
     _historial(documento, HistorialDocumento.Accion.ELIMINADO, usuario, datos)
