@@ -120,3 +120,24 @@ class SemaforoTests(BaseAdjuntos):
     def test_usuario_sin_permiso_no_entra(self):
         UserAppRole.objects.filter(user=self.observador).update(role="x", permissions_list=["has_access_module"])
         self.assertIn(self.seguimiento().status_code, (302, 403))
+
+
+class DiasPendientesTests(BaseAdjuntos):
+    def test_los_dias_se_cuentan_con_la_fecha_local_no_la_utc(self):
+        from zoneinfo import ZoneInfo
+
+        from django.test import override_settings
+
+        documento = crear_documento(
+            usuario=self.user, direccion=self.direccion, sentido="enviado", clase="oficio",
+            contraparte="X", asunto="Y", fecha=datetime.date(2026, 9, 1),
+        )
+        with override_settings(TIME_ZONE="America/Mexico_City"):
+            timezone.activate(ZoneInfo("America/Mexico_City"))
+            self.addCleanup(timezone.deactivate)
+            # 22:00 del 20/sep en México = 04:00 UTC del 21/sep
+            registro = datetime.datetime(2026, 9, 21, 4, 0, tzinfo=datetime.timezone.utc)
+            Documento.objects.filter(pk=documento.pk).update(created_at=registro)
+            documento.refresh_from_db()
+            with mock.patch("django.utils.timezone.localdate", return_value=datetime.date(2026, 9, 24)):
+                self.assertEqual(documento.dias_pendiente, 4)

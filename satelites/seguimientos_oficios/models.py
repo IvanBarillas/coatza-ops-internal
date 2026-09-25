@@ -4,6 +4,7 @@ import uuid
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
+from django.utils import timezone
 from django.utils.text import slugify
 
 from .textos import normalizar
@@ -228,12 +229,10 @@ class Documento(BaseOficios):
 
     @property
     def dias_pendiente(self):
-        from datetime import date
-
         if self.estado not in (self.Estado.GENERADO, self.Estado.ENTREGADO):
             return None
-        desde = self.fecha_entrega or self.created_at.date()
-        return (date.today() - desde).days
+        desde = self.fecha_entrega or timezone.localtime(self.created_at).date()
+        return (timezone.localdate() - desde).days
 
     def save(self, *args, **kwargs):
         self.busqueda = normalizar(" ".join((self.folio, self.asunto, self.contraparte, self.director_nombre)))
