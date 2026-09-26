@@ -1,0 +1,26 @@
+{
+  "tecnicos": [
+    {"correo": "diego.herrera.f@prueba.axentra.com.mx", "nombre": "Diego", "apellidos": "Herrera Salas"},
+    {"correo": "valeria.cruz.f@prueba.axentra.com.mx", "nombre": "Valeria", "apellidos": "Cruz Ortega"},
+    {"correo": "miguel.toledo.f@prueba.axentra.com.mx", "nombre": "Miguel", "apellidos": "Toledo Ruiz"},
+    {"correo": "andrea.paz.f@prueba.axentra.com.mx", "nombre": "Andrea", "apellidos": "Paz Lozano"}
+  ],
+  "eventos": [
+    {"nombre": "Informe de gobierno (ejemplo)", "lugar": "Teatro de la Ciudad", "dia": -12, "inicio": "17:00", "fin": "21:00", "estado": "concluido", "cierre": "Sin incidencias. Se devolvió todo el equipo.",
+     "tecnicos": [{"correo": "diego.herrera.f@prueba.axentra.com.mx"}, {"correo": "valeria.cruz.f@prueba.axentra.com.mx"}],
+     "vales": [["V-0101", "Proyector y pantalla"]]},
+    {"nombre": "Feria del libro (ejemplo)", "lugar": "Malecón, explanada norte", "dia": 0, "inicio": "09:00", "fin": "22:00", "estado": "en_curso", "ticket": "T-2041",
+     "descripcion": "Sonido, dos módulos de internet y proyección en el escenario.",
+     "tecnicos": [{"correo": "diego.herrera.f@prueba.axentra.com.mx", "desde": "09:00", "hasta": "15:00"}, {"correo": "miguel.toledo.f@prueba.axentra.com.mx", "desde": "14:00", "hasta": "22:00", "nota": "Relevo"}],
+     "vales": [["V-0107", "Bocinas, consola y cableado"], ["V-0108", "Laptops"]],
+     "telefonia": [["nueva", "Línea nueva para el módulo de registro", "en_tramite"], ["reubicacion", "Reubicar el enlace de la biblioteca a la explanada", "pendiente"]],
+     "notas": ["Se instaló el sonido; falta probar el enlace."]},
+    {"nombre": "Concierto de fin de año (ejemplo)", "lugar": "Malecón", "dia": 3, "inicio": "18:00", "fin": "23:30", "descripcion": "Cobertura de red y transmisión en vivo.",
+     "tecnicos": [{"correo": "valeria.cruz.f@prueba.axentra.com.mx"}, {"correo": "andrea.paz.f@prueba.axentra.com.mx", "desde": "21:00", "hasta": "23:30"}],
+     "vales": [["V-0110", "Equipo de transmisión"]], "telefonia": [["nueva", "Línea para el escenario", "pendiente"]]},
+    {"nombre": "Festival gastronómico (ejemplo)", "lugar": "Parque Independencia", "dia": 3, "inicio": "19:00", "fin": "22:00", "ticket": "T-2077",
+     "tecnicos": [{"correo": "valeria.cruz.f@prueba.axentra.com.mx", "desde": "19:00", "hasta": "22:00", "nota": "Se empalma con el concierto"}]},
+    {"nombre": "Sesión solemne de cabildo (ejemplo)", "lugar": "Salón de cabildo", "dia": 9, "inicio": "10:00", "fin": "13:00",
+     "tecnicos": [{"correo": "miguel.toledo.f@prueba.axentra.com.mx"}]}
+  ]
+}

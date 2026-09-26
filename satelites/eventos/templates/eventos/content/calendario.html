@@ -1,0 +1,37 @@
+{% include "eventos/contextual/_menu_movil.html" %}
+{% url 'eventos:calendario' as cal_url %}
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
+    {% include "components/list_header.html" with module_label="Eventos" status_label="Calendario" title="Calendario de eventos" description="Qué eventos hay cada día. Filtre por técnico para ver su carga." icon="calendar-days" %}
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{{ cal_url }}?anio={{ anterior.anio }}&amp;mes={{ anterior.mes }}{% if tecnico %}&amp;tecnico={{ tecnico }}{% endif %}" hx-get="{{ cal_url }}?anio={{ anterior.anio }}&amp;mes={{ anterior.mes }}{% if tecnico %}&amp;tecnico={{ tecnico }}{% endif %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600" aria-label="Mes anterior">←</a>
+        <span class="min-w-40 text-center text-[15px] font-black uppercase text-gray-900">{{ nombre_mes }} {{ anio }}</span>
+        <a href="{{ cal_url }}?anio={{ siguiente.anio }}&amp;mes={{ siguiente.mes }}{% if tecnico %}&amp;tecnico={{ tecnico }}{% endif %}" hx-get="{{ cal_url }}?anio={{ siguiente.anio }}&amp;mes={{ siguiente.mes }}{% if tecnico %}&amp;tecnico={{ tecnico }}{% endif %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600" aria-label="Mes siguiente">→</a>
+        <form method="get" action="{{ cal_url }}" hx-get="{{ cal_url }}" hx-target="#page-content" hx-push-url="true" class="ml-auto flex items-center gap-2">
+            <input type="hidden" name="anio" value="{{ anio }}"><input type="hidden" name="mes" value="{{ mes }}">
+            <select name="tecnico" onchange="this.form.requestSubmit()" aria-label="Técnico" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-[14px] font-medium text-gray-700"><option value="">Todos los técnicos</option>{% for pk, nombre in tecnicos %}<option value="{{ pk }}" {% if tecnico == pk|stringformat:"s" %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select>
+        </form>
+    </div>
+    <p class="text-xs text-gray-400"><span class="inline-block h-2 w-2 rounded-full bg-blue-500"></span> programado · <span class="inline-block h-2 w-2 rounded-full bg-emerald-500"></span> en curso · <span class="inline-block h-2 w-2 rounded-full bg-slate-400"></span> concluido</p>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+        <div class="w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+            <table class="w-full min-w-[46rem] table-fixed border-collapse">
+                <thead class="bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]"><tr class="font-mono text-xs font-bold uppercase tracking-wider text-gray-400">{% for n in dias_semana %}<th class="py-3 px-3 text-left font-semibold">{{ n }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                {% for semana in semanas %}
+                    <tr class="align-top">
+                    {% for dia in semana %}
+                        <td class="h-28 border-t border-l border-gray-100 p-2 {% if not dia.en_mes %}bg-gray-50/60 text-gray-300{% endif %}">
+                            <span class="text-xs font-black {% if dia.fecha == hoy %}rounded-full bg-brand-primary px-2 py-0.5 text-white{% endif %}">{{ dia.fecha.day }}</span>
+                            {% if dia.en_mes %}<ul class="mt-1 space-y-0.5 text-[12px] leading-tight text-gray-700">
+                                {% for e in dia.eventos|slice:":3" %}<li class="truncate"><a href="{% url 'eventos:evento_detalle' e.pk %}" hx-get="{% url 'eventos:evento_detalle' e.pk %}" hx-target="#page-content" hx-push-url="true" title="{{ e.nombre }} · {{ e.lugar }}" class="hover:underline"><span class="inline-block h-2 w-2 rounded-full {% if e.estatus == 'en_curso' %}bg-emerald-500{% elif e.estatus == 'concluido' %}bg-slate-400{% else %}bg-blue-500{% endif %}"></span> {{ e.inicio|date:"H:i" }} {{ e.nombre }}</a></li>{% endfor %}
+                                {% if dia.eventos|length > 3 %}<li class="text-gray-400">+{{ dia.eventos|length|add:"-3" }} más</li>{% endif %}
+                            </ul>{% endif %}
+                        </td>
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

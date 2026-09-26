@@ -1,0 +1,4 @@
+{% extends "shell/workbench.html" %}
+{% block title %}Eventos | {{ tenant.app_name }}{% endblock %}
+{% block module_sidebar %}{% include "eventos/contextual/sidebar.html" %}{% endblock %}
+{% block page_content %}{% include "eventos/content/evento_form.html" %}{% endblock %}
