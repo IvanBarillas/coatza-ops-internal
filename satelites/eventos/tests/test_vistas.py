@@ -164,3 +164,14 @@ class VistasEventosTests(BaseEventos):
         parcial = self.client.get(url("evento_detalle", e.pk), HTTP_HX_REQUEST="true", HTTP_HX_TARGET="page-content")
         self.assertNotContains(parcial, "<html")
         self.assertContains(parcial, "Feria")
+
+    def test_el_detalle_separa_las_secciones_con_icono_y_la_bitacora_se_lee_bien(self):
+        e = self.evento()
+        svc.vincular_vale(e, usuario=self.coord, referencia="V-1")
+        self.client.force_login(self.coord)
+        pagina = self.client.get(url("evento_detalle", e.pk))
+        for color in ("slate", "blue", "amber", "violet", "emerald"):
+            self.assertContains(pagina, f"bg-{color}-")   # encabezado de la sección con su color
+        self.assertNotContains(pagina, "border-l-slate-500")  # sin franja lateral de color
+        self.assertContains(pagina, "Vale vinculado")
+        self.assertNotContains(pagina, "Valevinculado")

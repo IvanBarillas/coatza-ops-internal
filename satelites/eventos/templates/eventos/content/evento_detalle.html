@@ -5,12 +5,9 @@
     {% include "components/form_header.html" with module_label="Eventos" mode_label=e.get_estatus_display title=e.nombre description=e.lugar icon="calendar-clock" back_url=volver_url back_label="Volver a eventos" %}
     {% include "eventos/content/_mensajes.html" %}
 
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-            <div class="flex items-center gap-2"><h2 class="text-xs font-black uppercase text-gray-700">Datos</h2>{% include "eventos/content/_estado.html" %}</div>
-            {% if puede_gestionar and e.abierto %}<a class="text-xs font-bold text-brand-accent underline" href="{% url 'eventos:evento_editar' e.pk %}" hx-get="{% url 'eventos:evento_editar' e.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}
-        </div>
-        <dl class="mt-3 grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-5 py-3"><div class="flex items-center gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-600 text-white"><i data-lucide="info" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Datos</h2>{% include "eventos/content/_estado.html" %}</div>{% if puede_gestionar and e.abierto %}<a class="text-xs font-bold text-brand-accent underline" href="{% url 'eventos:evento_editar' e.pk %}" hx-get="{% url 'eventos:evento_editar' e.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}</header>
+        <dl class="grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
             <div><dt class="font-bold uppercase text-gray-500">Inicio</dt><dd>{{ e.inicio|date:"D d/m/Y H:i" }}</dd></div>
             <div><dt class="font-bold uppercase text-gray-500">Fin</dt><dd>{{ e.fin|date:"D d/m/Y H:i" }}</dd></div>
             <div><dt class="font-bold uppercase text-gray-500">Lugar</dt><dd>{{ e.lugar }}</dd></div>
@@ -28,8 +25,8 @@
         {% endif %}
     </section>
 
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Técnicos ({{ asignaciones|length }})</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-blue-100 bg-blue-50/70 px-5 py-3"><div class="flex items-center gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white"><i data-lucide="users" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Técnicos ({{ asignaciones|length }})</h2></div></header>
         {% if not asignaciones %}<p class="text-xs font-black text-amber-700">Todavía no hay técnicos asignados.</p>{% endif %}
         <div class="overflow-auto"><table class="w-full text-left text-xs">
             {% if asignaciones %}<thead><tr class="font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="pb-2 pr-4">Técnico</th><th class="pb-2 pr-4">Tramo</th><th class="pb-2 pr-4">Nota</th><th class="pb-2"></th></tr></thead>{% endif %}
@@ -52,8 +49,8 @@
         {% endif %}
     </section>
 
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Vales de salida ({{ vales|length }})</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-amber-100 bg-amber-50/70 px-5 py-3"><div class="flex items-center gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white"><i data-lucide="package-open" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Vales de salida ({{ vales|length }})</h2></div></header>
         {% if not vales %}<p class="text-xs text-gray-400">Sin vales vinculados.</p>{% endif %}
         <ul class="divide-y divide-gray-100 text-xs">{% for v in vales %}
             <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ v.titulo }}</b>{% if v.ficha %} <span class="rounded-lg border border-gray-200 px-2 py-0.5 text-[12px] font-black uppercase tracking-wider text-gray-600">{{ v.ficha.estado|cut:"_" }}</span>{% endif %}{% if v.nota %} · <span class="text-gray-500">{{ v.nota }}</span>{% endif %}</span>
@@ -71,8 +68,8 @@
         {% endif %}
     </section>
 
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Telefonía para el evento ({{ tramites|length }})</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-violet-100 bg-violet-50/70 px-5 py-3"><div class="flex items-center gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white"><i data-lucide="phone-call" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Telefonía para el evento ({{ tramites|length }})</h2></div></header>
         <p class="mb-3 text-xs text-gray-400">Reubicaciones de líneas o líneas nuevas que se trámitan para el evento.</p>
         {% if not tramites %}<p class="text-xs text-gray-400">Sin trámites.</p>{% endif %}
         <ul class="divide-y divide-gray-100 text-xs">{% for t in tramites %}
@@ -93,8 +90,8 @@
         {% endif %}
     </section>
 
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Notas y bitácora</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex flex-wrap items-center justify-between gap-2 border-b border-emerald-100 bg-emerald-50/70 px-5 py-3"><div class="flex items-center gap-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white"><i data-lucide="notebook-pen" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Notas y bitácora</h2></div></header>
         {% if puede_notas %}
         <form method="post" class="mb-4 flex flex-wrap items-start gap-3">{% csrf_token %}<input type="hidden" name="accion" value="nota">
             <div class="min-w-64 flex-1">{{ form_nota.texto }}{% for x in form_nota.texto.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
@@ -102,7 +99,7 @@
         </form>
         {% endif %}
         <ul class="space-y-2 text-xs">{% for b in bitacora %}
-            <li class="rounded-xl border px-4 py-2 {% if b.accion == 'nota' %}border-blue-100 bg-blue-50/50{% else %}border-gray-100 bg-gray-50/50 text-gray-500{% endif %}"><span class="font-black">{% if b.accion == 'nota' %}Nota{% else %}{{ b.accion|cut:"_"|capfirst }}{% endif %}</span> · {{ b.usuario_nombre|default:"—" }} · {{ b.created_at|date:"d/m/Y H:i" }}{% if b.detalle %}<div class="mt-1 whitespace-pre-line text-gray-700">{{ b.detalle }}</div>{% endif %}</li>
+            <li class="rounded-xl border px-4 py-2 {% if b.accion == 'nota' %}border-blue-100 bg-blue-50/50{% else %}border-gray-100 bg-gray-50/50 text-gray-500{% endif %}"><span class="font-black">{{ b.accion_texto }}</span> · {{ b.usuario_nombre|default:"—" }} · {{ b.created_at|date:"d/m/Y H:i" }}{% if b.detalle %}<div class="mt-1 whitespace-pre-line text-gray-700">{{ b.detalle }}</div>{% endif %}</li>
         {% endfor %}</ul>
     </section>
 </div>

@@ -112,3 +112,7 @@ class Bitacora(BaseEventos):
     class Meta:
         db_table = "evt_bitacora"
         ordering = ["-created_at"]
+
+    @property
+    def accion_texto(self):
+        return "Nota" if self.accion == "nota" else self.accion.replace("_", " ").capitalize()
