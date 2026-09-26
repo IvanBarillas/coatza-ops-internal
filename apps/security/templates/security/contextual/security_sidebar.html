@@ -8,22 +8,9 @@
 <div class="w-full h-full flex flex-col bg-brand-primary text-white">
 
     <div class="p-5 border-b border-white/10">
-        <div class="flex items-center gap-3">
-            <div class="h-11 w-11 rounded-2xl bg-white/10 text-white flex items-center justify-center shadow-sm">
-                <i data-lucide="shield-check" class="w-5 h-5"></i>
-            </div>
+        {% include "shell/_sidebar_header.html" with icon="shield-check" eyebrow="Security Core" title="Gobierno de Accesos" %}
 
-            <div class="min-w-0">
-                <div class="text-xs font-black uppercase tracking-[0.22em] text-white/60 font-mono">
-                    Security Core
-                </div>
-                <h2 class="text-sm font-black uppercase tracking-tight text-white font-mono truncate">
-                    Gobierno de Accesos
-                </h2>
-            </div>
-        </div>
-
-        <p class="mt-4 text-xs font-bold uppercase tracking-wider text-white/60 leading-relaxed font-mono">
+        <p class="ax-sb-hide mt-4 text-xs font-bold uppercase tracking-wider text-white/60 leading-relaxed font-mono">
             Roles, permisos, matriz dinámica, auditoría y gobierno de plataforma.
         </p>
     </div>
@@ -117,7 +104,7 @@
 
     </nav>
 
-    <div class="p-4 border-t border-white/10">
+    <div class="ax-sb-hide p-4 border-t border-white/10">
         <div class="rounded-2xl border border-emerald-400/20 bg-emerald-500/10 p-4">
             <div class="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-300 font-mono">
                 <span class="h-2 w-2 rounded-full bg-emerald-400"></span>

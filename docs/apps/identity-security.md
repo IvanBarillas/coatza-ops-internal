@@ -63,6 +63,34 @@ Si se pierden dispositivo y códigos, se requiere intervención operativa autent
 fuera de la web, comprobación de identidad y registro del incidente; no hay bypass
 público por correo. No ejecutar un restablecimiento por una petición no verificada.
 
+### Procedimiento de emergencia: `--reset-mfa`
+
+Caso: el propietario perdió el teléfono, no accede a su correo y agotó los diez
+códigos de un solo uso. `mfa_replace_view` exige una sesión ya verificada, así que
+desde el navegador la cuenta no tiene salida (tampoco existe recuperación de
+contraseña por correo). Quien tenga acceso al servidor o al contenedor ejecuta:
+
+```bash
+uv run python manage.py bootstrap_axentra_owner --email <correo> --reset-mfa
+# en el contenedor: podman exec <web> uv run python manage.py bootstrap_axentra_owner --email <correo> --reset-mfa
+```
+
+Efecto: borra `TOTPDevice` y `StaticDevice` (con sus `StaticToken`) del propietario y
+cambia `session_version` con un `UPDATE` directo, lo que invalida todas sus sesiones
+abiertas (el hash de sesión incluye `password:session_version`). En su siguiente
+inicio de sesión la cuenta pasa por `mfa_setup` como una cuenta nueva; la contraseña,
+los roles y el historial se conservan. No hace nada si el propietario se acaba de
+crear o no tenía MFA, y lo informa por stdout.
+
+Límites: es un comando de operación, no una pantalla. Requiere el mismo nivel de
+confianza que ejecutar el bootstrap; no se expone por web a propósito, porque una
+ruta pública que omita MFA y correo sería justo el hueco que MFA evita. Como corre
+sin petición HTTP no escribe en la bitácora forense de la app: registrar el incidente
+en la bitácora operativa (quién lo pidió, cómo se verificó su identidad, quién lo
+ejecutó y cuándo). Buenas prácticas: mantener al menos dos superusuarios y guardar
+los códigos de recuperación fuera de línea. Nunca ejecutarlo por una petición no
+verificada. Pruebas: `apps/security/tests/test_bootstrap_owner.py`.
+
 Los secretos TOTP y tokens estáticos se almacenan según los modelos de django-otp:
 no afirmar que la BD los cifra. Proteger BD y backups, limitar acceso operativo y
 no registrar secretos. Las pantallas de administración de esos modelos se retiran

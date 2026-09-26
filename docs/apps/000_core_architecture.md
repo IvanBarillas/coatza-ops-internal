@@ -424,6 +424,49 @@ shell/base.html
     └── page-content
 ```
 
+### Sidebar contextual (`module-sidebar`)
+
+El contextual se pinta por dos caminos y ambos deben llevar el mismo marcado:
+
+- carga completa: `shell/workbench.html` (bloque `module_sidebar`);
+- swap de `#workbench` desde el menú global o un listado: los parciales
+  `*/workbench/*_workbench.html`, que incluyen `shell/_module_sidebar.html` con
+  `sidebar_template="<plantilla contextual>"`. Un parcial **no** declara su propio
+  `<aside id="module-sidebar">` (se quedaría sin botón; hay prueba de regresión).
+
+Ambos usan `shell/_module_sidebar_toggle.html`: el botón «/» de contraer
+(`data-axentra-sidebar-toggle`, `static/js/axentra-sidebar-collapse.js`). Contraído
+mide 5.5rem y solo muestra iconos, con transición de 0.4 s (`--ax-sb-time`,
+`--ax-sb-ease` en `shell/base.html`). El estado vive en `<html data-module-sidebar>` y
+en `localStorage` (`axentra.moduleSidebar`), aplicado desde `<head>` para evitar el
+parpadeo; no puede vivir en el bloque porque `#workbench` se re-renderiza en cada swap.
+
+Un contextual (Core o satélite) se adapta sin JS:
+
+- **encabezado**: `{% include "shell/_sidebar_header.html" with icon=... eyebrow=... title=... subtitle=... tone=... %}`
+  (o `avatar=` en lugar de `icon=`). Icono de 44 px `shrink-0` más textos con `ax-sb-hide`;
+  contraído queda solo el cuadrito centrado. No armar encabezados propios: sin `shrink-0`
+  el flexbox aplasta el icono al plegarse el texto;
+- **enlaces**: un icono `<i data-lucide>` y el texto en un `<span>` o suelto; el título
+  nativo (tooltip) se agrega solo desde su texto;
+- tarjetas de estado, párrafos y pies que no tengan sentido con solo iconos llevan
+  `ax-sb-hide` (se pliegan al contraer; alto/margen/relleno/opacidad a 0).
+
+Animar `height:auto` usa `interpolate-size` (Chromium/Safari); en Firefox el plegado es
+instantáneo y el resto sigue animado. `prefers-reduced-motion` desactiva la transición.
+
+Trampas conocidas de `shell/base.html`: un `*/` dentro de un comentario CSS (por
+ejemplo escribir `h-*/w-*`) lo cierra antes de tiempo y el navegador descarta en
+silencio la regla siguiente; hay una prueba que lo detecta. Y `{# #}` de Django es de
+una sola línea: para comentar varias, `{% comment %}`.
+
+### Encabezado de las listas
+
+Las listas usan `components/list_header.html` como tarjeta propia, sin envolverla en
+otra tarjeta (modelo: Usuarios). Los conteos van como chips del mismo encabezado con
+`count_total`, `count_active`, `count_inactive` (todos opcionales). No agregar
+tarjetas de totales que repitan el nombre del módulo o de la vista.
+
 Cambio de módulo:
 
 ```html

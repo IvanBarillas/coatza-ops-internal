@@ -87,12 +87,25 @@ antiguo después de reconstruir. Los volúmenes de base de datos, media y logs s
 mantienen. Un volumen `static_data` de despliegues anteriores queda sin usar; no
 es necesario eliminarlo para desplegar.
 
+### Integración continua
+
+`.github/workflows/ci.yml` corre en cada push y pull request a `main` y `develop`:
+`uv sync --frozen`, `manage.py check`, `collectstatic --noinput` y `manage.py test`,
+sin variables especiales (development.py trae valores por defecto seguros y cae a
+SQLite). Para que un pipeline en rojo bloquee el merge, activar «Require status
+checks» en la protección de rama de GitHub (job `django-checks`); es un ajuste del
+repositorio, no de código.
+
 ```bash
 # Comprobación local sin depender de .env.dev ni tocar la base de datos real:
 DJANGO_ENV=build uv run python manage.py check
 DJANGO_ENV=build uv run python manage.py test apps.shared.tests apps.security.tests
 uv run python tools/tailwind.py build
 DJANGO_ENV=build uv run python manage.py collectstatic --noinput
+
+# En un checkout limpio (staticfiles/ está ignorado por git) hay que correr
+# collectstatic ANTES de las pruebas: WhiteNoise usa un manifiesto y cualquier
+# {% static %} falla con "Missing staticfiles manifest entry" sin él.
 
 # Con .env.prod preparado:
 podman-compose --env-file .env.prod -p axentra-municipio -f docker-compose.prod.yml up --build -d

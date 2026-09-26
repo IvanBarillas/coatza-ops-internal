@@ -2,14 +2,9 @@
 
 <aside class="flex h-full w-full flex-col bg-brand-primary text-white">
     <div class="border-b border-white/10 px-5 py-5">
-        <div class="flex items-center gap-3">
-            <div class="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/10 text-white shadow-sm"><i data-lucide="settings" class="h-5 w-5"></i></div>
-            <div class="min-w-0">
-                <p class="font-mono text-xs font-black uppercase tracking-[0.22em] text-white/60">Axentra Core</p>
-                <h2 class="truncate font-mono text-sm font-black uppercase tracking-tight text-white">Configuración</h2>
-            </div>
-        </div>
-        <p class="mt-3 font-mono text-xs font-bold uppercase leading-relaxed tracking-wide text-white/60">Identidad institucional, municipio activo y parámetros oficiales del sistema.</p>
+        {% include "shell/_sidebar_header.html" with icon="settings" eyebrow="Axentra Core" title="Configuración" %}
+
+        <p class="ax-sb-hide mt-3 font-mono text-xs font-bold uppercase leading-relaxed tracking-wide text-white/60">Identidad institucional, municipio activo y parámetros oficiales del sistema.</p>
     </div>
 
     <nav class="flex-1 space-y-1 overflow-y-auto px-4 py-4 font-mono">

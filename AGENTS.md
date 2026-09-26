@@ -77,6 +77,13 @@ estáticos compilados y Argon2/axes forman parte de autenticación y protección
 
 ## Frontend y validación
 
+- Sidebar contextual: los parciales `*_workbench.html` incluyen `shell/_module_sidebar.html`
+  (nunca su propio `<aside id="module-sidebar">`); encabezado con
+  `shell/_sidebar_header.html`; lo que no sirva con solo iconos lleva `ax-sb-hide`.
+  Listas: `components/list_header.html` sin tarjeta envolvente, conteos con `count_*`.
+  En `shell/base.html` no escribir `*/` dentro de comentarios CSS. Ver
+  docs/apps/000_core_architecture.md (Sidebar contextual).
+
 Usar los comandos del README. `uv sync --frozen` instala dependencias.
 `uv run python tools/tailwind.py install` descarga el CLI de versión/SHA256 fijados;
 `build` compila y `watch` recompila. No requiere Node.js. Actualizar el lock del CLI
@@ -97,6 +104,9 @@ uv run python tools/tailwind.py build
 DJANGO_ENV=build uv run python manage.py collectstatic --noinput
 ```
 
+En un checkout limpio correr `collectstatic --noinput` antes de las pruebas (manifiesto de
+WhiteNoise); el CI (`.github/workflows/ci.yml`) hace `uv sync --frozen`, check, collectstatic
+y test en cada push/PR a `main`/`develop`.
 Las pruebas usan su base aislada; no usar la base real para fixtures destructivos.
 La ausencia de `.env.build` produce una advertencia esperada. No ocultar errores
 reales de compilación, referencias a assets faltantes ni fallos de pruebas.
@@ -157,7 +167,9 @@ Regla: cada dependencia accede a sus datos; otras dependencias requieren una
 autorización explícita, sin herencia jerárquica. El contrato inicial está en
 `apps.shared.module_sdk.data_access` y se documenta en
 [docs/apps/data-access.md](docs/apps/data-access.md).
-El SDK requiere adopción explícita en consumidores y no cambia automáticamente
+`Dependencia.parent` es solo organigrama; una dependencia padre ve a sus hijas con
+autorizaciones explícitas, replicables con la acción del Admin «Otorgar acceso a las
+dependencias hijas». El SDK requiere adopción explícita en consumidores y no cambia automáticamente
 el alcance administrativo de los paneles existentes. La migración 0010 crea
 las autorizaciones; aplicarla antes de utilizar este contrato.
 
@@ -181,7 +193,9 @@ Cuentas/Organigrama/satélites exigen membresía y permiso fino aun para superus
 No reintroducir bypass global en loaders, gates o navegación. SudoMiddleware exige
 reautenticación de 300 s en mutaciones administrativas; satélites adoptan
 `sudo_required` además del gate. Leer `docs/apps/administrative-authority.md`.
-Roles owner/admin funcionales requieren MFA. Cambios en flags administrativos usan
+Roles owner/admin funcionales requieren MFA. Recuperación de un propietario sin
+dispositivo, correo ni códigos: `bootstrap_axentra_owner --email <correo> --reset-mfa`
+(solo con acceso al servidor; ver docs/apps/identity-security.md), nunca una ruta web. Cambios en flags administrativos usan
 User.save() para invalidar sesiones; no sustituirlo por update/SQL directo.
 
 ## Fase 4 — auditoría y continuidad

@@ -56,6 +56,25 @@ No propaga acceso a hijas de la dependencia destino. Una autorización de consul
 no autoriza a modificar. Si se reactiva una membresía, sus excepciones todavía
 vigentes vuelven a ser evaluadas; revocarlas explícitamente cuando corresponda.
 
+### Acceso de una dependencia padre a sus hijas
+
+`Dependencia.parent` solo describe el organigrama; **no concede acceso por sí mismo**
+(no hay herencia). Cuando una dependencia superior necesita ver a sus subordinadas se
+usa una autorización explícita por cada hija, sin perder la trazabilidad. Para no
+capturarlas una por una, el Admin de `DepartmentAccessGrant` incluye la acción
+«Otorgar acceso a las dependencias hijas»:
+
+1. Capturar UNA autorización normal (membresía, dependencia de origen = la padre,
+   destino = cualquiera de sus hijas, permiso fino, motivo, vigencia opcional).
+2. Seleccionarla en la lista y ejecutar la acción: se crea una autorización
+   equivalente hacia cada hija directa activa que aún no la tenga (idempotente).
+
+Cada fila resultante es un `DepartmentAccessGrant` propio: queda en la bitácora
+forense (`ASSIGN` / `DEPARTMENT_ACCESS`), se revoca de forma individual con
+`is_active=False` y no cambia si luego se mueve el organigrama. No cubre nietas ni
+hijas creadas después: repetir la acción. Membresía y dependencias se eligen con
+autocomplete (búsqueda por correo/nombre), no con UUID.
+
 La migración `0010_department_access_grants` añade una tabla y no otorga excepciones
 ni altera roles existentes. Aplicarla con el procedimiento de migraciones del
 entorno antes de usar el SDK/Admin. No se ejecuta desde el build de la imagen.
