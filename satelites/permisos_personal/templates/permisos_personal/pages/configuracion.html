@@ -1,0 +1,4 @@
+{% extends "shell/workbench.html" %}
+{% block title %}Permisos del personal | {{ tenant.app_name }}{% endblock %}
+{% block module_sidebar %}{% include "permisos_personal/contextual/sidebar.html" %}{% endblock %}
+{% block page_content %}{% include "permisos_personal/content/configuracion.html" %}{% endblock %}

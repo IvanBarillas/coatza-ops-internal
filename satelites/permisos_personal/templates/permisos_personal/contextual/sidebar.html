@@ -1,0 +1,14 @@
+<div class="flex h-full w-full flex-col bg-brand-primary font-mono text-white select-none">
+    <div class="border-b border-white/10 p-5">
+        {% include "shell/_sidebar_header.html" with icon="calendar-days" eyebrow="Recursos humanos" title="Permisos del personal" %}
+    </div>
+    <nav class="flex-1 space-y-1 overflow-y-auto p-3">
+        {% for item in sidebar_items %}
+            <a href="{{ item.href }}" hx-get="{{ item.href }}" hx-target="#page-content" hx-swap="innerHTML" hx-push-url="true"
+               {% if item.active %}aria-current="page"{% endif %}
+               class="flex min-h-11 items-center gap-2 rounded-xl border-l-4 px-3 py-2.5 text-xs font-black uppercase tracking-widest transition-colors {% if item.active %}border-brand-accent bg-white/15 text-white{% else %}border-transparent text-white/70 hover:bg-white/10 hover:text-white{% endif %}">
+                <i data-lucide="{{ item.icon }}" class="h-4 w-4 shrink-0"></i><span class="truncate">{{ item.name }}</span>
+            </a>
+        {% endfor %}
+    </nav>
+</div>

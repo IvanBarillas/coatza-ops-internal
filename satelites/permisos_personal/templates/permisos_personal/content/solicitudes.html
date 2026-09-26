@@ -1,0 +1,56 @@
+{% include "permisos_personal/contextual/_menu_movil.html" %}
+{% url 'permisos_personal:solicitudes' as lista_url %}
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
+    {% include "components/list_header.html" with module_label="Permisos" status_label="Control" title="Solicitudes" description="Vacaciones y días económicos de todo el personal. Marque «Validada» cuando la solicitud esté revisada: por ahora es solo un control, no una aprobación." icon="clipboard-check" %}
+    {% include "permisos_personal/content/_mensajes.html" %}
+    <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" role="tablist">
+        {% for e in estados %}
+        <a href="{{ lista_url }}?estado={{ e.clave }}&amp;anio={{ anio }}" hx-get="{{ lista_url }}?estado={{ e.clave }}&amp;anio={{ anio }}" hx-target="#page-content" hx-push-url="true" role="tab"
+           class="rounded-2xl border border-gray-200 bg-white p-3 text-center text-gray-600 shadow-sm transition {% if e.activa %}ring-2 ring-gray-950{% endif %}"><div class="text-2xl font-black">{{ e.total }}</div><div class="mt-0.5 text-xs font-black uppercase tracking-widest">{{ e.nombre }}</div></a>
+        {% endfor %}
+    </div>
+    <form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true" class="flex flex-wrap gap-2">
+        <input type="hidden" name="estado" value="{{ estado }}">
+        <input type="number" name="anio" value="{{ anio }}" min="2000" max="2100" aria-label="Año" class="w-24 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700">
+        <select name="tipo" aria-label="Tipo" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700"><option value="">Todo tipo</option>{% for v, n in tipos %}<option value="{{ v }}" {% if tipo == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select>
+        <select name="sede" aria-label="Sede" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700"><option value="">Todas las sedes</option>{% for uuid, nombre in sedes %}<option value="{{ uuid }}" {% if sede == uuid %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select>
+        <input type="search" name="q" value="{{ texto }}" placeholder="Nombre del empleado…" aria-label="Buscar empleado" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+        <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Filtrar</button>
+    </form>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+        <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                    <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Empleado</th><th class="py-4 px-6 font-semibold">Solicitud</th><th class="py-4 px-6 font-semibold">Días</th><th class="py-4 px-6 font-semibold">Cobertura</th><th class="py-4 px-6 font-semibold">Validación</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
+                {% for s in pagina %}
+                    <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100 {% if not s.activa %}opacity-60{% endif %}">
+                        <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'permisos_personal:empleado_detalle' s.empleado_id %}" hx-get="{% url 'permisos_personal:empleado_detalle' s.empleado_id %}" hx-target="#page-content" hx-push-url="true">{{ s.empleado.nombre }}</a><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ s.empleado.get_tipo_display }}{% if s.sede_nombre %} · {{ s.sede_nombre }}{% endif %}</div></td>
+                        <td class="py-5 px-6 align-middle"><div class="text-[15px] font-black text-gray-900">{{ s.get_tipo_display }}</div><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ s.fecha_inicio|date:"d/m/Y" }} al {{ s.fecha_fin|date:"d/m/Y" }}</div></td>
+                        <td class="py-5 px-6 align-middle">{{ s.dias }}</td>
+                        <td class="py-5 px-6 align-middle">{% if s.bajo_umbral %}<span class="inline-flex items-center rounded-lg border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-700">Bajo mínimo · {{ s.bajo_umbral|length }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                        <td class="py-5 px-6 align-middle">
+                            {% if not s.activa %}<span class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-600">Cancelada</span>
+                            {% elif puede_validar %}
+                            <div class="flex flex-wrap items-center gap-2">
+                                <form method="post" action="{% url 'permisos_personal:solicitud_validar' s.pk %}">{% csrf_token %}<input type="hidden" name="volver" value="{{ volver }}"><input type="hidden" name="validado" value="{% if s.validado %}0{% else %}1{% endif %}">
+                                    <button type="submit" class="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-black uppercase tracking-wider {% if s.validado %}border-emerald-200 bg-emerald-50 text-emerald-700{% else %}border-gray-200 bg-white text-gray-500 hover:border-gray-950{% endif %}" title="{% if s.validado %}Quitar la validación{% else %}Marcar como validada{% endif %}"><span class="inline-flex h-4 w-4 items-center justify-center rounded border {% if s.validado %}border-emerald-500 bg-emerald-500 text-white{% else %}border-gray-300{% endif %}">{% if s.validado %}✓{% endif %}</span>{% if s.validado %}Validada{% else %}Validar{% endif %}</button></form>
+                                <form method="post" action="{% url 'permisos_personal:solicitud_cancelar' s.pk %}" class="flex items-center gap-1">{% csrf_token %}<input type="hidden" name="volver" value="{{ volver }}"><input type="text" name="motivo" required minlength="5" placeholder="Motivo para cancelar" aria-label="Motivo" class="w-36 rounded-lg border border-gray-200 bg-gray-50/70 px-2 py-1.5 text-[14px] text-gray-700"><button type="submit" class="rounded-lg border border-gray-200 bg-white px-2 py-1.5 text-xs font-black uppercase tracking-wider text-red-600">Cancelar</button></form>
+                            </div>
+                            {% else %}{% if s.validado %}<span class="inline-flex items-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-700">Validada</span>{% else %}<span class="inline-flex items-center rounded-lg border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-700">Por validar</span>{% endif %}{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}<tr><td colspan="5" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">No hay solicitudes con estos filtros.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% if pagina.paginator.num_pages > 1 %}
+    <nav class="flex items-center justify-center gap-3 text-xs">
+        {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
+        <span class="text-gray-500">Página {{ pagina.number }} de {{ pagina.paginator.num_pages }}</span>
+        {% if pagina.has_next %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query }}&amp;pagina={{ pagina.next_page_number }}" hx-get="?{{ query }}&amp;pagina={{ pagina.next_page_number }}">Siguiente</a>{% endif %}
+    </nav>
+    {% endif %}
+</div>
