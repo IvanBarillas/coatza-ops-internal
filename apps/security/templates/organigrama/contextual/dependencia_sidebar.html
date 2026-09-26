@@ -1,13 +1,6 @@
 <aside class="flex h-full w-full flex-col bg-brand-primary text-white">
     <div class="border-b border-white/10 p-5">
-        <div class="flex items-start gap-3">
-            <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-brand-accent/20 bg-brand-accent/20 text-white"><i data-lucide="building-2" class="h-5 w-5"></i></div>
-            <div class="min-w-0 ax-sb-hide">
-                <p class="font-mono text-xs font-black uppercase tracking-[0.18em] text-white/60">Expediente de Dependencia</p>
-                <h2 class="mt-1 truncate text-sm font-black leading-tight text-white">{{ dependencia.nombre }}</h2>
-                <p class="mt-1 truncate font-mono text-xs font-bold uppercase tracking-widest text-white/60">{{ dependencia.slug|default:"sin-slug" }}</p>
-            </div>
-        </div>
+        {% include "shell/_sidebar_header.html" with icon="building-2" tone="accent" eyebrow="Expediente de Dependencia" title=dependencia.nombre subtitle=dependencia.slug|default:"sin-slug" %}
 
         <div class="ax-sb-hide mt-5 grid grid-cols-2 gap-2">
             <div class="rounded-2xl border border-white/10 bg-white/5 p-3">
