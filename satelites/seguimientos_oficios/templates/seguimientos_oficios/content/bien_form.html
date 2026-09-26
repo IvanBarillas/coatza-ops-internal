@@ -1,5 +1,5 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-2xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-2xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% url 'seguimientos_oficios:bienes' as volver_url %}
     {% if bien %}{% include "components/form_header.html" with module_label="Oficios" mode_label="Bien" title=bien.nombre description="Corrige los datos del bien o cambia su estado." icon="package" back_url=volver_url back_label="Volver a bienes" %}
     {% else %}{% include "components/form_header.html" with module_label="Oficios" mode_label="Nuevo bien" title="Nuevo bien" description="Da de alta un bien que la dirección puede prestar." icon="package-plus" back_url=volver_url back_label="Volver a bienes" %}{% endif %}

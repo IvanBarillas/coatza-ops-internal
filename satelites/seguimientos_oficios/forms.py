@@ -92,25 +92,25 @@ class DocumentoForm(forms.ModelForm):
         self.hay_folio_manual = any(d.folio_manual for d in self.fields["direccion"].queryset)
         for campo in self.fields.values():
             campo.widget.attrs.setdefault(
-                "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+                "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
             )
 
 
 class EntregaForm(forms.Form):
     fecha_entrega = forms.DateField(
         label="Fecha de entrega",
-        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
+        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
     )
     receptor = forms.CharField(
         label="Recibió la entrega", max_length=200,
-        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
+        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
     )
 
 
 class CancelacionForm(forms.Form):
     motivo = forms.CharField(
         label="Motivo de la cancelación", min_length=10,
-        widget=forms.Textarea(attrs={"rows": 3, "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}),
+        widget=forms.Textarea(attrs={"rows": 3, "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}),
         help_text="Ej. Error en el número de serie del equipo X.",
     )
 
@@ -119,7 +119,7 @@ class AdjuntoForm(forms.Form):
     rol = forms.CharField(required=False, widget=forms.HiddenInput)
     archivo = forms.FileField(
         label="Archivo (PDF o foto)",
-        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf,image/*", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
+        widget=forms.ClearableFileInput(attrs={"accept": "application/pdf,image/*", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-[14px] font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-[14px] file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
     )
 
 
@@ -149,7 +149,7 @@ class FiltroDocumentosForm(forms.Form):
             (str(g.pk), g.nombre) for g in gestores
         ]
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
 class DireccionForm(forms.ModelForm):
@@ -175,7 +175,7 @@ class DireccionForm(forms.ModelForm):
             self.fields["dependencia"].initial = str(self.instance.dependencia_uuid)
         for nombre, campo in self.fields.items():
             if nombre not in ("is_active", "folio_manual", "vales_habilitados", "soporte_habilitado"):
-                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
+                campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def save(self, commit=True):
         valor = self.cleaned_data.get("dependencia")
@@ -197,7 +197,7 @@ class NomenclaturaForm(forms.ModelForm):
             usadas = direccion.nomenclaturas.values_list("clase", flat=True)
             self.fields["clase"].choices = [(v, e) for v, e in ClaseDocumento.choices if v not in usadas]
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
     def clean(self):
         datos = super().clean()
@@ -252,7 +252,7 @@ class DocumentoEdicionForm(forms.Form):
         else:
             self.fields.pop("gestor")
         for campo in self.fields.values():
-            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
+            campo.widget.attrs.setdefault("class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white")
 
 
 class GestorForm(forms.ModelForm):
@@ -295,7 +295,7 @@ class CategoriaForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.direccion = direccion or getattr(self.instance, "direccion", None)
         self.fields["nombre"].widget.attrs.setdefault(
-            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
         )
 
     def clean_nombre(self):
@@ -318,7 +318,7 @@ class CategoriaBienForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
         self.direccion = direccion or getattr(self.instance, "direccion", None)
         self.fields["nombre"].widget.attrs.setdefault(
-            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+            "class", "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
         )
 
     def validate_unique(self):
@@ -340,13 +340,13 @@ class CategoriaBienForm(forms.ModelForm):
 class GestorEntregaForm(forms.Form):
     fecha_entrega = forms.DateField(
         label="Fecha de entrega", required=False,
-        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
+        widget=forms.DateInput(attrs={"type": "date", "class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"}, format="%Y-%m-%d"),
     )
     receptor = forms.CharField(
         label="Quién recibió", max_length=200, required=False,
-        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
+        widget=forms.TextInput(attrs={"class": "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white", "placeholder": "Nombre de quien recibió"}),
     )
     archivo = forms.FileField(
         label="Foto o PDF del acuse", required=False,
-        widget=forms.ClearableFileInput(attrs={"accept": "image/*,application/pdf", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
+        widget=forms.ClearableFileInput(attrs={"accept": "image/*,application/pdf", "class": "w-full cursor-pointer rounded-xl border border-gray-200 bg-gray-50/70 text-[14px] font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-2.5 file:text-[14px] file:font-black file:uppercase file:tracking-widest file:text-white hover:file:brightness-110"}),
     )

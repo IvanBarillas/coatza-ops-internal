@@ -1,6 +1,6 @@
 {% load oficios_fechas %}
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="w-full space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
     {% url 'seguimientos_oficios:bienes' as volver_url %}
     {% include "components/form_header.html" with module_label="Préstamos" mode_label="Bien" title=bien.nombre description="Datos del bien, sus préstamos y todo lo que le ha pasado." icon="package" back_url=volver_url back_label="Volver a bienes" %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}

@@ -1,5 +1,5 @@
 {% include "telefonia/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-2xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-2xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% url 'telefonia:reporte_detalle' reporte.pk as volver_url %}
     {% include "components/form_header.html" with module_label="Telefonía" mode_label="Corregir" title="Corregir reporte" description=reporte.folio icon="phone-call" back_url=volver_url back_label="Volver al reporte" %}
     <p class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">La línea no cambia: si se reportó la línea equivocada, cancele el reporte y levante otro. Cada corrección queda en el seguimiento.</p>

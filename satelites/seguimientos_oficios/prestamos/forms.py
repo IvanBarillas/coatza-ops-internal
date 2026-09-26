@@ -8,7 +8,7 @@ from ..forms import _agregar_contraparte, _resolver_contraparte
 from ..models import Bien, CategoriaBien, Gestor
 from .services import exigir_motivo_de_estado
 
-CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
 
 
 class BienForm(forms.ModelForm):

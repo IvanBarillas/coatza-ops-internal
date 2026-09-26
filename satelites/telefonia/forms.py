@@ -6,7 +6,7 @@ from django.utils import timezone
 from .mapa import coordenadas_de_texto
 from .models import Evidencia, Linea, normalizar_identificador
 
-CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
+CLASE = "w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white"
 FECHA = forms.DateInput(attrs={"type": "date"}, format="%Y-%m-%d")
 
 

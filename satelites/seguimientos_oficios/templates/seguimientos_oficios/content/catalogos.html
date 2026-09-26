@@ -1,5 +1,5 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="w-full space-y-4 font-mono">
+<div class="w-full space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% url 'seguimientos_oficios:direccion_crear' as nueva_url %}
     {% include "components/list_header.html" with module_label="Oficios" status_label="Catálogos" title="Direcciones" description="Direcciones, nomenclaturas de folio y gestores." icon="layers" action_url=nueva_url action_label="Nueva dirección" %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}

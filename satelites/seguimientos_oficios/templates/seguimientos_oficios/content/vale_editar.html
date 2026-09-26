@@ -1,5 +1,5 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-2xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-2xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% url 'seguimientos_oficios:documento_detail' documento.pk as volver_url %}
     {% include "components/form_header.html" with module_label="Préstamos" mode_label="Corregir" title="Corregir vale" description=documento.folio icon="hand-coins" back_url=volver_url back_label="Volver al vale" %}
     <p class="rounded-xl border border-gray-200 bg-white px-4 py-3 text-xs text-gray-500">Los bienes del vale no cambian: si se equivocó de bien, cancela el vale y genera otro. La serie o el nombre de un bien se corrigen en el propio bien (Bienes → Editar) y el vale los muestra al imprimirse.</p>
