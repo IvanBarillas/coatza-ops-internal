@@ -9,6 +9,7 @@ MODULE_MANIFEST = ModuleManifest(
     url_prefix="app/eventos/",
     icon="calendar-clock",
     dependencies=("security", "accounts", "organigrama"),
+    optional_integrations=("prestamos.vales",),
     default_enabled=False,
     can_disable=True,
 )

@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 from . import selectors as sel
 from . import services
 from .forms import AsignarForm, EventoForm, TextoForm, TramiteForm, ValeForm
-from .integracion import proteger_vista, url_de_vale
+from .integracion import proteger_vista, vales
 from .models import Asignacion, Evento, TramiteLinea, ValeSalida
 from .selectors import APP_SLUG, permitido
 
@@ -157,6 +157,13 @@ def evento_form_view(request, pk=None):
 
 # ---- Detalle y acciones -------------------------------------------------------------------------------------------
 
+def _opciones_de_vales(request, evento):
+    """Vales que el satélite de préstamos ofrece (los abiertos que el usuario puede ver) y que aún no están en el evento."""
+    ya = set(evento.vales.exclude(ref_id=None).values_list("ref_id", flat=True))
+    fichas = vales().buscar(request, "", limite=50) or []
+    return [(f["id"], f"{f['etiqueta']} — {f['detalle']}"[:200]) for f in fichas if f["id"] not in {str(x) for x in ya}]
+
+
 def _accion(request, evento, accion):
     """Ejecuta una acción del detalle. Devuelve el formulario con errores si no es válido, o None."""
     usuario = request.user
@@ -184,9 +191,16 @@ def _accion(request, evento, accion):
         services.quitar_tecnico(get_object_or_404(Asignacion, pk=request.POST.get("id"), evento=evento), usuario=usuario)
         messages.success(request, "Tramo quitado.")
     elif accion == "vale":
-        form = ValeForm(request.POST)
+        form = ValeForm(request.POST, opciones=_opciones_de_vales(request, evento))
         if form.is_valid():
-            services.vincular_vale(evento, usuario=usuario, **form.cleaned_data)
+            datos = form.cleaned_data
+            ref_id = etiqueta = None
+            if datos["vale"]:
+                ficha = vales().resolver(request, datos["vale"])
+                if not ficha:
+                    raise ValidationError("Ese vale ya no está disponible o no tiene permiso para verlo.")
+                ref_id, etiqueta = ficha["id"], ficha["etiqueta"]
+            services.vincular_vale(evento, usuario=usuario, referencia=datos["referencia"], nota=datos["nota"], ref_id=ref_id, etiqueta=etiqueta or "")
             messages.success(request, "Vale vinculado.")
             return None
         return form
@@ -242,14 +256,16 @@ def evento_detalle_view(request, pk):
     asignaciones = list(evento.asignaciones.select_related("tecnico"))
     for a in asignaciones:
         a.avisos = services.empalmes(a.tecnico, a.desde, a.hasta, excluir=evento) if evento.abierto else []
-    vales = list(evento.vales.all())
-    for v in vales:
-        v.url = url_de_vale(v.referencia)
+    vinculados = list(evento.vales.all())
+    for v in vinculados:
+        v.ficha = vales().resolver(request, v.ref_id) if v.ref_id else None
+        v.url = v.ficha["url"] if v.ficha else None
+        v.titulo = (v.ficha or {}).get("etiqueta") or v.etiqueta or v.referencia
     return _render(request, "evento_detalle", {
-        "evento": evento, "asignaciones": asignaciones, "vales": vales, "tramites": list(evento.tramites.all()),
+        "evento": evento, "asignaciones": asignaciones, "vales": vinculados, "tramites": list(evento.tramites.all()),
         "bitacora": list(evento.bitacora.all()[:50]), "estados_tramite": TramiteLinea.Estado.choices,
         "puede_gestionar": permitido(request, "can_manage_events"), "puede_notas": permitido(request, "can_add_notes"),
-        "form_asignar": formularios.get("asignar") or AsignarForm(), "form_vale": formularios.get("vale") or ValeForm(),
+        "form_asignar": formularios.get("asignar") or AsignarForm(), "form_vale": formularios.get("vale") or ValeForm(opciones=_opciones_de_vales(request, evento)), "vales_disponibles": vales().available,
         "form_tramite": formularios.get("tramite") or TramiteForm(), "form_nota": formularios.get("nota") or TextoForm(),
         "asignar_desde": evento.inicio, "asignar_hasta": evento.fin,
     })

@@ -6,3 +6,9 @@ class SeguimientosOficiosConfig(AppConfig):
     name = "satelites.seguimientos_oficios"
     label = "seguimientos_oficios"
     verbose_name = "Seguimiento de Oficios"
+
+    def ready(self):
+        from .integracion import registrar_proveedor
+        from .proveedores import ProveedorVales
+
+        registrar_proveedor(ProveedorVales.NOMBRE, ProveedorVales())

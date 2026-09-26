@@ -56,13 +56,15 @@
         <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Vales de salida ({{ vales|length }})</h2>
         {% if not vales %}<p class="text-xs text-gray-400">Sin vales vinculados.</p>{% endif %}
         <ul class="divide-y divide-gray-100 text-xs">{% for v in vales %}
-            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ v.referencia }}</b>{% if v.nota %} · <span class="text-gray-500">{{ v.nota }}</span>{% endif %}</span>
+            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ v.titulo }}</b>{% if v.ficha %} <span class="rounded-lg border border-gray-200 px-2 py-0.5 text-[12px] font-black uppercase tracking-wider text-gray-600">{{ v.ficha.estado|cut:"_" }}</span>{% endif %}{% if v.nota %} · <span class="text-gray-500">{{ v.nota }}</span>{% endif %}</span>
                 <span class="flex items-center gap-3">{% if v.url %}<a href="{{ v.url }}" target="_blank" rel="noopener" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wider text-brand-accent">Abrir vale</a>{% endif %}
                 {% if puede_gestionar and e.abierto %}<form method="post">{% csrf_token %}<input type="hidden" name="accion" value="quitar_vale"><input type="hidden" name="id" value="{{ v.pk }}"><button type="submit" class="text-xs font-bold text-red-600 underline">Quitar</button></form>{% endif %}</span></li>
         {% endfor %}</ul>
         {% if puede_gestionar and e.abierto %}
         <form method="post" class="mt-4 flex flex-wrap items-end gap-3 border-t border-gray-100 pt-4">{% csrf_token %}<input type="hidden" name="accion" value="vale">
-            <div class="min-w-48 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_vale.referencia.id_for_label }}">Vale (número o UUID)</label>{{ form_vale.referencia }}{% for x in form_vale.referencia.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            {% for x in form_vale.non_field_errors %}<p class="w-full text-xs text-red-600">{{ x }}</p>{% endfor %}
+            {% if vales_disponibles %}<div class="min-w-64 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_vale.vale.id_for_label }}">Vale del sistema (abiertos)</label>{{ form_vale.vale }}{% for x in form_vale.vale.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>{% endif %}
+            <div class="min-w-48 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_vale.referencia.id_for_label }}">{% if vales_disponibles %}O escriba su número{% else %}Vale (número o UUID){% endif %}</label>{{ form_vale.referencia }}{% for x in form_vale.referencia.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
             <div class="min-w-48 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_vale.nota.id_for_label }}">Qué se lleva</label>{{ form_vale.nota }}</div>
             <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Vincular vale</button>
         </form>

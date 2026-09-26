@@ -2,12 +2,11 @@
 
 Ningún otro módulo de la app importa `apps.*`. Para vivir sin el Core basta con reimplementar este archivo.
 """
-import uuid
-
 from apps.security.decorators import axentra_module_gate
 from apps.shared.module_sdk import ModuleManifest
+from apps.shared.module_sdk.integrations import integration_registry
 
-__all__ = ["ModuleManifest", "nombre_de_usuario", "proteger_vista", "url_de_vale", "usuarios_con_acceso", "usuario_de_prueba"]
+__all__ = ["ModuleManifest", "nombre_de_usuario", "proteger_vista", "vales", "usuarios_con_acceso", "usuario_de_prueba"]
 
 
 def proteger_vista(codigo, permiso):
@@ -41,18 +40,6 @@ def usuario_de_prueba(correo, nombre, apellidos):
     return usuario
 
 
-def url_de_vale(referencia):
-    """Dirección para abrir un vale de salida del satélite de préstamos, si está instalado (opcional).
-
-    Con un UUID abre el vale; con un folio o número lleva a la lista de vales. Sin el satélite devuelve None.
-    """
-    from django.urls import NoReverseMatch, reverse
-
-    try:
-        return reverse("seguimientos_oficios:vale_imprimir", args=[uuid.UUID(str(referencia).strip())])
-    except (ValueError, NoReverseMatch):
-        pass
-    try:
-        return reverse("seguimientos_oficios:vales")
-    except NoReverseMatch:
-        return None
+def vales():
+    """Capacidad opcional `prestamos.vales` (vales de salida). Sin el satélite que la ofrece devuelve una integración nula."""
+    return integration_registry.resolve("prestamos.vales")
