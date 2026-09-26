@@ -118,11 +118,12 @@ Este repo (`coatza-ops-internal`) aloja las apps internas del departamento sobre
 Core de Axentra. Remotos: `upstream` = Core (`axentra-core-django`), solo lectura,
 nunca hacer push ni modificar el Core; `origin` = este repo.
 
-Ramas: `main` es espejo del Core; solo recibe cambios cuando el Core cambia
-(`git fetch upstream` y merge, sin trabajo propio). `develop` es la línea de trabajo
-propia (nuestro "main"): de ahí salen las ramas `feature/...` y `fix/...` y ahí se
-integran. Tras actualizar `main` desde el Core, traerlo a `develop` con merge.
-Revisar estado y ramas antes de editar; preservar cambios del usuario. Sin
+Ramas: `main` es la rama principal del proyecto y `develop` su espejo de trabajo: tras cada
+integración deben quedar iguales. Lo del Core se baja con `git fetch upstream` y merge en `main`
+(nunca se sube nada a `upstream`; el Core no se modifica desde este repo); luego se trae `main` a
+`develop` con merge. Las ramas `feature/...` y `fix/...` salen de `develop`; al terminar se integran
+con merge a `develop` y a `main`, y se suben ambas a `origin`. `feature/despliegue-piloto` es la
+excepción: solo local, no se sube ni se integra a `main`. Revisar estado y ramas antes de editar; preservar cambios del usuario. Sin
 reescritura forzada de historia ni mover ramas históricas solo para alinearlas.
 Sí requiere autorización explícita: force-push, reescribir historia, push a remotos
 nuevos, publicar ramas de trabajo o abrir PR.
