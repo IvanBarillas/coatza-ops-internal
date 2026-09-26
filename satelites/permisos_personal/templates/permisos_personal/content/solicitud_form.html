@@ -1,0 +1,28 @@
+{% include "permisos_personal/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-3xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
+    {% url 'permisos_personal:mis_solicitudes' as volver_url %}
+    {% include "components/form_header.html" with module_label="Permisos" mode_label="Nueva solicitud" title="Nueva solicitud" description="Vacaciones (lunes a viernes) o día económico (no puede ser sábado ni domingo). Se registra al momento y descuenta su saldo." icon="calendar-plus" back_url=volver_url back_label="Volver a mis permisos" %}
+    {% if not form %}
+    <p class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-xs text-amber-800">Todavía no está dado de alta como empleado. Pida a control que lo registre.</p>
+    {% else %}
+    <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {% for s in saldos %}<div class="rounded-xl border border-gray-200/80 bg-white px-3 py-2 text-center"><div class="text-xs uppercase text-gray-400">{{ s.etiqueta }} · P{{ s.periodo }}</div><div class="text-xl font-black text-gray-900">{{ s.disponibles }}<span class="text-xs font-normal text-gray-400"> / {{ s.asignados }}</span></div></div>{% endfor %}
+    </div>
+    <form method="post" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm sm:p-6">
+        {% csrf_token %}
+        {% for e in form.non_field_errors %}<p class="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">{{ e }}</p>{% endfor %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% for campo in form %}
+            <div class="{% if campo.name == 'tipo' or campo.name == 'comentarios' %}sm:col-span-2{% endif %}">
+                <label for="{{ campo.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ campo.label }}</label>
+                {{ campo }}
+                {% if campo.help_text %}<p class="mt-1 text-xs text-gray-400">{{ campo.help_text }}</p>{% endif %}
+                {% for e in campo.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        <p class="mt-4 text-xs text-gray-400">La solicitud debe quedar dentro de un mismo periodo (enero a junio o julio a diciembre). Si la cobertura de su sede queda por debajo del mínimo, se le avisará, pero la solicitud se registra.</p>
+        <div class="mt-6 flex justify-center"><button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Registrar solicitud</button></div>
+    </form>
+    {% endif %}
+</div>

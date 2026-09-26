@@ -1,0 +1,16 @@
+{% if sidebar_items|length > 1 %}
+<details class="group mb-4 rounded-2xl border border-gray-200/80 bg-white shadow-sm lg:hidden" data-menu-movil>
+    <summary class="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 px-4 py-2 text-xs font-black uppercase text-gray-700">
+        <span class="flex items-center gap-2"><i data-lucide="menu" class="h-4 w-4"></i>{% for item in sidebar_items %}{% if item.active %}{{ item.name }}{% endif %}{% empty %}Menú{% endfor %}</span>
+        <i data-lucide="chevron-down" class="h-4 w-4 transition-transform group-open:rotate-180"></i>
+    </summary>
+    <nav class="space-y-1 border-t border-gray-100 p-2">
+        {% for item in sidebar_items %}
+        <a href="{{ item.href }}" hx-get="{{ item.href }}" hx-target="#page-content" hx-swap="innerHTML" hx-push-url="true" {% if item.active %}aria-current="page"{% endif %}
+           class="flex min-h-11 items-center gap-2 rounded-xl px-3 py-2 text-xs font-black uppercase tracking-widest {% if item.active %}bg-brand-primary text-white{% else %}text-gray-600 hover:bg-gray-100{% endif %}">
+            <i data-lucide="{{ item.icon }}" class="h-4 w-4 shrink-0"></i><span class="truncate">{{ item.name }}</span>
+        </a>
+        {% endfor %}
+    </nav>
+</details>
+{% endif %}

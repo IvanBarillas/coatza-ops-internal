@@ -1,0 +1,21 @@
+{% include "permisos_personal/contextual/_menu_movil.html" %}
+<div class="mx-auto w-full max-w-2xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
+    {% url 'permisos_personal:empleados' as volver_url %}
+    {% if empleado %}{% include "components/form_header.html" with module_label="Permisos" mode_label="Empleado" title=empleado.nombre description="Tipo de personal, ingreso y sede." icon="users" back_url=volver_url back_label="Volver a empleados" %}
+    {% else %}{% include "components/form_header.html" with module_label="Permisos" mode_label="Nuevo empleado" title="Nuevo empleado" description="Elija un usuario con acceso al módulo y capture su tipo de personal, fecha de ingreso y sede." icon="user-plus" back_url=volver_url back_label="Volver a empleados" %}{% endif %}
+    <form method="post" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm sm:p-6">
+        {% csrf_token %}
+        {% for e in form.non_field_errors %}<p class="mb-3 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">{{ e }}</p>{% endfor %}
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            {% for campo in form %}
+            <div class="{% if campo.name == 'usuario' %}sm:col-span-2{% endif %}">
+                {% if campo.name == 'activo' %}<label class="flex items-center gap-2 text-xs font-bold uppercase text-gray-500">{{ campo }} {{ campo.label }}</label>
+                {% else %}<label for="{{ campo.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ campo.label }}</label>{{ campo }}{% endif %}
+                {% for e in campo.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+            </div>
+            {% endfor %}
+        </div>
+        {% if not empleado and not form.fields.usuario.queryset.exists %}<p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">No hay usuarios disponibles: todos los que tienen acceso al módulo ya son empleados. Dé acceso a la persona en Seguridad y vuelva.</p>{% endif %}
+        <div class="mt-6 flex justify-center"><button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Guardar</button></div>
+    </form>
+</div>

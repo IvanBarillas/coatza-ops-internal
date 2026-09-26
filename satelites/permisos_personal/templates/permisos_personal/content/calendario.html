@@ -1,0 +1,37 @@
+{% include "permisos_personal/contextual/_menu_movil.html" %}
+{% url 'permisos_personal:calendario' as cal_url %}
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
+    {% include "components/list_header.html" with module_label="Permisos" status_label="Calendario" title="Calendario de ausencias" description="Quién está fuera cada día y dónde el personal presente queda por debajo del mínimo de la sede." icon="calendar-days" %}
+    <div class="flex flex-wrap items-center gap-2">
+        <a href="{{ cal_url }}?anio={{ anterior.anio }}&amp;mes={{ anterior.mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" hx-get="{{ cal_url }}?anio={{ anterior.anio }}&amp;mes={{ anterior.mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600" aria-label="Mes anterior">←</a>
+        <span class="min-w-40 text-center text-[15px] font-black uppercase text-gray-900">{{ nombre_mes }} {{ anio }}</span>
+        <a href="{{ cal_url }}?anio={{ siguiente.anio }}&amp;mes={{ siguiente.mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" hx-get="{{ cal_url }}?anio={{ siguiente.anio }}&amp;mes={{ siguiente.mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600" aria-label="Mes siguiente">→</a>
+        <form method="get" action="{{ cal_url }}" hx-get="{{ cal_url }}" hx-target="#page-content" hx-push-url="true" class="ml-auto flex items-center gap-2">
+            <input type="hidden" name="anio" value="{{ anio }}"><input type="hidden" name="mes" value="{{ mes }}">
+            <select name="sede" onchange="this.form.requestSubmit()" aria-label="Sede" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-[14px] font-medium text-gray-700"><option value="">Todas las sedes</option>{% for uuid, nombre in sedes %}<option value="{{ uuid }}" {% if uuid == sede %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select>
+        </form>
+    </div>
+    <p class="text-xs text-gray-500">{% if con_alertas %}<strong class="text-red-700">{{ con_alertas }} día{{ con_alertas|pluralize }} con el personal por debajo del mínimo.</strong>{% else %}Ningún día del mes queda por debajo del mínimo.{% endif %} <span class="text-gray-400">· <span class="inline-block h-2 w-2 rounded-full bg-blue-500"></span> vacaciones · <span class="inline-block h-2 w-2 rounded-full bg-amber-500"></span> día económico · ✓ validado</span></p>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+        <div class="w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+            <table class="w-full min-w-[46rem] table-fixed border-collapse">
+                <thead class="bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]"><tr class="font-mono text-xs font-bold uppercase tracking-wider text-gray-400">{% for n in dias_semana %}<th class="py-3 px-3 text-left font-semibold">{{ n }}</th>{% endfor %}</tr></thead>
+                <tbody>
+                {% for semana in semanas %}
+                    <tr class="align-top">
+                    {% for dia in semana %}
+                        <td class="h-28 border-t border-l border-gray-100 p-2 {% if not dia.en_mes %}bg-gray-50/60 text-gray-300{% elif not dia.habil %}bg-gray-50 text-gray-400{% elif dia.bajo %}bg-red-50/70{% endif %}">
+                            <div class="flex items-center justify-between"><span class="text-xs font-black {% if dia.fecha == hoy %}rounded-full bg-brand-primary px-2 py-0.5 text-white{% endif %}">{{ dia.fecha.day }}</span>{% if dia.bajo %}<span title="{% for b in dia.bajo %}{{ b.sede }}: {{ b.presentes }} presente(s), mínimo {{ b.minimo }}. {% endfor %}" class="rounded-md bg-red-100 px-1.5 text-xs font-black text-red-700">⚠</span>{% endif %}</div>
+                            {% if dia.en_mes %}<ul class="mt-1 space-y-0.5 text-[12px] leading-tight text-gray-700">
+                                {% for f in dia.fuera|slice:":3" %}<li class="truncate" title="{{ f.nombre }} · {{ f.sede }}"><span class="inline-block h-2 w-2 rounded-full {% if f.tipo == 'economico' %}bg-amber-500{% else %}bg-blue-500{% endif %}"></span> {{ f.nombre }}{% if f.validado %} ✓{% endif %}</li>{% endfor %}
+                                {% if dia.fuera|length > 3 %}<li class="text-gray-400">+{{ dia.fuera|length|add:"-3" }} más</li>{% endif %}
+                            </ul>{% endif %}
+                        </td>
+                    {% endfor %}
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

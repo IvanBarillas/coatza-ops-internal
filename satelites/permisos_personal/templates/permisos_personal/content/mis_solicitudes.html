@@ -1,0 +1,52 @@
+{% include "permisos_personal/contextual/_menu_movil.html" %}
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
+    {% url 'permisos_personal:solicitud_crear' as nueva_url %}
+    {% include "components/list_header.html" with module_label="Permisos" status_label=anio title="Mis permisos" description="Sus vacaciones y días económicos del año: cuántos tiene en cada periodo, cuántos ha usado y sus solicitudes." icon="calendar-check" action_url=nueva_url action_label="Nueva solicitud" %}
+    {% include "permisos_personal/content/_mensajes.html" %}
+    {% if not empleado %}
+    <p class="rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 text-xs text-amber-800">Todavía no está dado de alta como empleado en este módulo. Pida a control que lo registre (con su tipo de personal, fecha de ingreso y sede) para poder solicitar vacaciones.</p>
+    {% else %}
+    <form method="get" class="flex flex-wrap items-center gap-2 text-xs">
+        <span class="font-bold uppercase text-gray-500">Año</span>
+        <select name="anio" onchange="this.form.submit()" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-[14px] font-medium text-gray-700">{% for a in anios %}<option value="{{ a }}" {% if a == anio %}selected{% endif %}>{{ a }}</option>{% endfor %}</select>
+        <span class="text-gray-400">{{ empleado.get_tipo_display }} · ingresó el {{ empleado.fecha_ingreso|date:"d/m/Y" }}{% if empleado.sede_nombre %} · {{ empleado.sede_nombre }}{% endif %}</span>
+    </form>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {% for s in saldos %}
+        <div class="rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm">
+            <div class="text-xs font-black uppercase tracking-widest text-gray-500">{{ s.etiqueta }}</div>
+            <div class="text-xs text-gray-400">{{ s.nombre_periodo }}</div>
+            <div class="mt-2 flex items-end gap-2"><span class="text-4xl font-black text-gray-900">{{ s.disponibles }}</span><span class="pb-1 text-xs text-gray-500">disponible{{ s.disponibles|pluralize }} de {{ s.asignados }}</span></div>
+            <div class="mt-2 h-2 overflow-hidden rounded-full bg-gray-100"><div class="h-full rounded-full {% if s.excedido %}bg-red-500{% else %}bg-brand-accent{% endif %}" style="width: {% if s.asignados %}{% widthratio s.usados s.asignados 100 %}{% else %}0{% endif %}%"></div></div>
+            <div class="mt-1 text-xs text-gray-400">Usados: {{ s.usados }}</div>
+        </div>
+        {% endfor %}
+    </div>
+    <p class="text-xs text-gray-400">Vacaciones: se cuentan de lunes a viernes. Días económicos: no pueden ser sábado ni domingo. Los días que no use dentro de un periodo se pierden: no se acumulan.</p>
+
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+        <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                    <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Solicitud</th><th class="py-4 px-6 font-semibold">Días</th><th class="py-4 px-6 font-semibold">Cobertura</th><th class="py-4 px-6 font-semibold">Estado</th><th class="py-4 px-6 font-semibold"></th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
+                {% for s in solicitudes %}
+                    <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100 {% if not s.activa %}opacity-60{% endif %}">
+                        <td class="py-5 px-6 align-middle"><div class="text-[15px] font-black text-gray-900">{{ s.get_tipo_display }}</div><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ s.fecha_inicio|date:"d/m/Y" }} al {{ s.fecha_fin|date:"d/m/Y" }}{% if s.comentarios %} · {{ s.comentarios|truncatechars:40 }}{% endif %}</div></td>
+                        <td class="py-5 px-6 align-middle">{{ s.dias }}</td>
+                        <td class="py-5 px-6 align-middle">{% if s.bajo_umbral %}<span class="inline-flex items-center rounded-lg border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-700">Bajo mínimo · {{ s.bajo_umbral|length }} día{{ s.bajo_umbral|length|pluralize }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                        <td class="py-5 px-6 align-middle">{% if not s.activa %}<span class="inline-flex items-center rounded-lg border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-slate-600">Cancelada</span>{% elif s.validado %}<span class="inline-flex items-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-700">Validada</span>{% else %}<span class="inline-flex items-center rounded-lg border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-700">Por validar</span>{% endif %}</td>
+                        <td class="py-5 px-6 align-middle">{% if s.activa and not s.validado %}
+                            <form method="post" action="{% url 'permisos_personal:solicitud_cancelar' s.pk %}" class="flex items-center gap-2">{% csrf_token %}
+                                <input type="text" name="motivo" required minlength="5" placeholder="Motivo" aria-label="Motivo" class="w-32 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-[14px] text-gray-700">
+                                <button type="submit" class="rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-black uppercase tracking-widest text-red-600">Cancelar</button>
+                            </form>{% endif %}</td>
+                    </tr>
+                {% empty %}<tr><td colspan="5" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">Sin solicitudes en {{ anio }}.</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    {% endif %}
+</div>

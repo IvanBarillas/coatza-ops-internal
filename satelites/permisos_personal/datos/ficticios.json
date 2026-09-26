@@ -1,0 +1,35 @@
+{
+  "aviso": "DATOS FICTICIOS para probar. Nombres, correos y fechas inventados; se editan o se borran desde la aplicación.",
+  "configuracion": {"dias_economicos_p1": 1, "dias_economicos_p2": 1},
+  "antiguedad": [
+    {"tipo": "sindicalizado", "desde_anios": 0, "dias_p1": 5, "dias_p2": 5},
+    {"tipo": "sindicalizado", "desde_anios": 2, "dias_p1": 8, "dias_p2": 6},
+    {"tipo": "sindicalizado", "desde_anios": 5, "dias_p1": 10, "dias_p2": 10},
+    {"tipo": "sindicalizado", "desde_anios": 10, "dias_p1": 15, "dias_p2": 10},
+    {"tipo": "sindicalizado", "desde_anios": 15, "dias_p1": 20, "dias_p2": 10},
+    {"tipo": "confianza", "desde_anios": 0, "dias_p1": 5, "dias_p2": 5},
+    {"tipo": "confianza", "desde_anios": 3, "dias_p1": 8, "dias_p2": 7},
+    {"tipo": "confianza", "desde_anios": 6, "dias_p1": 10, "dias_p2": 10},
+    {"tipo": "confianza", "desde_anios": 12, "dias_p1": 14, "dias_p2": 12}
+  ],
+  "umbrales": {"Palacio Municipal": 3, "Tesorería Municipal": 1, "Obras Públicas": 1, "Chantli": 1},
+  "empleados": [
+    {"correo": "laura.mendez.f@prueba.axentra.com.mx", "nombre": "Laura", "apellidos": "Méndez Ríos", "tipo": "confianza", "ingreso": "2014-02-03", "sede": "Palacio Municipal"},
+    {"correo": "carlos.ramirez.f@prueba.axentra.com.mx", "nombre": "Carlos", "apellidos": "Ramírez Soto", "tipo": "sindicalizado", "ingreso": "2011-08-15", "sede": "Palacio Municipal"},
+    {"correo": "juan.perez.f@prueba.axentra.com.mx", "nombre": "Juan", "apellidos": "Pérez Luna", "tipo": "sindicalizado", "ingreso": "2018-05-21", "sede": "Palacio Municipal",
+     "ajustes": [{"anio": 2026, "periodo": 1, "dias": 11}, {"anio": 2026, "periodo": 2, "dias": 12}]},
+    {"correo": "maria.lopez.f@prueba.axentra.com.mx", "nombre": "María", "apellidos": "López Díaz", "tipo": "confianza", "ingreso": "2021-01-11", "sede": "Palacio Municipal"},
+    {"correo": "luis.hernandez.f@prueba.axentra.com.mx", "nombre": "Luis", "apellidos": "Hernández Cruz", "tipo": "sindicalizado", "ingreso": "2023-09-04", "sede": "Palacio Municipal"},
+    {"correo": "ana.gomez.f@prueba.axentra.com.mx", "nombre": "Ana", "apellidos": "Gómez Ruiz", "tipo": "sindicalizado", "ingreso": "2007-03-19", "sede": "Palacio Municipal"},
+    {"correo": "roberto.sanchez.f@prueba.axentra.com.mx", "nombre": "Roberto", "apellidos": "Sánchez Mora", "tipo": "confianza", "ingreso": "2019-11-04", "sede": "Tesorería Municipal"},
+    {"correo": "elena.torres.f@prueba.axentra.com.mx", "nombre": "Elena", "apellidos": "Torres Vega", "tipo": "sindicalizado", "ingreso": "2016-06-06", "sede": "Tesorería Municipal"},
+    {"correo": "pedro.castillo.f@prueba.axentra.com.mx", "nombre": "Pedro", "apellidos": "Castillo Núñez", "tipo": "sindicalizado", "ingreso": "2020-02-17", "sede": "Obras Públicas"},
+    {"correo": "sofia.morales.f@prueba.axentra.com.mx", "nombre": "Sofía", "apellidos": "Morales Ibarra", "tipo": "confianza", "ingreso": "2022-07-25", "sede": "Chantli"}
+  ],
+  "solicitudes": [
+    {"correo": "juan.perez.f@prueba.axentra.com.mx", "tipo": "vacaciones", "desde_hoy": 2, "dias_naturales": 6, "comentarios": "Ejemplo ficticio"},
+    {"correo": "carlos.ramirez.f@prueba.axentra.com.mx", "tipo": "vacaciones", "desde_hoy": 4, "dias_naturales": 4, "comentarios": "Ejemplo ficticio"},
+    {"correo": "ana.gomez.f@prueba.axentra.com.mx", "tipo": "economico", "desde_hoy": 5, "dias_naturales": 1, "comentarios": "Ejemplo ficticio"},
+    {"correo": "elena.torres.f@prueba.axentra.com.mx", "tipo": "vacaciones", "desde_hoy": 10, "dias_naturales": 7, "comentarios": "Ejemplo ficticio"}
+  ]
+}

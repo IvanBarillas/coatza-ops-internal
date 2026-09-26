@@ -1,0 +1,27 @@
+{% include "permisos_personal/contextual/_menu_movil.html" %}
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
+    {% url 'permisos_personal:empleado_crear' as nuevo_url %}
+    {% include "components/list_header.html" with module_label="Permisos" status_label="Personal" title="Empleados" description="Quién tiene derecho a vacaciones y días económicos, con su tipo, antigüedad y sede. Los días de cada periodo salen de la tabla por antigüedad y se pueden ajustar por persona." icon="users" action_url=nuevo_url action_label="Nuevo empleado" %}
+    {% include "permisos_personal/content/_mensajes.html" %}
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+        <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+            <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                    <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Empleado</th><th class="py-4 px-6 font-semibold">Tipo</th><th class="py-4 px-6 font-semibold">Antigüedad</th><th class="py-4 px-6 font-semibold">Sede</th><th class="py-4 px-6 font-semibold">Vacaciones {{ anio }}</th><th class="py-4 px-6 font-semibold">Estado</th></tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
+                {% for e in empleados %}
+                    <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100 {% if not e.is_active %}opacity-60{% endif %}">
+                        <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'permisos_personal:empleado_detalle' e.pk %}" hx-get="{% url 'permisos_personal:empleado_detalle' e.pk %}" hx-target="#page-content" hx-push-url="true">{{ e.nombre }}</a><div class="mt-1 text-[12px] text-gray-400 font-mono lowercase">{{ e.usuario.email }}</div></td>
+                        <td class="py-5 px-6 align-middle"><span class="inline-flex items-center rounded-lg border px-3 py-1 text-xs font-black uppercase tracking-wider {% if e.es_sindicalizado %}border-blue-100 bg-blue-50 text-blue-700{% else %}border-slate-200 bg-slate-50 text-slate-600{% endif %}">{{ e.get_tipo_display }}</span></td>
+                        <td class="py-5 px-6 align-middle">{{ e.antiguedad }} año{{ e.antiguedad|pluralize }}<div class="mt-1 text-[12px] text-gray-400 font-mono">desde {{ e.fecha_ingreso|date:"d/m/Y" }}</div></td>
+                        <td class="py-5 px-6 align-middle">{{ e.sede_nombre|default:"—" }}</td>
+                        <td class="py-5 px-6 align-middle"><span class="font-black text-gray-900">{{ e.vac_p1 }}</span> / <span class="font-black text-gray-900">{{ e.vac_p2 }}</span> <span class="text-gray-400">días</span></td>
+                        <td class="py-5 px-6 align-middle">{% if e.is_active %}<span class="inline-flex items-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-700">Activo</span>{% else %}<span class="inline-flex items-center rounded-lg border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-rose-700">Inactivo</span>{% endif %}</td>
+                    </tr>
+                {% empty %}<tr><td colspan="6" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">Aún no hay empleados. Dé de alta el primero con «Nuevo empleado».</td></tr>{% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
