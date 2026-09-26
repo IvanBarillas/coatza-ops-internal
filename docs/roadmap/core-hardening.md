@@ -238,3 +238,32 @@ integral medido. Límites y procedimiento en docs/deployment/audit-continuity.md
 Evidencia local de fase 4: **136 pruebas pasan** (120 previas + 11 auditoría/monitoreo
 + 5 continuidad). Django check, migraciones sin cambios pendientes, Tailwind y
 collectstatic pasan. No se ejecutaron herramientas PostgreSQL contra un servidor.
+
+### Registro — 2026-09-25 (cuentas, alcance, shell, CI)
+
+Entregado en `main`/`develop` (234 pruebas pasan):
+
+- Alta/edición de funcionarios: los errores de validación (Pydantic, contraseña) se muestran
+  con su mensaje real en lugar de «Error de consistencia interna»; `puesto` es opcional de
+  extremo a extremo (modelo, formulario, DTO y plantillas).
+- Alcance de datos: acción de Admin «Otorgar acceso a las dependencias hijas» y autocomplete en
+  `DepartmentAccessGrant` (docs/apps/data-access.md). Sigue sin haber herencia por `parent`.
+- Recuperación: `bootstrap_axentra_owner --reset-mfa` (docs/apps/identity-security.md).
+- Shell: sidebar contextual contraíble a iconos con transición, encabezado estándar para los
+  seis contextuales y encabezado de listas sin tarjeta envolvente
+  (docs/apps/000_core_architecture.md).
+- CI: `.github/workflows/ci.yml` (`uv sync --frozen`, check, collectstatic, test).
+
+Decisiones y pendientes (no implementados; sin consumidor real todavía o fuera de alcance):
+
+- **API para Hermes** (consumir tickets de personal): se diseña con Mesa de Ayuda, acotada
+  a ese caso y reutilizando los permission manifests y `authorized_departments`; `django-ninja`
+  ya es dependencia pero no hay `NinjaAPI` ni rutas.
+- **SSO con Authentik** solo si un municipio lo exige: Core como OIDC Relying Party
+  (`mozilla-django-oidc`), conservando SUDO propio para operaciones sensibles. Baja
+  automática de cuentas preferentemente por un job periódico de Django-Q2 que consulte al
+  IdP, no por un webhook entrante.
+- Protección de rama con «Require status checks» (job `django-checks`) en GitHub.
+- Observabilidad: no hay captura centralizada de errores; solo `check_operational_health`.
+- Sidebar primario contraíble: contraído solo iconos de elementos finales (sin acordeón),
+  estado independiente del contextual.
