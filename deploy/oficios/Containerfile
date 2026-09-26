@@ -15,5 +15,5 @@ RUN apt-get update \
 USER ${RUNTIME_USER}
 # El visor PDF.js (oficios) y Leaflet (telefonía) viven en el static de cada satélite: hay que recolectarlos con ellos instalados
 # (la base solo recolectó el Core).
-RUN AXENTRA_EXTRA_APPS=satelites.seguimientos_oficios DJANGO_ENV=build \
+RUN AXENTRA_EXTRA_APPS=satelites.seguimientos_oficios,satelites.telefonia DJANGO_ENV=build \
     DJANGO_SETTINGS_MODULE=core.settings.development uv run python manage.py collectstatic --noinput
