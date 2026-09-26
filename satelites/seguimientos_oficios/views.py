@@ -19,7 +19,7 @@ from .prestamos.forms import DevolucionForm
 from .areas import areas_disponibles, construir_menu
 from .panel import tarjetas
 from .forms import AdjuntoForm, GestorEntregaForm, CategoriaBienForm, CategoriaForm, DocumentoEdicionForm, GestorForm, DireccionForm, NomenclaturaForm, CancelacionForm, DocumentoForm, EntregaForm, FiltroBusquedaForm, FiltroDocumentosForm
-from .integracion import proteger_vista, usuarios_con_acceso
+from .integracion import proteger_vista, usuarios_con_acceso, vinculos_de
 from .selectors import (
     color_semaforo, semaforo_umbrales,
     APP_SLUG, TABS, aplicar_tab, buscar_con_coincidencias, buscar_documentos, conteos_tabs, direcciones_visibles, documento_visible,
@@ -146,6 +146,7 @@ def documento_detail_view(request, pk, entrega_form=None, cancelacion_form=None)
         "puede_quitar_archivos": _permitido(request, "can_remove_files") and documento.estado != documento.Estado.CANCELADO,
         "adjunto_form": AdjuntoForm(),
         "prestamo": prestamo, "area_actual": "prestamos" if prestamo else "soporte" if dictamen else None,
+        "vinculos": vinculos_de(request, "prestamos.vale", documento.pk) if prestamo else [],
         "puede_devolver": bool(prestamo and prestamo.abierto and _permitido(request, "can_manage_loans")),
         "devolucion_form": DevolucionForm(),
         "roles_adjuntables": (

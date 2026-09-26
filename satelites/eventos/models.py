@@ -93,6 +93,8 @@ class TramiteLinea(BaseEventos):
     tipo = models.CharField("Trámite", max_length=12, choices=Tipo.choices, default=Tipo.REUBICACION)
     descripcion = models.CharField("Descripción", max_length=250)
     referencia = models.CharField("Línea o enlace", max_length=120, blank=True)
+    ref_id = models.UUIDField("Línea elegida del sistema", null=True, blank=True, help_text="UUID de la línea cuando se eligió del satélite de telefonía.")
+    etiqueta = models.CharField("Línea (texto al vincular)", max_length=200, blank=True)
     estado = models.CharField("Estado", max_length=12, choices=Estado.choices, default=Estado.PENDIENTE)
 
     class Meta:

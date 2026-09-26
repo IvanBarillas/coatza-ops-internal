@@ -25,7 +25,7 @@
         {% if documento.motivo_cancelacion %}<div class="sm:col-span-2"><dt class="text-xs font-bold uppercase text-red-600">Motivo de cancelación</dt><dd>{{ documento.motivo_cancelacion }}</dd></div>{% endif %}
     </dl>
 
-    {% if prestamo %}{% include "seguimientos_oficios/content/_panel_prestamo.html" %}{% endif %}
+    {% if prestamo %}{% include "seguimientos_oficios/content/_panel_prestamo.html" %}{% include "seguimientos_oficios/content/_vinculos.html" %}{% endif %}
     {% if dictamen %}{% include "seguimientos_oficios/content/_panel_dictamen.html" %}{% endif %}
 
 

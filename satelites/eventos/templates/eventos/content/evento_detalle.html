@@ -73,7 +73,7 @@
         <p class="mb-3 text-xs text-gray-400">Reubicaciones de líneas o líneas nuevas que se trámitan para el evento.</p>
         {% if not tramites %}<p class="text-xs text-gray-400">Sin trámites.</p>{% endif %}
         <ul class="divide-y divide-gray-100 text-xs">{% for t in tramites %}
-            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ t.get_tipo_display }}</b> · {{ t.descripcion }}{% if t.referencia %} <span class="text-gray-400">({{ t.referencia }})</span>{% endif %}</span>
+            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ t.get_tipo_display }}</b> · {{ t.descripcion }}{% if t.titulo %} <span class="text-gray-400">({{ t.titulo }})</span>{% endif %}{% if t.url %} <a href="{{ t.url }}" target="_blank" rel="noopener" class="ml-1 rounded-lg border border-gray-200 bg-white px-2 py-0.5 text-[12px] font-black uppercase tracking-wider text-brand-accent">Abrir línea</a>{% endif %}</span>
                 <span class="flex items-center gap-3">
                     {% if puede_gestionar %}<form method="post" class="flex items-center gap-1">{% csrf_token %}<input type="hidden" name="accion" value="tramite_estado"><input type="hidden" name="id" value="{{ t.pk }}"><select name="estado" onchange="this.form.requestSubmit()" aria-label="Estado del trámite" class="rounded-lg border border-gray-200 bg-gray-50/70 px-2 py-1.5 text-[14px] text-gray-700">{% for v, n in estados_tramite %}<option value="{{ v }}" {% if t.estado == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></form>
                     {% if e.abierto %}<form method="post">{% csrf_token %}<input type="hidden" name="accion" value="quitar_tramite"><input type="hidden" name="id" value="{{ t.pk }}"><button type="submit" class="text-xs font-bold text-red-600 underline">Quitar</button></form>{% endif %}
@@ -81,11 +81,12 @@
                 </span></li>
         {% endfor %}</ul>
         {% if puede_gestionar and e.abierto %}
-        <form method="post" class="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 sm:grid-cols-3">{% csrf_token %}<input type="hidden" name="accion" value="tramite">
+        <form method="post" class="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 sm:grid-cols-2 lg:grid-cols-4">{% csrf_token %}<input type="hidden" name="accion" value="tramite">
             <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.tipo.id_for_label }}">Trámite</label>{{ form_tramite.tipo }}</div>
             <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.descripcion.id_for_label }}">Descripción</label>{{ form_tramite.descripcion }}{% for x in form_tramite.descripcion.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
-            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.referencia.id_for_label }}">Línea o enlace (si existe)</label>{{ form_tramite.referencia }}</div>
-            <div class="sm:col-span-3"><button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Agregar trámite</button></div>
+            {% if lineas_disponibles %}<div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.linea.id_for_label }}">Línea del sistema</label>{{ form_tramite.linea }}</div>{% endif %}
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.referencia.id_for_label }}">{% if lineas_disponibles %}O escriba la línea{% else %}Línea o enlace (si existe){% endif %}</label>{{ form_tramite.referencia }}</div>
+            <div class="sm:col-span-full"><button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Agregar trámite</button></div>
         </form>
         {% endif %}
     </section>

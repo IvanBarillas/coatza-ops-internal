@@ -6,3 +6,9 @@ class EventosConfig(AppConfig):
     name = "satelites.eventos"
     label = "eventos"
     verbose_name = "Eventos"
+
+    def ready(self):
+        from .integracion import registrar_proveedor
+        from .proveedores import ProveedorVinculos
+
+        registrar_proveedor(ProveedorVinculos.NOMBRE, ProveedorVinculos())

@@ -15,7 +15,7 @@ from . import services
 from .forms import (
     AtenderForm, ComentarioForm, EvidenciaForm, LineaForm, MotivoForm, ReporteEdicionForm, ReporteForm,
 )
-from .integracion import nombre_de_usuario, proteger_vista, telefono_de_usuario, usuarios_con_acceso, valor_entorno
+from .integracion import vinculos_de, nombre_de_usuario, proteger_vista, telefono_de_usuario, usuarios_con_acceso, valor_entorno
 from .models import Evidencia, Linea, Reporte
 from .selectors import APP_SLUG, permitido
 from .storage import almacen
@@ -344,6 +344,7 @@ def linea_detalle_view(request, pk):
         "linea": linea, "linea_data": _datos_de_lineas(request, [linea]),
         "reportes": list(linea.reportes.filter(is_deleted=False).order_by("-levantado")),
         "puede_gestionar": permitido(request, "can_manage_lines"), "puede_crear": permitido(request, "can_create_report"),
+        "vinculos": vinculos_de(request, "telefonia.linea", linea.pk),
     })
 
 

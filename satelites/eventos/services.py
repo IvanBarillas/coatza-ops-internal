@@ -165,11 +165,13 @@ def desvincular_vale(vale, *, usuario):
 
 
 @transaction.atomic
-def agregar_tramite(evento, *, usuario, tipo, descripcion, referencia=""):
+def agregar_tramite(evento, *, usuario, tipo, descripcion, referencia="", ref_id=None, etiqueta=""):
     _exigir_abierto(evento)
     if not (descripcion or "").strip():
         raise ValidationError("Describa el trámite.")
-    tramite = TramiteLinea.objects.create(evento=evento, tipo=tipo, descripcion=descripcion.strip(), referencia=referencia.strip())
+    tramite = TramiteLinea.objects.create(
+        evento=evento, tipo=tipo, descripcion=descripcion.strip(), referencia=referencia.strip(), ref_id=ref_id, etiqueta=etiqueta.strip(),
+    )
     _bitacora(evento, usuario, "tramite_agregado", f"{tramite.get_tipo_display()}: {tramite.descripcion}")
     return tramite
 
