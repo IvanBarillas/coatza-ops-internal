@@ -15,24 +15,26 @@
         <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
     </form>
     <p class="text-xs text-gray-400">{{ total }} línea{{ total|pluralize }}.</p>
-    <div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-        <table class="min-w-full text-xs">
-            <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
-                <tr><th class="px-3 py-3">Línea</th><th class="px-3 py-3">Sitio</th><th class="px-3 py-3">Tipo y paquete</th><th class="px-3 py-3">Mapa</th><th class="px-3 py-3">Reportes</th></tr>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+    <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Línea</th><th class="py-4 px-6 font-semibold">Sitio</th><th class="py-4 px-6 font-semibold">Tipo y paquete</th><th class="py-4 px-6 font-semibold">Mapa</th><th class="py-4 px-6 font-semibold">Reportes</th></tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
             {% for l in pagina %}
-                <tr class="border-t border-gray-100 align-top {% if not l.is_active %}opacity-60{% endif %}">
-                    <td class="whitespace-nowrap px-3 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:linea_detalle' l.pk %}" hx-get="{% url 'telefonia:linea_detalle' l.pk %}" hx-target="#page-content" hx-push-url="true">{{ l.identificador }}</a></td>
-                    <td class="px-3 py-3"><div class="font-bold text-gray-800">{{ l.sitio }}</div><div class="text-gray-400">{{ l.direccion }}</div></td>
-                    <td class="px-3 py-3">{{ l.get_tipo_display }}{% if l.velocidad %}<div class="text-gray-400">{{ l.velocidad }}</div>{% endif %}</td>
-                    <td class="px-3 py-3">{% if l.con_ubicacion %}<a class="font-bold text-brand-primary underline" href="{{ l.enlace_google_maps }}" target="_blank" rel="noopener">Ver</a>{% else %}<span class="text-amber-700">Sin ubicar</span>{% endif %}</td>
-                    <td class="px-3 py-3">{% if l.abiertos %}<span class="rounded-md bg-red-100 px-2 py-0.5 text-xs font-black uppercase text-red-700">{{ l.abiertos }} abierto{{ l.abiertos|pluralize }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
+                <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100 {% if not l.is_active %}opacity-60{% endif %}">
+                    <td class="whitespace-nowrap py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'telefonia:linea_detalle' l.pk %}" hx-get="{% url 'telefonia:linea_detalle' l.pk %}" hx-target="#page-content" hx-push-url="true">{{ l.identificador }}</a></td>
+                    <td class="py-5 px-6 align-middle"><div class="text-[15px] font-black text-gray-900">{{ l.sitio }}</div><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ l.direccion }}</div></td>
+                    <td class="py-5 px-6 align-middle">{{ l.get_tipo_display }}{% if l.velocidad %}<div class="mt-1 text-[12px] text-gray-400 font-mono">{{ l.velocidad }}</div>{% endif %}</td>
+                    <td class="py-5 px-6 align-middle">{% if l.con_ubicacion %}<a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{{ l.enlace_google_maps }}" target="_blank" rel="noopener">Ver</a>{% else %}<span class="text-amber-700">Sin ubicar</span>{% endif %}</td>
+                    <td class="py-5 px-6 align-middle">{% if l.abiertos %}<span class="inline-flex items-center rounded-lg border border-red-100 bg-red-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-red-700">{{ l.abiertos }} abierto{{ l.abiertos|pluralize }}</span>{% else %}<span class="text-gray-400">—</span>{% endif %}</td>
                 </tr>
-            {% empty %}<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No hay líneas aquí.{% if puede_gestionar %} Dé de alta la primera con «Nueva línea» o impórtelas con el comando <code>telefonia_importar_lineas</code>.{% endif %}</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="5" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">No hay líneas aquí.{% if puede_gestionar %} Dé de alta la primera con «Nueva línea» o impórtelas con el comando <code>telefonia_importar_lineas</code>.{% endif %}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
+</div>
     {% if pagina.paginator.num_pages > 1 %}
     <nav class="flex items-center justify-center gap-3 text-xs">
         {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}

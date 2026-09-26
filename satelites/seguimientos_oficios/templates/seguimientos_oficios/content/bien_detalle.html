@@ -34,22 +34,24 @@
 
     <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
         <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Historial de préstamos <span class="font-normal text-gray-400">({{ asignaciones|length }})</span></h2>
-        <div class="max-h-72 overflow-auto rounded-xl border border-gray-100">
-            <table class="min-w-full text-xs">
-                <thead class="sticky top-0 bg-gray-50 text-left font-black uppercase tracking-widest text-gray-500"><tr><th class="px-3 py-2">Vale</th><th class="px-3 py-2">Recibió</th><th class="px-3 py-2">Entrega</th><th class="px-3 py-2">Límite</th><th class="px-3 py-2">Situación</th></tr></thead>
-                <tbody>
+        <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+    <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+        <table class="w-full text-left border-collapse">
+                <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]"><tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Vale</th><th class="py-4 px-6 font-semibold">Recibió</th><th class="py-4 px-6 font-semibold">Entrega</th><th class="py-4 px-6 font-semibold">Límite</th><th class="py-4 px-6 font-semibold">Situación</th></tr></thead>
+                <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
                 {% for a in asignaciones %}
-                    <tr class="border-t border-gray-100 align-top">
-                        <td class="px-3 py-2"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' a.prestamo.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' a.prestamo.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ a.prestamo.documento.folio }}</a></td>
-                        <td class="px-3 py-2">{{ a.prestamo.documento.contraparte }}</td>
-                        <td class="whitespace-nowrap px-3 py-2">{{ a.prestamo.fecha_entrega|date:"d/m/y" }}</td>
-                        <td class="whitespace-nowrap px-3 py-2">{{ a.prestamo.fecha_limite|date:"d/m/y" }}</td>
-                        <td class="whitespace-nowrap px-3 py-2">{% include "seguimientos_oficios/content/_situacion_prestamo.html" with prestamo=a.prestamo %}</td>
+                    <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100">
+                        <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:documento_detail' a.prestamo.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' a.prestamo.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ a.prestamo.documento.folio }}</a></td>
+                        <td class="py-5 px-6 align-middle">{{ a.prestamo.documento.contraparte }}</td>
+                        <td class="whitespace-nowrap py-5 px-6 align-middle">{{ a.prestamo.fecha_entrega|date:"d/m/y" }}</td>
+                        <td class="whitespace-nowrap py-5 px-6 align-middle">{{ a.prestamo.fecha_limite|date:"d/m/y" }}</td>
+                        <td class="whitespace-nowrap py-5 px-6 align-middle">{% include "seguimientos_oficios/content/_situacion_prestamo.html" with prestamo=a.prestamo %}</td>
                     </tr>
-                {% empty %}<tr><td colspan="5" class="px-3 py-6 text-center text-gray-400">Este bien no se ha prestado.</td></tr>{% endfor %}
+                {% empty %}<tr><td colspan="5" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">Este bien no se ha prestado.</td></tr>{% endfor %}
                 </tbody>
             </table>
-        </div>
+    </div>
+</div>
     </section>
 
     <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
