@@ -3,21 +3,23 @@
     {% url 'seguimientos_oficios:direccion_crear' as nueva_url %}
     {% include "components/list_header.html" with module_label="Oficios" status_label="Catálogos" title="Direcciones" description="Direcciones, nomenclaturas de folio y gestores." icon="layers" action_url=nueva_url action_label="Nueva dirección" %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}
-    <div class="overflow-x-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-        <table class="min-w-full text-xs">
-            <thead class="text-left text-xs font-black uppercase tracking-widest text-gray-500"><tr><th class="px-4 py-3">Dirección</th><th class="px-4 py-3">Carpeta</th><th class="px-4 py-3">Vinculada al Core</th><th class="px-4 py-3">Nomenclaturas</th><th class="px-4 py-3">Gestores</th><th class="px-4 py-3">Estado</th></tr></thead>
-            <tbody>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+    <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]"><tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Dirección</th><th class="py-4 px-6 font-semibold">Carpeta</th><th class="py-4 px-6 font-semibold">Vinculada al Core</th><th class="py-4 px-6 font-semibold">Nomenclaturas</th><th class="py-4 px-6 font-semibold">Gestores</th><th class="py-4 px-6 font-semibold">Estado</th></tr></thead>
+            <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
             {% for d in direcciones %}
-                <tr class="border-t border-gray-100">
-                    <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.nombre }}</a></td>
-                    <td class="px-4 py-3 text-gray-500">{{ d.slug }}</td>
-                    <td class="px-4 py-3">{% if d.dependencia_uuid %}Sí{% else %}<span class="text-amber-700">No</span>{% endif %}</td>
-                    <td class="px-4 py-3">{{ d.nomenclaturas.all|length }}</td>
-                    <td class="px-4 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}#gestores" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.gestores.all|length }} · administrar</a></td>
-                    <td class="px-4 py-3">{% if d.is_active %}Activa{% else %}Inactiva{% endif %}</td>
+                <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100">
+                    <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.nombre }}</a></td>
+                    <td class="py-5 px-6 align-middle text-gray-500">{{ d.slug }}</td>
+                    <td class="py-5 px-6 align-middle">{% if d.dependencia_uuid %}Sí{% else %}<span class="text-amber-700">No</span>{% endif %}</td>
+                    <td class="py-5 px-6 align-middle">{{ d.nomenclaturas.all|length }}</td>
+                    <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:direccion_editar' d.pk %}#gestores" hx-get="{% url 'seguimientos_oficios:direccion_editar' d.pk %}" hx-target="#page-content" hx-push-url="true">{{ d.gestores.all|length }} · administrar</a></td>
+                    <td class="py-5 px-6 align-middle">{% if d.is_active %}<span class="inline-flex items-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-700">Activa</span>{% else %}<span class="inline-flex items-center rounded-lg border border-rose-100 bg-rose-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-rose-700">Inactiva</span>{% endif %}</td>
                 </tr>
-            {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">Aún no hay direcciones.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="6" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">Aún no hay direcciones.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
+</div>
 </div>

@@ -15,25 +15,27 @@
         {% endfor %}
     </div>
 
-    <div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-        <table class="min-w-full text-xs">
-            <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
-                <tr><th class="px-3 py-3">Folio</th><th class="px-3 py-3">Recibe</th><th class="px-3 py-3">Bienes</th><th class="whitespace-nowrap px-3 py-3">Entrega</th><th class="whitespace-nowrap px-3 py-3">Límite</th><th class="px-3 py-3">Situación</th></tr>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+    <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Folio</th><th class="py-4 px-6 font-semibold">Recibe</th><th class="py-4 px-6 font-semibold">Bienes</th><th class="whitespace-nowrap py-4 px-6 font-semibold">Entrega</th><th class="whitespace-nowrap py-4 px-6 font-semibold">Límite</th><th class="py-4 px-6 font-semibold">Situación</th></tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
             {% for p in pagina %}
-                <tr class="border-t border-gray-100 align-top">
-                    <td class="px-3 py-3"><a class="whitespace-nowrap font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' p.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' p.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ p.documento.folio|default:"s/f" }}</a></td>
-                    <td class="px-3 py-3">{{ p.documento.contraparte }}</td>
-                    <td class="px-3 py-3">{% for r in p.renglones.all %}<div>{{ r.bien }}</div>{% endfor %}</td>
-                    <td class="whitespace-nowrap px-3 py-3">{{ p.fecha_entrega|date:"d/m/y" }}</td>
-                    <td class="whitespace-nowrap px-3 py-3">{{ p.fecha_limite|date:"d/m/y" }}</td>
-                    <td class="whitespace-nowrap px-3 py-3">{% include "seguimientos_oficios/content/_situacion_prestamo.html" with prestamo=p %}</td>
+                <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100">
+                    <td class="py-5 px-6 align-middle"><a class="whitespace-nowrap font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:documento_detail' p.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' p.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ p.documento.folio|default:"s/f" }}</a></td>
+                    <td class="py-5 px-6 align-middle">{{ p.documento.contraparte }}</td>
+                    <td class="py-5 px-6 align-middle">{% for r in p.renglones.all %}<div>{{ r.bien }}</div>{% endfor %}</td>
+                    <td class="whitespace-nowrap py-5 px-6 align-middle">{{ p.fecha_entrega|date:"d/m/y" }}</td>
+                    <td class="whitespace-nowrap py-5 px-6 align-middle">{{ p.fecha_limite|date:"d/m/y" }}</td>
+                    <td class="whitespace-nowrap py-5 px-6 align-middle">{% include "seguimientos_oficios/content/_situacion_prestamo.html" with prestamo=p %}</td>
                 </tr>
-            {% empty %}<tr><td colspan="6" class="px-4 py-8 text-center text-gray-500">No hay préstamos aquí.</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="6" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">No hay préstamos aquí.</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
+</div>
     {% if pagina.paginator.num_pages > 1 %}
     <nav class="flex items-center justify-center gap-3 text-xs">
         {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}

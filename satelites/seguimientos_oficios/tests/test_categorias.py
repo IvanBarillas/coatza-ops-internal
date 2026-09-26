@@ -138,7 +138,7 @@ class CategoriasTests(BaseAdjuntos):
         self.assertContains(pagina, "De: X")
         self.assertContains(pagina, "Oficio · Recibido")
         # área con scroll propio y encabezado fijo para que "Todos" no sea una lista interminable
-        self.assertContains(pagina, "max-h-[62vh] overflow-auto")
+        self.assertContains(pagina, "max-h-[62vh] w-full overflow-auto")
         self.assertContains(pagina, "sticky top-0")
         # la categoría sigue disponible como filtro y en el detalle, no como columna
         self.assertContains(pagina, "Todas las categorías")

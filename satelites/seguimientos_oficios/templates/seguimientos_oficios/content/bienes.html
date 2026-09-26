@@ -30,31 +30,33 @@
         <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
     </form>
 
-    <div class="max-h-[62vh] overflow-auto rounded-2xl border border-gray-200/80 bg-white shadow-sm">
-        <table class="min-w-full text-xs">
-            <thead class="sticky top-0 z-10 bg-gray-50 text-left text-xs font-black uppercase tracking-widest text-gray-500 shadow-[0_1px_0_0_rgb(229,231,235)]">
-                <tr><th class="px-3 py-3">Bien</th><th class="px-3 py-3">Inventario</th><th class="px-3 py-3">Situación</th>{% if puede_gestionar %}<th class="px-3 py-3"></th>{% endif %}</tr>
+    <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+    <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Bien</th><th class="py-4 px-6 font-semibold">Inventario</th><th class="py-4 px-6 font-semibold">Situación</th>{% if puede_gestionar %}<th class="py-4 px-6 font-semibold"></th>{% endif %}</tr>
             </thead>
-            <tbody>
+            <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
             {% for b in pagina %}
-                <tr class="border-t border-gray-100 align-top">
-                    <td class="px-3 py-3"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:bien_detalle' b.pk %}" hx-get="{% url 'seguimientos_oficios:bien_detalle' b.pk %}" hx-target="#page-content" hx-push-url="true">{{ b.nombre }}</a><div class="text-gray-400">{{ b.identificador|default:"Sin serie" }}{% if b.categoria %} · {{ b.categoria }}{% endif %}</div></td>
-                    <td class="whitespace-nowrap px-3 py-3">{{ b.folio_inventario|default:"—" }}</td>
-                    <td class="px-3 py-3">
+                <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100">
+                    <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:bien_detalle' b.pk %}" hx-get="{% url 'seguimientos_oficios:bien_detalle' b.pk %}" hx-target="#page-content" hx-push-url="true">{{ b.nombre }}</a><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ b.identificador|default:"Sin serie" }}{% if b.categoria %} · {{ b.categoria }}{% endif %}</div></td>
+                    <td class="whitespace-nowrap py-5 px-6 align-middle">{{ b.folio_inventario|default:"—" }}</td>
+                    <td class="py-5 px-6 align-middle">
                         {% if b.situacion == "prestado" %}
-                        <span class="rounded-md bg-amber-100 px-2 py-0.5 text-xs font-black uppercase text-amber-700">Prestado</span>
+                        <span class="inline-flex items-center rounded-lg border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-amber-700">Prestado</span>
                         <div class="mt-1 text-gray-500">A {{ b.prestamo_abierto.documento.contraparte }} hasta el {{ b.prestamo_abierto.fecha_limite|date:"d/m/y" }}
-                            · <a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:documento_detail' b.prestamo_abierto.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' b.prestamo_abierto.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ b.prestamo_abierto.documento.folio }}</a></div>
-                        {% elif b.situacion == "disponible" %}<span class="rounded-md bg-emerald-100 px-2 py-0.5 text-xs font-black uppercase text-emerald-700">Disponible</span>
-                        {% elif b.situacion == "en_reparacion" %}<span class="rounded-md bg-blue-100 px-2 py-0.5 text-xs font-black uppercase text-blue-700">En reparación</span>
-                        {% else %}<span class="rounded-md bg-gray-100 px-2 py-0.5 text-xs font-black uppercase text-gray-600">Baja</span>{% endif %}
+                            · <a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:documento_detail' b.prestamo_abierto.documento_id %}" hx-get="{% url 'seguimientos_oficios:documento_detail' b.prestamo_abierto.documento_id %}" hx-target="#page-content" hx-push-url="true">{{ b.prestamo_abierto.documento.folio }}</a></div>
+                        {% elif b.situacion == "disponible" %}<span class="inline-flex items-center rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-emerald-700">Disponible</span>
+                        {% elif b.situacion == "en_reparacion" %}<span class="inline-flex items-center rounded-lg border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-blue-700">En reparación</span>
+                        {% else %}<span class="inline-flex items-center rounded-lg border border-gray-100 bg-gray-50 px-3 py-1 text-xs font-black uppercase tracking-wider text-gray-700">Baja</span>{% endif %}
                     </td>
-                    {% if puede_gestionar %}<td class="px-3 py-3 text-right"><a class="font-bold text-brand-primary underline" href="{% url 'seguimientos_oficios:bien_editar' b.pk %}" hx-get="{% url 'seguimientos_oficios:bien_editar' b.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a></td>{% endif %}
+                    {% if puede_gestionar %}<td class="py-5 px-6 align-middle text-right"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'seguimientos_oficios:bien_editar' b.pk %}" hx-get="{% url 'seguimientos_oficios:bien_editar' b.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a></td>{% endif %}
                 </tr>
-            {% empty %}<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No hay bienes aquí.{% if puede_gestionar %} Da de alta el primero con “Nuevo bien”.{% endif %}</td></tr>{% endfor %}
+            {% empty %}<tr><td colspan="4" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">No hay bienes aquí.{% if puede_gestionar %} Da de alta el primero con “Nuevo bien”.{% endif %}</td></tr>{% endfor %}
             </tbody>
         </table>
     </div>
+</div>
     {% if pagina.paginator.num_pages > 1 %}
     <nav class="flex items-center justify-center gap-3 text-xs">
         {% if pagina.has_previous %}<a class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 font-black uppercase tracking-widest text-gray-600" hx-target="#page-content" hx-push-url="true" href="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}" hx-get="?{{ query_sin_pagina }}&amp;pagina={{ pagina.previous_page_number }}">Anterior</a>{% endif %}
