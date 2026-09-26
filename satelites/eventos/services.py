@@ -133,15 +133,18 @@ def quitar_tecnico(asignacion, *, usuario):
 # ---- vales, telefonía y notas ------------------------------------------------------------------------------------
 
 @transaction.atomic
-def vincular_vale(evento, *, usuario, referencia, nota=""):
+def vincular_vale(evento, *, usuario, referencia="", nota="", ref_id=None, etiqueta=""):
+    """Vincula un vale: elegido del sistema (`ref_id` + `etiqueta` de la ficha) o escrito a mano (`referencia`)."""
     _exigir_abierto(evento)
-    referencia = (referencia or "").strip()
+    referencia = str(ref_id) if ref_id else (referencia or "").strip()
     if not referencia:
-        raise ValidationError("Escriba el número o UUID del vale.")
+        raise ValidationError("Elija un vale o escriba su número.")
+    if ref_id and evento.vales.filter(ref_id=ref_id).exists():
+        raise ValidationError("Ese vale ya está vinculado al evento.")
     if evento.vales.filter(referencia__iexact=referencia).exists():
         raise ValidationError("Ese vale ya está vinculado al evento.")
-    vale = ValeSalida.objects.create(evento=evento, referencia=referencia, nota=nota.strip())
-    _bitacora(evento, usuario, "vale_vinculado", referencia)
+    vale = ValeSalida.objects.create(evento=evento, referencia=referencia, ref_id=ref_id, etiqueta=etiqueta.strip(), nota=nota.strip())
+    _bitacora(evento, usuario, "vale_vinculado", vale.etiqueta or referencia)
     return vale
 
 
@@ -149,7 +152,7 @@ def vincular_vale(evento, *, usuario, referencia, nota=""):
 def desvincular_vale(vale, *, usuario):
     _exigir_abierto(vale.evento)
     vale.delete()
-    _bitacora(vale.evento, usuario, "vale_desvinculado", vale.referencia)
+    _bitacora(vale.evento, usuario, "vale_desvinculado", vale.etiqueta or vale.referencia)
 
 
 @transaction.atomic

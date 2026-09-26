@@ -70,12 +70,21 @@ class AsignarForm(forms.Form):
 
 
 class ValeForm(forms.Form):
-    referencia = forms.CharField(label="Vale (número o UUID)", max_length=80)
+    vale = forms.ChoiceField(label="Vale del sistema", required=False)
+    referencia = forms.CharField(label="O escriba su número", max_length=80, required=False)
     nota = forms.CharField(label="Qué se lleva", max_length=200, required=False)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, opciones=(), **kwargs):
+        """`opciones`: [(uuid, etiqueta)] de los vales que ofrece el satélite de préstamos (vacío si no está instalado)."""
         super().__init__(*args, **kwargs)
+        self.fields["vale"].choices = [("", "— Elegir un vale —")] + list(opciones)
         _estilo(self)
+
+    def clean(self):
+        datos = super().clean()
+        if not datos.get("vale") and not (datos.get("referencia") or "").strip() and not self.errors:
+            raise forms.ValidationError("Elija un vale o escriba su número.")
+        return datos
 
 
 class TramiteForm(forms.Form):

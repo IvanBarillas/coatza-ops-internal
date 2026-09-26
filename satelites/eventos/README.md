@@ -18,8 +18,9 @@ Después: `migrate`, `check_axentra_modules --persist`, activar el módulo en el
   anticipación. Estados: programado → en curso → concluido, o cancelado (con motivo).
 - **Técnicos:** uno o **varios** por evento, cada uno con su **tramo de horas** (sin fechas cubre todo el evento). Se pueden agregar
   o quitar durante el evento (relevos). Si el técnico ya está en otro evento a esa hora, **solo avisa**: no bloquea.
-- **Vales de salida:** se guarda el número o UUID del vale del satélite de préstamos y un botón lo abre (con un UUID abre el vale
-  para imprimir; con un folio lleva a la lista de vales). Sin el satélite de préstamos el botón no aparece. No hay `ForeignKey`.
+- **Vales de salida:** si está instalado el satélite de préstamos, el vale se **elige de una lista** (los vales abiertos que el usuario
+  puede ver) y se guarda su UUID y etiqueta; en el evento se ve su estado y un botón «Abrir vale». Si no está instalado (o se trata de un
+  vale de papel) se escribe el número a mano. Se consume la capacidad `prestamos.vales`, ver `docs/contratos-satelites.md`. No hay `ForeignKey`.
 - **Telefonía:** trámites en texto libre (reubicar una línea, contratar una nueva) con su estado: pendiente, en trámite o listo.
 - **Notas y bitácora:** cualquier técnico agrega notas; los movimientos quedan registrados (solo se agrega, no se edita).
 - **Mis eventos** muestra al técnico su próximo evento y su carga; el **calendario** mensual se filtra por técnico.

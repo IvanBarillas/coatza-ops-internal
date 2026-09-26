@@ -6,6 +6,7 @@ reimplementar este archivo.
 from apps.security.decorators import axentra_module_gate
 from apps.shared.module_sdk import ModuleManifest
 from apps.shared.module_sdk.data_access import authorized_departments
+from apps.shared.module_sdk.integrations import integration_registry
 from apps.shared.notifications.services import enqueue_email
 
 __all__ = [
@@ -19,6 +20,7 @@ __all__ = [
     "enqueue_email",
     "nombre_de_usuario",
     "proteger_vista",
+    "registrar_proveedor",
 ]
 
 
@@ -94,3 +96,8 @@ def usuarios_con_acceso(app_slug):
         app__slug=app_slug, is_active=True, is_deleted=False
     ).values("user_id")
     return get_user_model().objects.filter(pk__in=miembros, is_active=True, is_deleted=False).order_by("email")
+
+
+def registrar_proveedor(nombre, proveedor):
+    """Ofrece una capacidad a otros satélites por nombre (ver docs/contratos-satelites.md). Idempotente al reiniciar."""
+    integration_registry.register(nombre, proveedor, replace=True)

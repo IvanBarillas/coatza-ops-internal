@@ -62,10 +62,12 @@ class Asignacion(BaseEventos):
 
 
 class ValeSalida(BaseEventos):
-    """Referencia (UUID o folio) a un vale de salida del satélite de préstamos; no hay ForeignKey."""
+    """Referencia a un vale de salida: UUID y etiqueta (snapshot) si se eligió del satélite de préstamos, o texto libre; sin ForeignKey."""
 
     evento = models.ForeignKey(Evento, on_delete=models.CASCADE, related_name="vales")
     referencia = models.CharField("Vale (número o UUID)", max_length=80)
+    ref_id = models.UUIDField("Vale elegido del sistema", null=True, blank=True, help_text="UUID del vale cuando se eligió del satélite de préstamos.")
+    etiqueta = models.CharField("Vale (texto al vincular)", max_length=200, blank=True)
     nota = models.CharField("Qué se lleva", max_length=200, blank=True)
 
     class Meta:
