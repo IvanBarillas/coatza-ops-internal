@@ -5,6 +5,7 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
+from . import avisos as avisos_correo
 from . import calendario as cal
 from .integracion import nombre_de_usuario
 from .models import AjusteDias, Configuracion, Empleado, Movimiento, RangoAntiguedad, Solicitud, Tipo, UmbralSede
@@ -116,7 +117,7 @@ def _calcular_dias(empleado, tipo, inicio, fin):
 
 
 @transaction.atomic
-def crear_solicitud(empleado, *, usuario, tipo, fecha_inicio, fecha_fin, comentarios=""):
+def crear_solicitud(empleado, *, usuario, tipo, fecha_inicio, fecha_fin, comentarios="", avisar=True):
     """Registra la solicitud y descuenta el saldo. Devuelve (solicitud, avisos); bajar del mínimo de la sede solo avisa."""
     empleado = Empleado.objects.select_for_update().select_related("usuario").get(pk=empleado.pk)
     if not empleado.is_active:
@@ -151,6 +152,8 @@ def crear_solicitud(empleado, *, usuario, tipo, fecha_inicio, fecha_fin, comenta
         "tipo": solicitud.get_tipo_display(), "del": fecha_inicio.isoformat(), "al": fecha_fin.isoformat(), "dias": dias,
         "bajo_umbral": len(bajo),
     })
+    if avisar:
+        avisos_correo.bajo_minimo(solicitud, [{"fecha": c["fecha"], "presentes": c["presentes"], "minimo": c["minimo"]} for c in bajo], actor=usuario)
     avisos = []
     if bajo:
         primeras = ", ".join(f"{c['fecha']:%d/%m} ({c['presentes']} de mínimo {c['minimo']})" for c in bajo[:5])

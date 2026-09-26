@@ -6,6 +6,7 @@ from django.core.exceptions import ValidationError
 from django.db import transaction
 from django.utils import timezone
 
+from . import avisos as avisos_correo
 from .integracion import nombre_de_usuario
 from .models import Asignacion, Bitacora, Evento, TramiteLinea, ValeSalida
 
@@ -43,7 +44,7 @@ def crear_evento(*, usuario, nombre, lugar, inicio, fin, descripcion="", ticket=
 
 
 @transaction.atomic
-def editar_evento(evento, *, usuario, nombre, lugar, inicio, fin, descripcion="", ticket=""):
+def editar_evento(evento, *, usuario, nombre, lugar, inicio, fin, descripcion="", ticket="", avisar=True):
     _exigir_abierto(evento)
     _validar_fechas(inicio, fin)
     cambios = [
@@ -57,6 +58,8 @@ def editar_evento(evento, *, usuario, nombre, lugar, inicio, fin, descripcion=""
     evento.save()
     if cambios:
         _bitacora(evento, usuario, "editado", "Cambió: " + ", ".join(cambios))
+        if avisar and {"inicio", "fin", "lugar", "nombre"} & set(cambios):
+            avisos_correo.modificado(evento, cambios, actor=usuario)
     return evento
 
 
@@ -79,13 +82,15 @@ def concluir_evento(evento, *, usuario, notas=""):
 
 
 @transaction.atomic
-def cancelar_evento(evento, *, usuario, motivo):
+def cancelar_evento(evento, *, usuario, motivo, avisar=True):
     _exigir_abierto(evento)
     if len((motivo or "").strip()) < 5:
         raise ValidationError("Escriba el motivo de la cancelación (mínimo 5 caracteres).")
     evento.estatus, evento.motivo_cancelacion = E.CANCELADO, motivo.strip()
     evento.save(update_fields=["estatus", "motivo_cancelacion", "updated_at"])
     _bitacora(evento, usuario, "cancelado", motivo.strip())
+    if avisar:
+        avisos_correo.cancelado(evento, motivo.strip(), actor=usuario)
 
 
 # ---- técnicos ----------------------------------------------------------------------------------------------------
@@ -101,7 +106,7 @@ def empalmes(tecnico, desde, hasta, *, excluir=None):
 
 
 @transaction.atomic
-def asignar_tecnico(evento, *, usuario, tecnico, desde=None, hasta=None, nota=""):
+def asignar_tecnico(evento, *, usuario, tecnico, desde=None, hasta=None, nota="", avisar=True):
     """Devuelve (asignación, avisos). Sin fechas, el técnico cubre todo el evento."""
     _exigir_abierto(evento)
     desde, hasta = desde or evento.inicio, hasta or evento.fin
@@ -119,15 +124,19 @@ def asignar_tecnico(evento, *, usuario, tecnico, desde=None, hasta=None, nota=""
         for o in empalmes(tecnico, desde, hasta, excluir=evento)
     ]
     _bitacora(evento, usuario, "tecnico_agregado", f"{asignacion.tecnico_nombre}: {_fmt(desde)} a {_fmt(hasta)}")
+    if avisar:
+        avisos_correo.asignado(asignacion, actor=usuario)
     return asignacion, avisos
 
 
 @transaction.atomic
-def quitar_tecnico(asignacion, *, usuario):
+def quitar_tecnico(asignacion, *, usuario, avisar=True):
     evento = asignacion.evento
     _exigir_abierto(evento)
     asignacion.delete()
     _bitacora(evento, usuario, "tecnico_quitado", f"{asignacion.tecnico_nombre}: {_fmt(asignacion.desde)} a {_fmt(asignacion.hasta)}")
+    if avisar:
+        avisos_correo.quitado(asignacion, actor=usuario)
 
 
 # ---- vales, telefonía y notas ------------------------------------------------------------------------------------

@@ -47,7 +47,7 @@ def cargar(datos, *, aplicar=False):
             for a in fila.get("tecnicos", []):
                 desde = _momento(hoy, a.get("dia", fila["dia"]), a["desde"]) if a.get("desde") else None
                 hasta = _momento(hoy, a.get("dia", fila["dia"]), a["hasta"]) if a.get("hasta") else None
-                services.asignar_tecnico(evento, usuario=None, tecnico=tecnicos[a["correo"]], desde=desde, hasta=hasta, nota=a.get("nota", ""))
+                services.asignar_tecnico(evento, usuario=None, tecnico=tecnicos[a["correo"]], desde=desde, hasta=hasta, nota=a.get("nota", ""), avisar=False)
                 resumen["asignaciones"] += 1
             for referencia, nota in fila.get("vales", []):
                 services.vincular_vale(evento, usuario=None, referencia=referencia, nota=nota)

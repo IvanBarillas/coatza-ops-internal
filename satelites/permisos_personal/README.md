@@ -25,6 +25,14 @@ Después: `migrate`, `check_axentra_modules --persist`, activar el módulo en el
 - **Mínimo por sede** (1 por omisión, configurable): nunca bloquea; avisa al solicitar y marca en rojo el día en el calendario.
 - Cancelar exige motivo; lo ya validado solo lo cancela control. La bitácora de movimientos es de solo agregar.
 
+## Avisos y archivos
+
+- **Cobertura baja:** al registrar una solicitud que deja a una sede por debajo de su mínimo, se manda un correo a los usuarios con rol
+  `owner` o `control` (no al que solicita ni con los datos ficticios), con los días afectados. La solicitud nunca se bloquea.
+- **Excel:** el botón «Excel» de *Solicitudes* baja lo que se está viendo (mismo año, estado, tipo, sede y búsqueda) y el de *Calendario*
+  baja las ausencias del mes (una fila por persona y día, con la sede que queda bajo el mínimo). Los textos libres se protegen para que
+  Excel no los ejecute como fórmula.
+
 ## Roles
 
 | Rol | Puede |

@@ -5,8 +5,9 @@ Ningún otro módulo de la app importa `apps.*`. Para vivir sin el Core basta co
 from apps.security.decorators import axentra_module_gate
 from apps.shared.module_sdk import ModuleManifest
 from apps.shared.module_sdk.integrations import integration_registry
+from apps.shared.notifications.services import enqueue_email
 
-__all__ = ["ModuleManifest", "nombre_de_usuario", "proteger_vista", "vales", "usuarios_con_acceso", "usuario_de_prueba"]
+__all__ = ["ModuleManifest", "enqueue_email", "url_base", "nombre_de_usuario", "proteger_vista", "vales", "usuarios_con_acceso", "usuario_de_prueba"]
 
 
 def proteger_vista(codigo, permiso):
@@ -43,3 +44,10 @@ def usuario_de_prueba(correo, nombre, apellidos):
 def vales():
     """Capacidad opcional `prestamos.vales` (vales de salida). Sin el satélite que la ofrece devuelve una integración nula."""
     return integration_registry.resolve("prestamos.vales")
+
+
+def url_base():
+    """Dirección pública de este satélite (EVENTOS_PUBLIC_BASE_URL) para poner enlaces en los correos; vacía si no se configuró."""
+    from django.conf import settings
+
+    return str(getattr(settings, "EVENTOS_PUBLIC_BASE_URL", "") or "").strip().rstrip("/")
