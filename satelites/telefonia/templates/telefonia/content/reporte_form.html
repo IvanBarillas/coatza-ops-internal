@@ -1,0 +1,67 @@
+{% load static %}
+{% include "telefonia/contextual/_menu_movil.html" %}
+{{ lineas_data|json_script:"tel-lineas" }}
+{{ responsables_data|json_script:"tel-responsables" }}
+<link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
+<script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'telefonia/mapa.js' %}"></script>
+<div class="mx-auto w-full max-w-5xl space-y-4 font-mono"
+     x-data="{
+        lineas: JSON.parse(document.getElementById('tel-lineas').textContent),
+        q: '', linea: '{{ linea_inicial }}',
+        norm(t) { return (t || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase() },
+        get visibles() { const q = this.norm(this.q); return this.lineas.filter(l => q === '' || this.norm(l.identificador + ' ' + l.sitio + ' ' + l.direccion).includes(q)).slice(0, 40) },
+        get actual() { return this.lineas.find(l => l.id === this.linea) },
+        elegir(id) { this.linea = id; this.$nextTick(() => window.TelMapa && TelMapa.enfocar(this.$refs.mapa, id)) },
+     }" @tel-linea="elegir($event.detail.id)" x-init="$nextTick(() => { if (linea) elegir(linea) })">
+    {% url 'telefonia:reportes' as volver_url %}
+    {% include "components/form_header.html" with module_label="Telefonía" mode_label="Nuevo reporte" title="Nuevo reporte a Telmex" description="Busque la línea o el sitio (o tóquelo en el mapa), capture el folio que dio Telmex y quién estará en sitio para atenderlos." icon="phone-call" back_url=volver_url back_label="Volver a reportes" %}
+    <form method="post" class="space-y-4">
+        {% csrf_token %}
+        {% for e in form.non_field_errors %}<p class="rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700">{{ e }}</p>{% endfor %}
+        <input type="hidden" name="linea" :value="linea">
+        {% for e in form.linea.errors %}<p class="text-xs text-red-600">Elija una línea. {{ e }}</p>{% endfor %}
+
+        <section class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <div class="space-y-2 rounded-2xl border border-gray-200/80 bg-white p-4 shadow-sm">
+                <h2 class="text-xs font-black uppercase text-gray-700">1. ¿Qué línea o enlace falló?</h2>
+                <input type="search" x-model="q" placeholder="Número, circuito, sitio o dirección…" aria-label="Buscar línea" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                <div class="max-h-56 overflow-y-auto rounded-xl border border-gray-200 bg-white text-xs">
+                    <template x-for="l in visibles" :key="l.id">
+                        <button type="button" @click="elegir(l.id)" :class="l.id === linea ? 'bg-brand-primary text-white' : 'hover:bg-gray-50'" class="flex w-full items-center justify-between gap-2 border-b border-gray-100 px-3 py-2 text-left">
+                            <span><strong x-text="l.sitio"></strong><span class="block opacity-70" x-text="l.identificador + ' · ' + l.tipo"></span></span>
+                            <span x-show="l.abiertos > 0" class="shrink-0 rounded-md bg-red-100 px-2 py-0.5 text-xs font-black uppercase text-red-700" x-text="l.abiertos + ' abierto(s)'"></span>
+                        </button>
+                    </template>
+                    <p x-show="visibles.length === 0" class="px-3 py-3 text-gray-400">No hay líneas con ese dato. Dé de alta la línea en «Líneas».</p>
+                </div>
+                <div x-show="actual" class="rounded-xl bg-gray-50 p-3 text-xs text-gray-600">
+                    <div class="font-black uppercase text-gray-800" x-text="actual && actual.sitio"></div>
+                    <div x-text="actual && (actual.identificador + ' · ' + actual.tipo + (actual.velocidad ? ' · ' + actual.velocidad : ''))"></div>
+                    <div class="text-gray-400" x-text="actual && actual.direccion"></div>
+                    <a x-show="actual && actual.lat !== null" :href="actual ? 'https://www.google.com/maps?q=' + actual.lat + ',' + actual.lng : '#'" target="_blank" rel="noopener" class="mt-1 inline-block font-bold text-brand-primary underline">Abrir en Google Maps</a>
+                    <p x-show="actual && actual.lat === null" class="mt-1 text-amber-700">Esta línea aún no tiene ubicación en el mapa.</p>
+                    <p x-show="actual && actual.abiertos > 0" class="mt-1 font-bold text-red-700">Ojo: ya tiene reportes abiertos. Revise que no sea el mismo.</p>
+                </div>
+            </div>
+            <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+                <div x-ref="mapa" data-tel-mapa data-lineas="tel-lineas" data-tiles="{{ mapa_config.tiles }}" data-atribucion="{{ mapa_config.atribucion }}" class="h-72 w-full lg:h-full lg:min-h-72"></div>
+            </div>
+        </section>
+
+        <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+            <h2 class="mb-3 text-xs font-black uppercase text-gray-700">2. Datos del reporte</h2>
+            <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {% for campo in form %}{% if campo.name != "linea" %}
+                <div class="{% if campo.name == 'detalle' %}sm:col-span-2{% endif %}">
+                    <label for="{{ campo.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500">{{ campo.label }}</label>
+                    {{ campo }}
+                    {% if campo.help_text %}<p class="mt-1 text-xs text-gray-400">{{ campo.help_text }}</p>{% endif %}
+                    {% for e in campo.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}
+                </div>
+                {% endif %}{% endfor %}
+            </div>
+            <div class="mt-6 flex justify-center"><button type="submit" class="rounded-xl bg-brand-primary px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Registrar reporte</button></div>
+        </section>
+    </form>
+</div>

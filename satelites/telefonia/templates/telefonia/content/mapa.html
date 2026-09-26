@@ -1,0 +1,13 @@
+{% load static %}
+{% include "telefonia/contextual/_menu_movil.html" %}
+{{ lineas_data|json_script:"tel-lineas-mapa" }}
+<link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
+<script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
+<script src="{% static 'telefonia/mapa.js' %}"></script>
+<div class="w-full space-y-4 font-mono text-left">
+    {% include "components/list_header.html" with module_label="Telefonía" status_label="Mapa" title="Mapa de líneas" description="Todas las líneas y enlaces ubicados. Rojo, ámbar y verde indican el reporte abierto más antiguo; gris, sin reportes abiertos." icon="map" %}
+    <p class="text-xs text-gray-500">{{ con_mapa }} línea{{ con_mapa|pluralize }} en el mapa{% if sin_mapa %} · <strong class="text-amber-700">{{ sin_mapa }} sin ubicar</strong> (edítelas en «Líneas»){% endif %}.</p>
+    <div class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm">
+        <div data-tel-mapa data-lineas="tel-lineas-mapa" data-tiles="{{ mapa_config.tiles }}" data-atribucion="{{ mapa_config.atribucion }}" class="h-[65vh] w-full"></div>
+    </div>
+</div>
