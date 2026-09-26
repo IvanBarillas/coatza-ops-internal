@@ -8,6 +8,7 @@
         <a href="{{ cal_url }}?anio={{ siguiente.anio }}&amp;mes={{ siguiente.mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" hx-get="{{ cal_url }}?anio={{ siguiente.anio }}&amp;mes={{ siguiente.mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" hx-target="#page-content" hx-push-url="true" class="rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600" aria-label="Mes siguiente">→</a>
         <form method="get" action="{{ cal_url }}" hx-get="{{ cal_url }}" hx-target="#page-content" hx-push-url="true" class="ml-auto flex items-center gap-2">
             <input type="hidden" name="anio" value="{{ anio }}"><input type="hidden" name="mes" value="{{ mes }}">
+            <a href="{% url 'permisos_personal:calendario_exportar' %}?anio={{ anio }}&amp;mes={{ mes }}{% if sede %}&amp;sede={{ sede }}{% endif %}" download class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-950"><i data-lucide="file-spreadsheet" class="h-4 w-4"></i>Excel</a>
             <select name="sede" onchange="this.form.requestSubmit()" aria-label="Sede" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2 text-[14px] font-medium text-gray-700"><option value="">Todas las sedes</option>{% for uuid, nombre in sedes %}<option value="{{ uuid }}" {% if uuid == sede %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select>
         </form>
     </div>

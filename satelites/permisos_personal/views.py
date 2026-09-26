@@ -4,6 +4,7 @@ import datetime
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import PermissionDenied, ValidationError
+from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -11,6 +12,7 @@ from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
 from . import calendario as cal
+from . import exportes
 from . import selectors as sel
 from . import services
 from .forms import AjusteForm, ConfiguracionForm, EmpleadoForm, RangoForm, SolicitudForm
@@ -155,9 +157,8 @@ def calendario_view(request):
 ESTADOS = (("pendientes", "Por validar"), ("validadas", "Validadas"), ("canceladas", "Canceladas"), ("todas", "Todas"))
 
 
-@login_required
-@proteger_vista(APP_SLUG, "can_view_all_requests")
-def solicitudes_view(request):
+def _solicitudes_filtradas(request):
+    """Filtros de la lista de solicitudes (los mismos para la pantalla y para el archivo de Excel)."""
     anio = _entero(request.GET.get("anio"), timezone.localdate().year, 2000, 2100)
     estado = request.GET.get("estado", "pendientes")
     estado = estado if estado in dict(ESTADOS) else "pendientes"
@@ -172,23 +173,57 @@ def solicitudes_view(request):
         sede = ""
     for termino in texto.split()[:4]:
         base = base.filter(empleado__usuario__first_name__icontains=termino) | base.filter(empleado__usuario__last_name__icontains=termino)
-    conteos = {
-        "pendientes": base.filter(estatus="activa", validado=False).count(), "validadas": base.filter(estatus="activa", validado=True).count(),
-        "canceladas": base.filter(estatus="cancelada").count(), "todas": base.count(),
-    }
     filtros = {
         "pendientes": {"estatus": "activa", "validado": False}, "validadas": {"estatus": "activa", "validado": True},
         "canceladas": {"estatus": "cancelada"}, "todas": {},
     }
-    filas = list(base.filter(**filtros[estado]).order_by("fecha_inicio"))
+    return {"anio": anio, "estado": estado, "tipo": tipo, "sede": sede, "texto": texto, "sedes": sedes, "base": base, "filas": base.filter(**filtros[estado]).order_by("fecha_inicio")}
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_all_requests")
+def solicitudes_view(request):
+    f = _solicitudes_filtradas(request)
+    base, estado = f["base"], f["estado"]
+    conteos = {
+        "pendientes": base.filter(estatus="activa", validado=False).count(), "validadas": base.filter(estatus="activa", validado=True).count(),
+        "canceladas": base.filter(estatus="cancelada").count(), "todas": base.count(),
+    }
+    filas = list(f["filas"])
     parametros = request.GET.copy()
     parametros.pop("pagina", None)
     return _render(request, "solicitudes", {
-        "pagina": sel.pagina(filas, request.GET.get("pagina")), "estado": estado, "anio": anio, "tipo": tipo, "sede": sede, "texto": texto,
-        "estados": [{"clave": c, "nombre": n, "total": conteos[c], "activa": c == estado} for c, n in ESTADOS], "sedes": sedes,
+        "pagina": sel.pagina(filas, request.GET.get("pagina")), "estado": estado, "anio": f["anio"], "tipo": f["tipo"], "sede": f["sede"], "texto": f["texto"],
+        "estados": [{"clave": c, "nombre": n, "total": conteos[c], "activa": c == estado} for c, n in ESTADOS], "sedes": f["sedes"],
         "tipos": Solicitud.TipoSolicitud.choices, "total": len(filas), "puede_validar": permitido(request, "can_validate_requests"),
         "query": parametros.urlencode(), "volver": request.get_full_path(),
     })
+
+
+XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _descarga(contenido, nombre):
+    respuesta = HttpResponse(contenido, content_type=XLSX)
+    respuesta["Content-Disposition"] = f'attachment; filename="{nombre}"'
+    return respuesta
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_all_requests")
+def solicitudes_exportar_view(request):
+    f = _solicitudes_filtradas(request)
+    return _descarga(exportes.solicitudes_xlsx(list(f["filas"].select_related("validado_por"))), f"solicitudes-{f['anio']}-{f['estado']}.xlsx")
+
+
+@login_required
+@proteger_vista(APP_SLUG, "can_view_calendar")
+def calendario_exportar_view(request):
+    hoy = timezone.localdate()
+    anio, mes = _entero(request.GET.get("anio"), hoy.year, 2000, 2100), _entero(request.GET.get("mes"), hoy.month, 1, 12)
+    sede = request.GET.get("sede", "")
+    sede = sede if sede in {str(pk) for pk, _ in sedes_del_core()} else ""
+    return _descarga(exportes.ausencias_xlsx(services.calendario_mes(anio, mes, sede or None), mes), f"ausencias-{anio}-{mes:02d}.xlsx")
 
 
 @login_required

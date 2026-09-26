@@ -71,7 +71,7 @@ def cargar(datos, *, aplicar=False):
         if empleado.solicitudes.filter(estatus=Solicitud.Estatus.ACTIVA, comentarios=fila.get("comentarios", ""), fecha_inicio=inicio).exists():
             continue
         try:
-            services.crear_solicitud(empleado, usuario=empleado.usuario, tipo=fila["tipo"], fecha_inicio=inicio, fecha_fin=fin, comentarios=fila.get("comentarios", ""))
+            services.crear_solicitud(empleado, usuario=empleado.usuario, tipo=fila["tipo"], fecha_inicio=inicio, fecha_fin=fin, comentarios=fila.get("comentarios", ""), avisar=False)
             resumen["solicitudes"] += 1
         except ValidationError as error:
             resumen["avisos"].append(f"Solicitud de {empleado.nombre} omitida: {'; '.join(error.messages)}")

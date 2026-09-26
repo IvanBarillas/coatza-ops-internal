@@ -4,8 +4,9 @@ Ningún otro módulo de la app importa `apps.*`. Para vivir sin el Core basta co
 """
 from apps.security.decorators import axentra_module_gate
 from apps.shared.module_sdk import ModuleManifest
+from apps.shared.notifications.services import enqueue_email
 
-__all__ = ["ModuleManifest", "nombre_de_usuario", "proteger_vista", "sedes_del_core", "usuarios_con_acceso", "usuario_de_prueba"]
+__all__ = ["ModuleManifest", "enqueue_email", "usuarios_con_rol", "nombre_de_usuario", "proteger_vista", "sedes_del_core", "usuarios_con_acceso", "usuario_de_prueba"]
 
 
 def proteger_vista(codigo, permiso):
@@ -44,3 +45,13 @@ def usuario_de_prueba(correo, nombre, apellidos):
         usuario.set_unusable_password()
         usuario.save()
     return usuario
+
+
+def usuarios_con_rol(app_slug, roles):
+    """Usuarios activos con alguno de esos roles vigentes en el módulo (a quién avisar)."""
+    from django.contrib.auth import get_user_model
+
+    from apps.security.models import UserAppRole
+
+    miembros = UserAppRole.objects.filter(app__slug=app_slug, role__in=roles, is_active=True, is_deleted=False).values("user_id")
+    return list(get_user_model().objects.filter(pk__in=miembros, is_active=True, is_deleted=False).order_by("first_name", "email"))
