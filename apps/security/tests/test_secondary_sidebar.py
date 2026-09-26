@@ -106,3 +106,23 @@ class CollapsibleModuleSidebarTests(SimpleTestCase):
         ):
             with self.subTest(template=name):
                 self.assertIn("shell/_sidebar_header.html", get_template(name).template.source)
+
+
+class OrganigramaListHeadersTests(SimpleTestCase):
+    """El encabezado de las listas va solo (como Usuarios), no dentro de otra tarjeta."""
+
+    def test_list_header_renders_optional_count_chips(self):
+        header = get_template("components/list_header.html").template.source
+
+        self.assertIn("count_total is not None", header)
+        self.assertIn("count_active is not None", header)
+        self.assertIn("count_inactive is not None", header)
+
+    def test_lists_use_header_counts_instead_of_wrapping_stat_cards(self):
+        for name in ("sede", "dependencia", "area"):
+            source = get_template(f"organigrama/content/{name}_list_content.html").template.source
+            with self.subTest(list=name):
+                self.assertIn("count_total=", source)
+                self.assertNotIn("rounded-[28px]", source)
+                self.assertNotIn("Inventario físico", source)
+                self.assertNotIn("sm:grid-cols-3", source)
