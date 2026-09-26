@@ -22,9 +22,8 @@ contacto). Mientras no esté registrado no se le mandan avisos.
 
 **Buzón.** Se usa el correo de Google de la empresa (podría ser cualquier otro). El sistema lo consulta cada pocos minutos con una tarea
 programada de Django-Q2: lee solo lo no procesado, evita duplicados por `Message-ID`, ignora respuestas automáticas y rebotes (para no crear
-bucles), limita tamaño y tipo de adjuntos y **no se fía del remitente**. Se configura por entorno, no en el Core. **[?]** Opciones con Google:
-(a) IMAP con contraseña de aplicación, lo más sencillo; (b) API de Gmail con OAuth, más robusto. ¿Quién administra la cuenta y permite crear
-credenciales?
+bucles), limita tamaño y tipo de adjuntos y **no se fía del remitente**. Se configura por entorno, no en el Core. Opciones con Google:
+**Decidido: IMAP con contraseña de aplicación** (la cuenta la administra el equipo de Innovación). La API de Gmail con OAuth queda como mejora futura.
 
 ## 3. Personas, niveles y quién puede qué
 
@@ -33,7 +32,7 @@ credenciales?
 | **SMA** (Service Management Automation) | Primer filtro | Atiende lo *Entrante*: **categoriza**, registra al solicitante y asigna al encargado de sede. Puede trasladar entre sedes |
 | **Encargado de sede** | Jefe de técnicos | Recibe los tickets de su sede y los asigna a un técnico a su cargo |
 | **Técnico nivel 2** | Especialista | Atiende y recibe lo que un nivel 1 escala |
-| **Técnico nivel 1** | Campo | Atiende; solo puede pasar el ticket a un par o **escalar** a nivel 2 |
+| **Técnico nivel 1** | Campo | Atiende; puede pasar el ticket a **otro nivel 1** sin más, o **escalar** a nivel 2 |
 | **Owner / Director / Subdirector** | Supervisión | Ven todo y pueden trasladar entre sedes. Actúan como supervisores, no como quien resuelve |
 | Solicitante | — | Ve sus tickets |
 
@@ -51,13 +50,13 @@ Reglas (tomadas de INTEC-OS y de lo acordado):
 ## 4. Categorías
 
 Catálogo **editable** por el administrador, con las que use Innovación: infraestructura, soporte, telefonía, VoIP, CCTV, etc. (con código corto
-para reportes). No se fijan en código. Cada ticket tiene además **tipo** (solicitud de servicio, incidente, consulta) y **canal** (correo, teléfono,
+para reportes). No se fijan en código. Sin prioridades en la primera versión (se agregan con el SLA). Cada ticket tiene además **tipo** (solicitud de servicio, incidente, consulta) y **canal** (correo, teléfono,
 oficio, chat, interno).
 
 ## 5. Estados: siempre se sabe exactamente en qué paso está
 
 ```text
-Entrante ──SMA──► Con encargado ──encargado──► Con técnico ──► En proceso ──► Resuelto ──► Cerrado
+Entrante ──SMA──► Con encargado ──encargado──► Con técnico ──► En proceso ──► Resuelto ──SMA valida──► Por confirmar ──usuario──► Cerrado
                                                                   ▲  │
                                                                   └──┴── En espera (motivo) ⏸
                                               Cancelado · Duplicado (fusionado con otro)
@@ -70,11 +69,15 @@ Entrante ──SMA──► Con encargado ──encargado──► Con técnico 
 | **Con técnico** | Técnico | Asignado, aún no empieza |
 | **En proceso** | Técnico | Ya está trabajando en él |
 | **En espera** | Técnico | **Motivo obligatorio:** usuario, proveedor, compra de materiales/refacciones, otra tarea o ticket, otro. **Pausa el reloj** |
-| **Resuelto** | Quien valida | El técnico terminó; falta validar. Si se rechaza vuelve a *En proceso* marcado como re-trabajo (garantía) |
-| **Cerrado** | — | Validado |
+| **Resuelto** | SMA | El técnico terminó; falta la validación de dirección |
+| **Por confirmar** | Solicitante | SMA lo validó y se envió el correo con la liga de un solo uso |
+| **Cerrado** | — | El solicitante confirmó y calificó su satisfacción (o venció el plazo) |
 | **Cancelado / Duplicado** | — | Con motivo; el duplicado apunta al ticket original (fusión) |
 
-**[?]** ¿Quién valida el cierre: el solicitante, el encargado de sede o SMA?
+**Cierre.** El director o subdirector le indica a SMA que cierre; **SMA valida** el ticket. Entonces se manda al solicitante un correo con una
+**liga de un solo uso** (token que caduca) para que confirme el cierre y califique su satisfacción; al usarla el ticket queda *Cerrado*. Si el
+solicitante no responde en el plazo, se cierra solo (se propone 48 h, como en INTEC). Si dirección rechaza el trabajo, vuelve a *En proceso*
+marcado como **re-trabajo (garantía)**; si el solicitante dice que no quedó resuelto, se reabre.
 
 ## 6. Tiempos (sin SLA por ahora, pero se miden desde el día uno)
 
@@ -93,11 +96,11 @@ existe pero no se usa por ahora**: los tiempos corren en horas naturales; la tab
 - **Avances** con evidencia (foto o documento) y porcentaje opcional.
 - **Copias (CC)** a otras personas.
 - **Causa raíz** al resolver (manipulación, hardware, software, energía, proveedor…), opcional.
-- **Tareas asignadas a otras personas.** Ejemplo: para mover una impresora hay que pedir a alguien que habilite el puerto del switch. Propuesta:
+- **Tareas asignadas a otras personas (decidido: se empieza con tareas).** Ejemplo: para mover una impresora hay que pedir a alguien que habilite el puerto del switch. Propuesta:
   una **tarea** dentro del ticket, con responsable, descripción y fecha, que aparece en «Mis pendientes» de esa persona. Al crearla se puede
   marcar **«bloquea el ticket»**: el ticket pasa a *En espera* (motivo «otra tarea») y regresa solo a *En proceso* cuando la tarea se termina.
   Si el trabajo pedido es grande o de otra área con su propia cola, se **convierte en un ticket hijo** y el padre queda en espera hasta que el hijo
-  cierre. **[?]** ¿Te sirve empezar con tareas y dejar el ticket hijo para después?
+  cierre. **El ticket hijo queda para después.**
 
 ## 8. De un ticket nace todo lo demás
 
@@ -105,14 +108,22 @@ Desde el detalle del ticket hay botones para crear lo relacionado **sin que la m
 nombre sus acciones (*Crear evento*, *Reportar a Telmex*, *Hacer vale*) que abren su formulario con el ticket ya puesto. El ticket muestra lo que ya
 nació de él (sección «Relacionado», `vinculos_de`). Los activos que salen para un ticket ya se cubren con los vales de Oficios.
 
-## 9. Avisos
+## 9. Avisos y su configuración
 
-Por correo (cola del Core): al solicitante (si ya está registrado) cuando se recibe, se asigna, queda en espera y se resuelve; al encargado y al
-técnico cuando les asignan o reasignan; a SMA cuando algo lleva mucho tiempo *Entrante*. **[?]** ¿Quién recibe copia por defecto?
+Por correo (cola del Core): al solicitante (si ya está registrado) cuando se recibe, se asigna, queda en espera y se resuelve, y el correo con la liga de
+cierre y satisfacción; al encargado y al técnico cuando les asignan o reasignan; a SMA cuando algo lleva mucho tiempo *Entrante*.
+
+**Copia por defecto:** el encargado de sede, SMA y el director o subdirector.
+
+**Panel de configuración de avisos:**
+- Un **interruptor general** para encender o apagar todos los correos de la mesa.
+- Un interruptor **por tipo de aviso** (recibido, asignado, en espera, resuelto, cierre, tiempo excedido…).
+- Cada persona, **incluidos los propios usuarios solicitantes**, puede apagar los avisos que recibe. Los avisos obligatorios (la liga de cierre) se
+  pueden marcar como no apagables por el administrador **[?]**.
 
 ## 10. Fuera de la primera versión
 
-Respuestas por correo, SLA con metas y semáforos, horario laboral, encuesta de satisfacción a las 48 h, base de conocimiento, notificaciones
+Respuestas por correo, prioridades, SLA con metas y semáforos, horario laboral, base de conocimiento, notificaciones
 push/PWA, inventario de activos propio, portal para ciudadanos, ticket hijo (si empezamos con tareas).
 
 ## 11. Plan de construcción (después de aprobar este documento)
@@ -123,12 +134,26 @@ push/PWA, inventario de activos propio, portal para ciudadanos, ticket hijo (si 
 3. Referencias de origen en Eventos, Telefonía y Oficios + acciones «crear desde el ticket» + «Relacionado».
 4. Reporte de tiempos (SMA / encargado / técnico) y datos ficticios.
 
-## 12. Preguntas abiertas
+## 12. Decisiones tomadas
 
-1. ¿Quién valida el cierre (solicitante, encargado de sede, SMA)?
-2. ¿Empezamos con **tareas** y dejamos el ticket hijo para después?
-3. Correo de Google: ¿IMAP con contraseña de aplicación o API de Gmail? ¿Quién administra la cuenta?
-4. ¿Prioridades (baja, normal, alta, urgente) desde el inicio, o después con el SLA?
-5. ¿Un técnico nivel 1 puede pasar el ticket a otro nivel 1 sin más (como en INTEC)?
-6. ¿Quién recibe copia de los avisos por defecto?
-7. ¿La sede del ticket es donde ocurre el problema o donde está el técnico? (propongo lo primero)
+| Tema | Decisión |
+|---|---|
+| Validación del cierre | SMA, por indicación de director/subdirector; luego el solicitante confirma y califica con una liga de un solo uso |
+| Trabajo pedido a otros | Empezar con **tareas**; ticket hijo después |
+| Correo entrante | IMAP con contraseña de aplicación (lo administra Innovación) |
+| Prioridades | No en la primera versión |
+| Nivel 1 → nivel 1 | Sí, sin más |
+| Copia de avisos | Encargado de sede, SMA y director/subdirector; con panel para apagar avisos (general, por tipo y por persona) |
+| Sede del ticket | Donde ocurre el problema |
+| Traslado de sede | Solo SMA, owner, director o subdirector |
+| Escalar a nivel 2 | Solo el técnico asignado, con motivo |
+| Técnico en otra sede | Con movimiento (comisión) explícito |
+| Solicitante que no es usuario | Contacto + «solicitante por registrar» |
+| Respuestas por correo | No en la primera versión |
+| Horario laboral y SLA | No por ahora; los tiempos se miden desde el inicio |
+
+## 13. Pendientes menores (se resuelven al construir)
+
+1. Plazo para que el solicitante confirme el cierre antes de cerrarse solo (propuesta: 48 h).
+2. ¿La liga de cierre es un aviso que **no** se puede apagar? (propuesta: sí, es parte del cierre).
+3. Lista inicial de categorías completas de Innovación.
