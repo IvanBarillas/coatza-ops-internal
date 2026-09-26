@@ -3,7 +3,7 @@
 <link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
 <script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
 <script src="{% static 'telefonia/mapa.js' %}"></script>
-<div class="mx-auto w-full max-w-2xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-2xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% url 'telefonia:lineas' as volver_url %}
     {% if linea %}{% include "components/form_header.html" with module_label="Telefonía" mode_label="Línea" title=linea.identificador description="Corrija los datos de la línea o su ubicación." icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}
     {% else %}{% include "components/form_header.html" with module_label="Telefonía" mode_label="Nueva línea" title="Nueva línea o enlace" description="Dé de alta la línea con su sitio y, si puede, su ubicación." icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}{% endif %}

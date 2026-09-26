@@ -1,6 +1,6 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:soporte' as lista_url %}
-<div class="w-full space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
     {% include "components/list_header.html" with module_label="Oficios" status_label="Soporte técnico" title="Diagnósticos y dictámenes" description="Diagnósticos técnicos y dictámenes de alta y baja emitidos por soporte." icon="stethoscope" %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}
     <div class="grid grid-cols-2 gap-3 sm:grid-cols-4" role="tablist">

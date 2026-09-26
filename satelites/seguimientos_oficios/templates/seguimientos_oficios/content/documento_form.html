@@ -1,6 +1,6 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% comment %}Alpine: sentido cambia las etiquetas y muestra solo lo que aplica.{% endcomment %}
-<div class="mx-auto w-full max-w-3xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-3xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% url 'seguimientos_oficios:documento_list' as volver_url %}
     {% include "components/form_header.html" with module_label="Oficios" mode_label="Nuevo registro" title="Registrar documento" description="Captura el documento recibido o enviado; el folio se escribe tal como aparece." icon="file-plus" back_url=volver_url back_label="Volver al listado" %}
     <form method="post" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5 sm:p-6"
@@ -21,7 +21,7 @@
 
             <div class="sm:col-span-2">
                 <label for="{{ form.contraparte_dependencia.id_for_label }}" class="mb-1 block text-xs font-bold uppercase text-gray-500"><span x-text="sentido === 'enviado' ? 'Dirección destinataria' : 'Dirección remitente'">Dirección destinataria / remitente</span></label>
-                <select name="contraparte_dependencia" id="{{ form.contraparte_dependencia.id_for_label }}" x-model="dependencia" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+                <select name="contraparte_dependencia" id="{{ form.contraparte_dependencia.id_for_label }}" x-model="dependencia" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-mono font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
                     {% for valor, nombre in form.contraparte_dependencia.field.choices %}<option value="{{ valor }}">{{ nombre }}</option>{% endfor %}
                 </select>
                 {% for e in form.contraparte_dependencia.errors %}<p class="mt-1 text-xs text-red-600">{{ e }}</p>{% endfor %}

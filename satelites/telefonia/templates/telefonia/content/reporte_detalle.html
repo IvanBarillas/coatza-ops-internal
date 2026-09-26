@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
 <script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
 <script src="{% static 'telefonia/mapa.js' %}"></script>
-<div class="w-full space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
     {% url 'telefonia:reportes' as volver_url %}
     {% include "components/form_header.html" with module_label="Telefonía" mode_label="Reporte" title=reporte.folio description=reporte.sitio_texto icon="phone-call" back_url=volver_url back_label="Volver a reportes" %}
     {% include "telefonia/content/_mensajes.html" %}
@@ -70,7 +70,7 @@
         <form method="post" action="{% url 'telefonia:reporte_asignar' reporte.pk %}" class="flex flex-wrap items-end gap-2 border-t border-gray-100 pt-4">
             {% csrf_token %}
             <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="id_resp">Responsable de Innovación</label>
-                <select name="responsable" id="id_resp" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700">
+                <select name="responsable" id="id_resp" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700">
                     <option value="">Sin asignar</option>{% for u in responsables %}<option value="{{ u.pk }}" {% if u.pk == reporte.responsable_id %}selected{% endif %}>{{ u.full_name|default:u.email }}</option>{% endfor %}
                 </select></div>
             <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600">Asignar</button>
@@ -84,7 +84,7 @@
         <form method="post" action="{% if reporte.estatus == 'pendiente' %}{% url 'telefonia:reporte_cancelar' reporte.pk %}{% else %}{% url 'telefonia:reporte_reabrir' reporte.pk %}{% endif %}" class="flex flex-wrap items-end gap-2">
             {% csrf_token %}
             <div class="min-w-0 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="id_motivo_c">{% if reporte.estatus == 'pendiente' %}Cancelar el reporte (duplicado, Telmex lo cerró…){% else %}Reabrir el reporte{% endif %}</label>
-                <input type="text" name="motivo" id="id_motivo_c" placeholder="Motivo" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700"></div>
+                <input type="text" name="motivo" id="id_motivo_c" placeholder="Motivo" class="w-full rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700"></div>
             <button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest {% if reporte.estatus == 'pendiente' %}text-red-600{% else %}text-emerald-700{% endif %}">{% if reporte.estatus == 'pendiente' %}Cancelar{% else %}Reabrir{% endif %}</button>
         </form>
     </section>

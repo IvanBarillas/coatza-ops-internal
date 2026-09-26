@@ -1,6 +1,6 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:bienes' as lista_url %}
-<div class="w-full space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
     {% if puede_gestionar %}{% url 'seguimientos_oficios:bien_crear' as nuevo_url %}
     {% include "components/list_header.html" with module_label="Oficios" status_label="Préstamos" title="Bienes" description="Catálogo de bienes que se prestan y quién tiene cada uno hoy." icon="package" action_url=nuevo_url action_label="Nuevo bien" %}
     {% else %}
@@ -20,13 +20,13 @@
     <form method="get" action="{{ lista_url }}" hx-get="{{ lista_url }}" hx-target="#page-content" hx-push-url="true" class="flex flex-wrap gap-2">
         <input type="hidden" name="situacion" value="{{ situacion }}">
         {% if categorias %}
-        <select name="categoria" aria-label="Categoría" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700">
+        <select name="categoria" aria-label="Categoría" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700">
             <option value="">Todas las categorías</option>
             {% for c in categorias %}<option value="{{ c.pk }}" {% if categoria == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
             <option value="sin" {% if categoria == "sin" %}selected{% endif %}>Sin categoría</option>
         </select>
         {% endif %}
-        <input type="search" name="q" value="{{ texto }}" placeholder="Nombre, número de serie o folio de inventario…" aria-label="Buscar bien" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-xs font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
+        <input type="search" name="q" value="{{ texto }}" placeholder="Nombre, número de serie o folio de inventario…" aria-label="Buscar bien" class="min-w-0 flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
         <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Buscar</button>
     </form>
 

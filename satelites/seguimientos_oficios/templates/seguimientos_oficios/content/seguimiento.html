@@ -1,6 +1,6 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:seguimiento' as seguimiento_url %}
-<div class="w-full space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
     {% include "components/list_header.html" with module_label="Oficios" status_label="Semáforo" title="Seguimiento" description="Oficios enviados que siguen pendientes: por entregar o sin evidencia. El color indica cuánto llevan esperando." icon="activity" %}
 
     <div class="grid grid-cols-3 gap-3">

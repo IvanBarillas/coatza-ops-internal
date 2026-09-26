@@ -1,6 +1,6 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
 {% url 'seguimientos_oficios:vales' as lista_url %}
-<div class="w-full space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
     {% if puede_gestionar %}{% url 'seguimientos_oficios:vale_crear' as nuevo_url %}
     {% include "components/list_header.html" with module_label="Oficios" status_label="Préstamos" title="Vales" description="Bienes prestados a otras direcciones, con su fecha límite de devolución." icon="hand-coins" action_url=nuevo_url action_label="Nuevo vale" %}
     {% else %}

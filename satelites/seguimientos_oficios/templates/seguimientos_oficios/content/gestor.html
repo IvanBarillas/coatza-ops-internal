@@ -1,5 +1,5 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% include "components/list_header.html" with module_label="Oficios" status_label="Gestor" title="Mis pendientes" description="Oficios que llevas a entregar. Registra la entrega y sube la foto o el PDF del acuse desde aquí." icon="clipboard-list" %}
     {% include "seguimientos_oficios/content/_mensajes.html" %}
 
@@ -31,12 +31,12 @@
                     {% csrf_token %}
                     {% if d.estado == 'generado' %}
                     <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="fecha-{{ d.pk }}">Fecha de entrega</label>
-                        <input type="date" name="fecha_entrega" id="fecha-{{ d.pk }}" value="{% now 'Y-m-d' %}" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs font-mono font-medium text-gray-700"></div>
+                        <input type="date" name="fecha_entrega" id="fecha-{{ d.pk }}" value="{% now 'Y-m-d' %}" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-[14px] font-mono font-medium text-gray-700"></div>
                     <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="receptor-{{ d.pk }}">Quién recibió</label>
-                        <input type="text" name="receptor" id="receptor-{{ d.pk }}" required maxlength="200" placeholder="Nombre de quien recibió" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-xs font-mono font-medium text-gray-700"></div>
+                        <input type="text" name="receptor" id="receptor-{{ d.pk }}" required maxlength="200" placeholder="Nombre de quien recibió" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-3 text-[14px] font-mono font-medium text-gray-700"></div>
                     {% endif %}
                     <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="archivo-{{ d.pk }}">{% if d.estado == 'generado' %}Foto o PDF del acuse (opcional){% else %}Foto o PDF del acuse{% endif %}</label>
-                        <input type="file" name="archivo" id="archivo-{{ d.pk }}" accept="image/*,application/pdf" {% if d.estado == 'entregado' %}required{% endif %} class="w-full cursor-pointer rounded-xl border border-gray-200 bg-white text-xs font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-3 file:text-xs file:font-black file:uppercase file:tracking-widest file:text-white"></div>
+                        <input type="file" name="archivo" id="archivo-{{ d.pk }}" accept="image/*,application/pdf" {% if d.estado == 'entregado' %}required{% endif %} class="w-full cursor-pointer rounded-xl border border-gray-200 bg-white text-[14px] font-mono text-gray-600 file:mr-3 file:cursor-pointer file:rounded-l-xl file:border-0 file:bg-brand-primary file:px-4 file:py-3 file:text-[14px] file:font-black file:uppercase file:tracking-widest file:text-white"></div>
                     <button type="submit" class="min-h-11 w-full rounded-xl bg-gray-950 px-4 py-3 text-xs font-black uppercase tracking-widest text-white">
                         {% if d.estado == 'generado' %}Guardar entrega{% else %}Guardar acuse{% endif %}
                     </button>

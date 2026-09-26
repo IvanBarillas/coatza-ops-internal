@@ -1,5 +1,5 @@
 {% include "seguimientos_oficios/contextual/_menu_movil.html" %}
-<div class="mx-auto w-full max-w-3xl space-y-4 font-mono">
+<div class="mx-auto w-full max-w-3xl space-y-4 font-mono [&_.text-xs]:text-[13px]">
     {% if editando %}{% url 'seguimientos_oficios:documento_detail' documento.pk as volver_url %}{% else %}{% url 'seguimientos_oficios:soporte' as volver_url %}{% endif %}
     {% include "components/form_header.html" with module_label="Soporte técnico" mode_label=editando|yesno:"Corregir,Nuevo" title=titulo description=descripcion icon="stethoscope" back_url=volver_url back_label=editando|yesno:"Volver al documento,Volver a diagnósticos y dictámenes" %}
     {% if editando and aviso_firmado %}<p class="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">El documento ya se firmó o entregó: la corrección queda en el historial con su motivo y conviene volver a imprimirlo y firmarlo.</p>{% endif %}
@@ -35,15 +35,15 @@
                 <input type="hidden" :name="`eq-${i}-equipo`" :value="f.equipo">
                 <input type="hidden" :name="`eq-${i}-folio_inventario`" :value="f.folio_inventario">
                 {% if catalogo and not editando %}
-                <select :name="`eq-${i}-bien`" x-model="f.bien" @change="elegirComp(f)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700" aria-label="Bien del catálogo">
+                <select :name="`eq-${i}-bien`" x-model="f.bien" @change="elegirComp(f)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700" aria-label="Bien del catálogo">
                     <option value="">No está en el catálogo (escribir datos)</option>
                     <template x-for="c in catalogo" :key="c.id"><option :value="c.id" x-text="c.texto" :selected="c.id === f.bien"></option></template>
                 </select>
                 {% endif %}
                 <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                    <input type="text" :name="`eq-${i}-serie`" x-model="f.serie" placeholder="Serie" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
-                    <input type="text" :name="`eq-${i}-marca_modelo`" x-model="f.marca_modelo" placeholder="Marca y modelo" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
-                    <textarea :name="`eq-${i}-info_tecnica`" x-model="f.info_tecnica" rows="2" placeholder="Información técnica (procesador, memoria, disco, sistema…)" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700 sm:col-span-2"></textarea>
+                    <input type="text" :name="`eq-${i}-serie`" x-model="f.serie" placeholder="Serie" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700">
+                    <input type="text" :name="`eq-${i}-marca_modelo`" x-model="f.marca_modelo" placeholder="Marca y modelo" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700">
+                    <textarea :name="`eq-${i}-info_tecnica`" x-model="f.info_tecnica" rows="2" placeholder="Información técnica (procesador, memoria, disco, sistema…)" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700 sm:col-span-2"></textarea>
                 </div>
             </fieldset>
         </template>
@@ -55,17 +55,17 @@
                 <div class="space-y-2 rounded-xl bg-gray-50/70 p-3">
                     {% if editando %}<input type="hidden" :name="`eq-${i}-id`" :value="f.id">{% endif %}
                     {% if catalogo and not editando %}
-                    <select :name="`eq-${i}-bien`" x-model="f.bien" @change="elegir(f)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700" aria-label="Bien del catálogo">
+                    <select :name="`eq-${i}-bien`" x-model="f.bien" @change="elegir(f)" class="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700" aria-label="Bien del catálogo">
                         <option value="">Equipo que no está en el catálogo (escribir datos)</option>
                         <template x-for="c in catalogo" :key="c.id"><option :value="c.id" x-text="c.texto" :selected="c.id === f.bien"></option></template>
                     </select>
                     {% endif %}
                     <div class="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                        <input type="text" :name="`eq-${i}-equipo`" x-model="f.equipo" placeholder="Equipo (descripción)" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
-                        <input type="text" :name="`eq-${i}-marca_modelo`" x-model="f.marca_modelo" placeholder="Marca y modelo" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
-                        <input type="text" :name="`eq-${i}-serie`" x-model="f.serie" placeholder="Serie" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
-                        <input type="text" :name="`eq-${i}-folio_inventario`" x-model="f.folio_inventario" placeholder="Folio de inventario" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700">
-                        {% if not un_equipo %}<input type="text" :name="`eq-${i}-departamento`" x-model="f.departamento" placeholder="Departamento" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-xs font-medium text-gray-700 sm:col-span-2">{% endif %}
+                        <input type="text" :name="`eq-${i}-equipo`" x-model="f.equipo" placeholder="Equipo (descripción)" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700">
+                        <input type="text" :name="`eq-${i}-marca_modelo`" x-model="f.marca_modelo" placeholder="Marca y modelo" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700">
+                        <input type="text" :name="`eq-${i}-serie`" x-model="f.serie" placeholder="Serie" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700">
+                        <input type="text" :name="`eq-${i}-folio_inventario`" x-model="f.folio_inventario" placeholder="Folio de inventario" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700">
+                        {% if not un_equipo %}<input type="text" :name="`eq-${i}-departamento`" x-model="f.departamento" placeholder="Departamento" class="rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-[14px] font-medium text-gray-700 sm:col-span-2">{% endif %}
                     </div>
                     {% if not un_equipo and not editando %}<button type="button" x-show="filas.length > 1" @click="filas.splice(i, 1)" class="text-xs font-bold text-red-600 underline">Quitar equipo</button>{% endif %}
                 </div>
