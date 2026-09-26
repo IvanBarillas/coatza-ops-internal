@@ -1,27 +1,8 @@
 {% load axentra_ui %}
 
 <div class="w-full space-y-5 animate-fade-in select-none" x-data="{ buscarQuery: '' }">
-    <section class="bg-white border border-gray-200/80 rounded-[28px] shadow-3xs overflow-hidden">
-        {% url 'organigrama:estructura_list' as estructura_url %}{% url 'organigrama:area_create' as create_url %}
-        {% if request.axentra_is_root or "can_manage_infrastructure" in request.axentra_permissions_list or "organigrama__can_manage_infrastructure" in request.axentra_permissions_list %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Operación territorial" title="Áreas operativas" description="Oficinas y unidades que conectan una dependencia administrativa con una sede física." icon="layout-grid" action_url=create_url action_label="Registrar área" secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% else %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Operación territorial" title="Áreas operativas" description="Oficinas y unidades que conectan una dependencia administrativa con una sede física." icon="layout-grid" secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% endif %}
-
-        <div class="px-5 sm:px-6 lg:px-7 py-4 bg-white">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div class="text-xs font-black uppercase tracking-widest text-gray-400 font-mono">Total Áreas</div>
-                    <div class="mt-1 text-2xl font-black text-gray-950 font-mono">{{ total_areas|default:0 }}</div>
-                </div>
-                <div class="rounded-2xl border border-emerald-100 bg-emerald-50/40 p-4">
-                    <div class="text-xs font-black uppercase tracking-widest text-emerald-700 font-mono">Activas</div>
-                    <div class="mt-1 text-2xl font-black text-emerald-700 font-mono">{{ areas_activas|default:0 }}</div>
-                </div>
-                <div class="rounded-2xl border border-rose-100 bg-rose-50/40 p-4">
-                    <div class="text-xs font-black uppercase tracking-widest text-rose-700 font-mono">Inactivas</div>
-                    <div class="mt-1 text-2xl font-black text-rose-700 font-mono">{{ areas_inactivas|default:0 }}</div>
-                </div>
-            </div>
-        </div>
-    </section>
+    {% url 'organigrama:estructura_list' as estructura_url %}{% url 'organigrama:area_create' as create_url %}
+    {% if request.axentra_is_root or "can_manage_infrastructure" in request.axentra_permissions_list or "organigrama__can_manage_infrastructure" in request.axentra_permissions_list %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Operación territorial" title="Áreas operativas" description="Oficinas y unidades que conectan una dependencia administrativa con una sede física." icon="layout-grid" count_total=total_areas|default:0 count_active=areas_activas|default:0 count_inactive=areas_inactivas|default:0 action_url=create_url action_label="Registrar área" secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% else %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Operación territorial" title="Áreas operativas" description="Oficinas y unidades que conectan una dependencia administrativa con una sede física." icon="layout-grid" count_total=total_areas|default:0 count_active=areas_activas|default:0 count_inactive=areas_inactivas|default:0 secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% endif %}
 
     <section class="bg-white border border-gray-200/80 rounded-[24px] shadow-3xs p-4">
         <div class="relative w-full font-mono text-xs">

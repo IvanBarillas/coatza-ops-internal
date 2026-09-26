@@ -6,7 +6,7 @@
     <!-- HEADER / HUB MAESTRO                                  -->
     <!-- ===================================================== -->
     <section class="bg-white border border-gray-200/80 rounded-[28px] shadow-3xs overflow-hidden">
-        <div class="px-5 sm:px-6 lg:px-7 py-5 border-b border-gray-100 bg-linear-to-r from-brand-accent/10 via-white to-white">
+        <div class="px-5 sm:px-6 lg:px-7 py-5 bg-linear-to-r from-brand-accent/10 via-white to-white">
             <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div class="min-w-0">
                     <div class="inline-flex items-center gap-2 rounded-full border border-brand-accent/30 bg-brand-accent/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-brand-accent font-mono">
@@ -33,12 +33,14 @@
                 {% endif %}
             </div>
         </div>
+    </section>
+
+    <section>
 
         <!-- ===================================================== -->
         <!-- NAVEGACIÓN PRINCIPAL                                  -->
         <!-- ===================================================== -->
-        <div class="px-5 sm:px-6 lg:px-7 py-5 bg-white">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                 
                 <!-- SEDES -->
                 <a href="{% url 'organigrama:sede_list' %}" hx-get="{% url 'organigrama:sede_list' %}" hx-target="#workbench" hx-swap="innerHTML" hx-push-url="true" class="group rounded-[24px] border border-brand-accent/20 bg-brand-accent/10 p-5 hover:bg-white hover:border-brand-accent/40 hover:shadow-sm transition">
@@ -115,7 +117,6 @@
                         Abrir árbol operativo <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-0.5 transition"></i>
                     </div>
                 </a>
-            </div>
         </div>
     </section>
 

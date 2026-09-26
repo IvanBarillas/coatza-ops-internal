@@ -11,6 +11,13 @@
                 </div>
                 <h1 class="mt-2 text-xl font-black uppercase leading-none tracking-tight text-gray-950">{{ title }}</h1>
                 {% if description %}<p class="mt-2 max-w-3xl text-xs font-medium leading-relaxed text-gray-500">{{ description }}</p>{% endif %}
+                {% if count_total is not None %}
+                    <div class="mt-3 flex flex-wrap items-center gap-2 font-mono text-xs font-black uppercase tracking-widest">
+                        <span class="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-1 text-gray-500">Total <b class="text-gray-950">{{ count_total }}</b></span>
+                        {% if count_active is not None %}<span class="inline-flex items-center gap-1.5 rounded-lg border border-emerald-100 bg-emerald-50 px-2.5 py-1 text-emerald-700">Activas <b>{{ count_active }}</b></span>{% endif %}
+                        {% if count_inactive is not None %}<span class="inline-flex items-center gap-1.5 rounded-lg border border-rose-100 bg-rose-50 px-2.5 py-1 text-rose-700">Inactivas <b>{{ count_inactive }}</b></span>{% endif %}
+                    </div>
+                {% endif %}
             </div>
         </div>
 

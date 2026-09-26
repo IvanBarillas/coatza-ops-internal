@@ -2,43 +2,8 @@
 
 <div class="w-full space-y-5 animate-fade-in select-none">
 
-    <section class="bg-white border border-gray-200/80 rounded-[28px] shadow-3xs overflow-hidden">
-
-        {% url 'organigrama:estructura_list' as estructura_url %}{% url 'organigrama:sede_create' as create_url %}
-        {% if request.axentra_is_root or "can_manage_infrastructure" in request.axentra_permissions_list or "organigrama__can_manage_infrastructure" in request.axentra_permissions_list %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Territorio institucional" title="Sedes e inmuebles" description="Ubicaciones físicas donde operan las dependencias, áreas y servicios de la institución." icon="map-pin" action_url=create_url action_label="Registrar sede" secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% else %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Territorio institucional" title="Sedes e inmuebles" description="Ubicaciones físicas donde operan las dependencias, áreas y servicios de la institución." icon="map-pin" secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% endif %}
-
-        <div class="px-5 sm:px-6 lg:px-7 py-4 bg-white">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div class="text-xs font-black uppercase tracking-widest text-gray-400 font-mono">
-                        Total Sedes
-                    </div>
-                    <div class="mt-1 text-2xl font-black text-gray-950 font-mono">
-                        {{ sedes|length }}
-                    </div>
-                </div>
-
-                <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div class="text-xs font-black uppercase tracking-widest text-gray-400 font-mono">
-                        Módulo
-                    </div>
-                    <div class="mt-1 text-sm font-black text-gray-950 uppercase font-mono">
-                        Organigrama
-                    </div>
-                </div>
-
-                <div class="rounded-2xl border border-gray-100 bg-gray-50/60 p-4">
-                    <div class="text-xs font-black uppercase tracking-widest text-gray-400 font-mono">
-                        Vista
-                    </div>
-                    <div class="mt-1 text-sm font-black text-gray-950 uppercase font-mono">
-                        Inventario físico
-                    </div>
-                </div>
-            </div>
-        </div>
-
-    </section>
+    {% url 'organigrama:estructura_list' as estructura_url %}{% url 'organigrama:sede_create' as create_url %}
+    {% if request.axentra_is_root or "can_manage_infrastructure" in request.axentra_permissions_list or "organigrama__can_manage_infrastructure" in request.axentra_permissions_list %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Territorio institucional" title="Sedes e inmuebles" description="Ubicaciones físicas donde operan las dependencias, áreas y servicios de la institución." icon="map-pin" count_total=sedes|length action_url=create_url action_label="Registrar sede" secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% else %}{% include "components/list_header.html" with module_label="Organigrama" status_label="Territorio institucional" title="Sedes e inmuebles" description="Ubicaciones físicas donde operan las dependencias, áreas y servicios de la institución." icon="map-pin" count_total=sedes|length secondary_action_url=estructura_url secondary_action_label="Volver a estructura" secondary_action_icon="git-fork" %}{% endif %}
 
     <section id="sede-results">
         {% include "organigrama/htmx/sede_cards.html" %}
