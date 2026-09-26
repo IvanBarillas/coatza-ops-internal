@@ -91,8 +91,8 @@
     {% endif %}
 
     {% if evidencias %}
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Evidencia</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-amber-100 bg-amber-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white"><i data-lucide="paperclip" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Evidencia</h2></header>
         <ul class="flex flex-wrap gap-3 text-xs">
             {% for e in evidencias %}
             <li class="w-32">
@@ -106,8 +106,8 @@
     </section>
     {% endif %}
 
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Seguimiento</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-emerald-100 bg-emerald-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white"><i data-lucide="message-square" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Seguimiento</h2></header>
         <ol class="space-y-3 text-xs">
             {% for m in movimientos %}
             <li class="border-l-4 {% if m.tipo == 'comentario' %}border-brand-primary{% else %}border-gray-200{% endif %} pl-3">
@@ -125,8 +125,8 @@
     </section>
 
     {% if otros_reportes %}
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-2 text-xs font-black uppercase text-gray-700">Otros reportes de esta línea</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-slate-100 bg-slate-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-600 text-white"><i data-lucide="list" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Otros reportes de esta línea</h2></header>
         <ul class="space-y-1 text-xs">{% for o in otros_reportes %}<li><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_detalle' o.pk %}" hx-get="{% url 'telefonia:reporte_detalle' o.pk %}" hx-target="#page-content" hx-push-url="true">{{ o.folio }}</a> · {{ o.levantado|date:"d/m/Y" }} · {{ o.get_estatus_display }}</li>{% endfor %}</ul>
     </section>
     {% endif %}

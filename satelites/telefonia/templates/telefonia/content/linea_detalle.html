@@ -8,7 +8,8 @@
     {% url 'telefonia:lineas' as volver_url %}
     {% include "components/form_header.html" with module_label="Telefonía" mode_label="Línea" title=linea.identificador description=linea.sitio icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}
     {% include "telefonia/content/_mensajes.html" %}
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-slate-100 bg-slate-50 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-slate-600 text-white"><i data-lucide="info" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Datos de la línea</h2></header>
         <dl class="grid grid-cols-1 gap-4 text-xs sm:grid-cols-3">
             <div><dt class="font-bold uppercase text-gray-500">Tipo</dt><dd>{{ linea.get_tipo_display }}</dd></div>
             <div><dt class="font-bold uppercase text-gray-500">Paquete o velocidad</dt><dd>{{ linea.velocidad|default:"—" }}</dd></div>
@@ -24,8 +25,8 @@
         {% if linea.con_ubicacion %}<div data-tel-mapa data-lineas="tel-linea-detalle" data-tiles="{{ mapa_config.tiles }}" data-atribucion="{{ mapa_config.atribucion }}" class="mt-4 h-64 w-full overflow-hidden rounded-xl border border-gray-200"></div>
         {% else %}<p class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800">Esta línea aún no tiene ubicación. Edítela y pegue el enlace de Google Maps o las coordenadas.</p>{% endif %}
     </section>
-    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-2 text-xs font-black uppercase text-gray-700">Historial de reportes ({{ reportes|length }})</h2>
+    <section class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-blue-100 bg-blue-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white"><i data-lucide="history" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Historial de reportes ({{ reportes|length }})</h2></header>
         <ul class="space-y-1 text-xs">
             {% for r in reportes %}<li><a class="font-bold text-brand-primary underline" href="{% url 'telefonia:reporte_detalle' r.pk %}" hx-get="{% url 'telefonia:reporte_detalle' r.pk %}" hx-target="#page-content" hx-push-url="true">{{ r.folio }}</a> · {{ r.levantado|date:"d/m/Y" }} · {{ r.get_estatus_display }}{% if r.atendido %} · atendido el {{ r.atendido|date:"d/m/Y" }}{% endif %}</li>
             {% empty %}<li class="text-gray-400">Sin reportes.</li>{% endfor %}

@@ -29,8 +29,8 @@
     {% endif %}
 
     {% if direccion %}
-    <section id="nomenclaturas" x-show="seccion === 'nomenclaturas'" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
-        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Nomenclaturas de folio</h2>
+    <section id="nomenclaturas" x-show="seccion === 'nomenclaturas'" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-blue-100 bg-blue-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white"><i data-lucide="hash" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Nomenclaturas de folio</h2></header>
         <p class="mb-4 text-xs text-gray-400">Una por clase de documento enviado. Cambiar una plantilla no altera los folios ya emitidos.</p>
         <ul class="space-y-3 text-xs">
             {% for n in nomenclaturas %}
@@ -62,8 +62,8 @@
     {% endif %}
 
     {% if direccion %}
-    <section id="gestores" x-show="seccion === 'gestores'" class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
-        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Gestores</h2>
+    <section id="gestores" x-show="seccion === 'gestores'" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-violet-100 bg-violet-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-violet-600 text-white"><i data-lucide="users" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Gestores</h2></header>
         <p class="mb-4 text-xs text-gray-400">Quienes llevan los oficios a las dependencias y traen el acuse. Cada gestor es un usuario existente (con membresía en el módulo): entra desde su celular a “Mis pendientes”. Se asignan al registrar un oficio enviado.</p>
         <ul class="space-y-3 text-xs">
             {% for g in gestores %}
@@ -99,8 +99,8 @@
     {% endif %}
 
     {% if direccion %}
-    <section id="categorias" x-show="seccion === 'categorias'" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
-        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Categorías</h2>
+    <section id="categorias" x-show="seccion === 'categorias'" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-amber-100 bg-amber-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500 text-white"><i data-lucide="tags" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Categorías</h2></header>
         <p class="mb-4 text-xs text-gray-400">Temas con los que esta dirección clasifica sus documentos (p. ej. panteones, escuelas). Es opcional al registrar y sirve para filtrar y buscar.</p>
         <ul class="space-y-3 text-xs">
             {% for g in categorias %}
@@ -126,8 +126,8 @@
     {% endif %}
 
     {% if direccion %}
-    <section id="bienes" x-show="seccion === 'bienes'" class="rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
-        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Categorías de bienes</h2>
+    <section id="bienes" x-show="seccion === 'bienes'" class="overflow-hidden rounded-2xl border border-gray-200/80 bg-white shadow-sm p-5">
+        <header class="-mx-5 -mt-5 mb-4 flex items-center gap-3 border-b border-emerald-100 bg-emerald-50/70 px-5 py-3"><span class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-white"><i data-lucide="boxes" class="h-4 w-4"></i></span><h2 class="text-xs font-black uppercase tracking-widest text-gray-800">Categorías de bienes</h2></header>
         <p class="mb-4 text-xs text-gray-400">Familias con las que esta dirección agrupa sus bienes (p. ej. Cómputo, Energía eléctrica). Sirven para encontrarlos rápido al generar un vale. Se asignan al dar de alta o editar cada bien.</p>
         <ul class="space-y-3 text-xs">
             {% for g in categorias_bien %}
