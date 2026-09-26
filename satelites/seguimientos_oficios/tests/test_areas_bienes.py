@@ -100,7 +100,7 @@ class PanelDeInicioTests(PrestamosBase):
 
     def test_carga_parcial_del_workbench_no_lleva_el_menu_de_area(self):
         parcial = self.inicio(HTTP_HX_REQUEST="true", HTTP_HX_TARGET="workbench")
-        self.assertContains(parcial, 'id="workbench"')
+        self.assertContains(parcial, 'id="workbench-layout"')
         self.assertNotContains(parcial, 'id="module-sidebar"')
 
     def test_el_area_tiene_enlace_de_regreso_al_panel(self):

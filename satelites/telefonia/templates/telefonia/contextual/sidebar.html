@@ -1,12 +1,6 @@
 <div class="flex h-full w-full flex-col bg-brand-primary font-mono text-white select-none">
     <div class="border-b border-white/10 p-5">
-        <div class="flex items-center gap-3">
-            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/10 text-white"><i data-lucide="phone-call" class="h-5 w-5"></i></div>
-            <div class="min-w-0">
-                <div class="text-xs font-black uppercase tracking-[0.22em] text-white/60">Innovación</div>
-                <h2 class="truncate text-sm font-black uppercase tracking-tight text-white">Telefonía y enlaces</h2>
-            </div>
-        </div>
+        {% include "shell/_sidebar_header.html" with icon="phone-call" eyebrow="Innovación" title="Telefonía y enlaces" %}
     </div>
     <nav class="flex-1 space-y-1 overflow-y-auto p-3">
         {% for item in sidebar_items %}
