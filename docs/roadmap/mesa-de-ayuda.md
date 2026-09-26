@@ -1,116 +1,134 @@
 # Mesa de ayuda — definición del proceso (paso 1)
 
-Documento de trabajo para acordar **qué** hace la mesa de ayuda antes de escribir código. Marcado con **[?]** lo que falta confirmar.
-Referencias: cómo lo hacen hoy en Spiceworks y las ideas útiles de la app anterior de control de actividades (NewSISA).
+Documento de trabajo para acordar **qué** hace la mesa de ayuda antes de escribir código. **[?]** = falta confirmar.
+Fuentes: lo acordado con el equipo, cómo se trabaja hoy en Spiceworks, la app anterior de control de actividades (NewSISA) y el helpdesk de
+INTEC-OS-COATZA (IntelDesk), de donde se rescatan las reglas que ya se habían pensado.
 
 ## 1. Idea general
 
-Todo nace de un **ticket**. Casi siempre el flujo es: llega la solicitud → se crea el ticket → de él nacen el evento, el vale de salida,
-el reporte a Telmex o el soporte técnico. Hoy esos módulos guardan el ticket como texto libre; con la mesa pasan a guardar una
-**referencia** al ticket (contrato `mesa.tickets`, ver `docs/contratos-satelites.md`).
+Todo nace de un **ticket**. El flujo normal es: **llega el ticket → SMA → encargado de sede → técnico (nivel 1 o 2)**, y del ticket nacen el
+evento, el vale de salida, el reporte a Telmex o el soporte técnico. Hoy esos módulos guardan el ticket como texto libre; con la mesa pasan a
+guardar una **referencia** (contrato `mesa.tickets`, ver `docs/contratos-satelites.md`) y todo sigue funcionando si la mesa no está instalada.
 
 ## 2. Cómo llega un ticket
 
-1. **Por correo (principal):** alguien escribe a `soporte@…` y se crea el ticket solo, como en Spiceworks. Estado inicial: *Entrante*.
-2. **Desde el sistema:** un empleado o un técnico lo captura en una pantalla.
-3. **Respuestas por correo:** quien escribió puede contestar el correo y la respuesta se agrega al ticket (por el número en el asunto,
-   p. ej. `[#123]`). **[?]** ¿lo quieres desde la primera versión?
+1. **Por correo (principal):** alguien escribe a `soporte@…` y se crea solo, estado *Entrante*, como en Spiceworks.
+2. **Desde el sistema:** SMA, un encargado o un técnico lo captura (canal: teléfono, oficio, chat, detección interna).
+3. Las **respuestas por correo al ticket no entran en la primera versión** (los comentarios se hacen dentro del sistema).
 
-Correo entrante: el satélite consulta el buzón cada pocos minutos (tarea programada de Django-Q2; no necesita servicios nuevos).
-Datos que hacen falta **[?]**: tipo de buzón (IMAP, Microsoft 365, Google…), quién administra la cuenta y si se pueden usar credenciales
-de aplicación. El buzón se configura por entorno (por instalación), no en el Core. Cuidados: ignorar respuestas automáticas y rebotes
-(para no crear bucles), limitar tamaño y tipo de adjuntos, y no fiarse del remitente (puede ser un correo que no es usuario del sistema).
+**Quien escribe y no es usuario del sistema.** Spiceworks crea el usuario solo. Aquí se crea un **contacto** (nombre y correo del remitente, sin
+acceso al sistema) y el ticket queda marcado **«solicitante por registrar»**. SMA lo registra (lo liga a una persona y dependencia, o confirma el
+contacto). Mientras no esté registrado no se le mandan avisos.
 
-## 3. Personas y quién ve qué
+**Buzón.** Se usa el correo de Google de la empresa (podría ser cualquier otro). El sistema lo consulta cada pocos minutos con una tarea
+programada de Django-Q2: lee solo lo no procesado, evita duplicados por `Message-ID`, ignora respuestas automáticas y rebotes (para no crear
+bucles), limita tamaño y tipo de adjuntos y **no se fía del remitente**. Se configura por entorno, no en el Core. **[?]** Opciones con Google:
+(a) IMAP con contraseña de aplicación, lo más sencillo; (b) API de Gmail con OAuth, más robusto. ¿Quién administra la cuenta y permite crear
+credenciales?
 
-| Rol | Qué hace | Ve |
+## 3. Personas, niveles y quién puede qué
+
+| Rol | Nivel | Qué hace |
 |---|---|---|
-| Solicitante | Escribe el correo o captura un ticket; ve el suyo y responde | Sus tickets |
-| **SMA** | Recibe lo *Entrante* y lo asigna a un encargado de sede; vigila los tiempos **[?** ¿qué significan las siglas?**]** | Todos |
-| **Encargado de sede** | Recibe el ticket de su sede y lo asigna a un técnico a su cargo | Los de su sede y sus técnicos |
-| **Técnico** | Trabaja y resuelve; anota avances | Los que tiene asignados |
-| Administrador | Catálogos (categorías, sedes, encargados, técnicos) | Todos |
-| Consulta | Solo lectura | Según alcance |
+| **SMA** (Service Management Automation) | Primer filtro | Atiende lo *Entrante*: **categoriza**, registra al solicitante y asigna al encargado de sede. Puede trasladar entre sedes |
+| **Encargado de sede** | Jefe de técnicos | Recibe los tickets de su sede y los asigna a un técnico a su cargo |
+| **Técnico nivel 2** | Especialista | Atiende y recibe lo que un nivel 1 escala |
+| **Técnico nivel 1** | Campo | Atiende; solo puede pasar el ticket a un par o **escalar** a nivel 2 |
+| **Owner / Director / Subdirector** | Supervisión | Ven todo y pueden trasladar entre sedes. Actúan como supervisores, no como quien resuelve |
+| Solicitante | — | Ve sus tickets |
 
-La cadena de mando (SMA → encargado de sede → técnico) sale de una tabla propia: cada sede (del Core, por UUID + nombre) tiene su
-encargado y sus técnicos. Un técnico puede estar en más de una sede **[?]**.
-
-## 3.1 Ideas que vale la pena traer de NewSISA
-
-- **Reasignar con motivo** (instrucción, inactividad, vacaciones, otro) y dejarlo en el historial.
-- **Notas internas** (solo personal) separadas de las **respuestas al solicitante**.
-- **Historial de cambios** de cada ticket.
-- **Copias (CC)** a otras personas.
-- **Adjuntos** con evidencia.
-- Lo que **no** traemos: Celery/Redis/WebSockets (usamos Django-Q2 y, si hace falta, actualización por HTMX).
+Reglas (tomadas de INTEC-OS y de lo acordado):
+- **Trasladar un ticket a otra sede:** solo SMA, owner, director o subdirector.
+- **Escalar (N1 → N2):** solo el técnico al que se asignó, **con motivo obligatorio** (no pudo con el problema).
+- **Reasignar:** siempre con motivo (instrucción, inactividad, vacaciones, otro) y queda en el historial. Nadie puede reasignar hacia un rango
+  superior al suyo, ni a un director o subdirector como si fuera técnico.
+- **Un técnico en varias sedes:** puede, pero **con un movimiento explícito** (comisión con fechas, hecha por SMA o por el encargado), no por
+  defecto. Así se ve quién cubre a quién.
+- Cada quien ve lo de su alcance: técnico, lo asignado; encargado, lo de su sede y sus técnicos; SMA y supervisión, todo.
+- La cadena (sedes, encargados, técnicos y su nivel) sale de una tabla propia; las sedes son las del Core (UUID + nombre) y director/subdirector se
+  toman del organigrama del Core.
 
 ## 4. Categorías
 
-Catálogo editable por el administrador. Iniciales: **Infraestructura, Soporte, Telefonía, VoIP, CCTV**, y las que agregues **[?]**.
-La categoría sirve para filtrar, reportar y, a futuro, sugerir a quién asignar.
+Catálogo **editable** por el administrador, con las que use Innovación: infraestructura, soporte, telefonía, VoIP, CCTV, etc. (con código corto
+para reportes). No se fijan en código. Cada ticket tiene además **tipo** (solicitud de servicio, incidente, consulta) y **canal** (correo, teléfono,
+oficio, chat, interno).
 
-## 5. Estados
-
-Propuesta (a confirmar contigo **[?]**, sobre todo el sentido de «asignado» y «pendiente»):
+## 5. Estados: siempre se sabe exactamente en qué paso está
 
 ```text
-Entrante (sin asignar) → Asignado → En proceso → Resuelto → Cerrado
-                              ↘ En espera (motivo) ↗          Cancelado / Duplicado
+Entrante ──SMA──► Con encargado ──encargado──► Con técnico ──► En proceso ──► Resuelto ──► Cerrado
+                                                                  ▲  │
+                                                                  └──┴── En espera (motivo) ⏸
+                                              Cancelado · Duplicado (fusionado con otro)
 ```
 
-- **Entrante:** recién llegado, sin encargado.
-- **Asignado:** ya tiene encargado de sede o técnico, sin empezar.
-- **En proceso:** el técnico ya trabaja en él (lo que llamas «pendiente cuando ya está trabajando»).
-- **En espera:** con **motivo obligatorio**: *por el usuario*, *por proveedor* u *otro* (catálogo). **Pausa el reloj de tiempos.**
-- **Resuelto:** el técnico terminó; el solicitante puede confirmar o reabrir. **Cerrado:** confirmado o vencido el plazo de confirmación.
-- **Cancelado / Duplicado:** con motivo; el duplicado apunta al ticket original.
+| Estado | Quién lo tiene | Qué significa |
+|---|---|---|
+| **Entrante** | Bandeja de SMA | Recién llegado, sin categorizar o sin asignar |
+| **Con encargado** | Encargado de sede | Asignado a una sede, sin técnico |
+| **Con técnico** | Técnico | Asignado, aún no empieza |
+| **En proceso** | Técnico | Ya está trabajando en él |
+| **En espera** | Técnico | **Motivo obligatorio:** usuario, proveedor, compra de materiales/refacciones, otra tarea o ticket, otro. **Pausa el reloj** |
+| **Resuelto** | Quien valida | El técnico terminó; falta validar. Si se rechaza vuelve a *En proceso* marcado como re-trabajo (garantía) |
+| **Cerrado** | — | Validado |
+| **Cancelado / Duplicado** | — | Con motivo; el duplicado apunta al ticket original (fusión) |
+
+**[?]** ¿Quién valida el cierre: el solicitante, el encargado de sede o SMA?
 
 ## 6. Tiempos (sin SLA por ahora, pero se miden desde el día uno)
 
-Cada cambio de estado o de responsable se guarda con fecha y hora (historial que solo se agrega). Con eso se calculan, **sin fijar aún
-metas**, los tiempos que te importan:
+Cada cambio de estado, de responsable o de sede se guarda con fecha y hora (historial que solo se agrega). Se calculan, sin metas todavía:
 
-1. **SMA:** de *Entrante* a asignado a un encargado de sede.
-2. **Encargado de sede:** de recibirlo a asignarlo a un técnico.
-3. **Técnico:** de recibirlo a *Resuelto* (sin contar el tiempo *En espera*).
+1. **SMA:** de *Entrante* a *Con encargado*.
+2. **Encargado de sede:** de *Con encargado* a *Con técnico*.
+3. **Técnico:** de *Con técnico* a *Resuelto*, **sin contar el tiempo *En espera***.
 
-Cuando llegue el SLA solo habrá que definir metas por categoría/prioridad y agregar semáforos y alertas; los datos ya estarán. **[?]** ¿Hay
-horario laboral que deba descontarse (horas hábiles)?
+Cuando llegue el SLA solo se definen metas (por categoría y prioridad) y se agregan semáforos y alertas: los datos ya estarán. El **horario laboral
+existe pero no se usa por ahora**: los tiempos corren en horas naturales; la tabla de horarios se agrega después sin cambiar los datos.
 
-## 7. De un ticket nace todo lo demás
+## 7. Trabajo dentro del ticket
 
-Desde el detalle de un ticket, botones para crear lo relacionado **sin que la mesa conozca a los otros satélites**: cada satélite ofrece
-por nombre sus «acciones» (p. ej. *Crear evento* abre el formulario de Eventos con el ticket ya puesto; *Reportar a Telmex* el de Telefonía;
-*Hacer vale* el de Oficios). El ticket muestra abajo lo que ya nació de él con `vinculos_de` (sección «Relacionado»).
+- **Chat interno del equipo** (notas internas, en orden, con adjuntos) separado de las **respuestas al solicitante**.
+- **Avances** con evidencia (foto o documento) y porcentaje opcional.
+- **Copias (CC)** a otras personas.
+- **Causa raíz** al resolver (manipulación, hardware, software, energía, proveedor…), opcional.
+- **Tareas asignadas a otras personas.** Ejemplo: para mover una impresora hay que pedir a alguien que habilite el puerto del switch. Propuesta:
+  una **tarea** dentro del ticket, con responsable, descripción y fecha, que aparece en «Mis pendientes» de esa persona. Al crearla se puede
+  marcar **«bloquea el ticket»**: el ticket pasa a *En espera* (motivo «otra tarea») y regresa solo a *En proceso* cuando la tarea se termina.
+  Si el trabajo pedido es grande o de otra área con su propia cola, se **convierte en un ticket hijo** y el padre queda en espera hasta que el hijo
+  cierre. **[?]** ¿Te sirve empezar con tareas y dejar el ticket hijo para después?
 
-Los campos «ticket» de texto libre de Eventos, Telefonía y Oficios pasan a ser una referencia al ticket, y sigue funcionando sin la mesa.
+## 8. De un ticket nace todo lo demás
 
-## 8. Avisos
+Desde el detalle del ticket hay botones para crear lo relacionado **sin que la mesa conozca a los otros satélites**: cada satélite ofrece por
+nombre sus acciones (*Crear evento*, *Reportar a Telmex*, *Hacer vale*) que abren su formulario con el ticket ya puesto. El ticket muestra lo que ya
+nació de él (sección «Relacionado», `vinculos_de`). Los activos que salen para un ticket ya se cubren con los vales de Oficios.
 
-Por correo (cola del Core): al solicitante cuando se recibe, se asigna, se resuelve; al encargado y al técnico cuando les asignan;
-a SMA cuando un ticket lleva mucho *Entrante*. Las respuestas por correo quedan como comentarios. **[?]** ¿Quién recibe copia por defecto?
+## 9. Avisos
 
-## 9. Fuera de la primera versión
+Por correo (cola del Core): al solicitante (si ya está registrado) cuando se recibe, se asigna, queda en espera y se resuelve; al encargado y al
+técnico cuando les asignan o reasignan; a SMA cuando algo lleva mucho tiempo *Entrante*. **[?]** ¿Quién recibe copia por defecto?
 
-SLA con metas y semáforos, encuestas de satisfacción, base de conocimiento, notificaciones push/PWA, inventario de activos ligado al
-ticket, portal para ciudadanos.
+## 10. Fuera de la primera versión
 
-## 10. Plan de construcción (después de aprobar este documento)
+Respuestas por correo, SLA con metas y semáforos, horario laboral, encuesta de satisfacción a las 48 h, base de conocimiento, notificaciones
+push/PWA, inventario de activos propio, portal para ciudadanos, ticket hijo (si empezamos con tareas).
 
-1. Modelo, roles, categorías, estados con historial y pantallas: bandeja, detalle, nuevo, asignar/reasignar, en espera.
-2. Correo entrante y respuestas por correo.
+## 11. Plan de construcción (después de aprobar este documento)
+
+1. Modelo, roles y niveles, categorías, estados con historial y pantallas: bandeja de SMA, bandeja de sede, mis tickets, detalle, nuevo, asignar,
+   reasignar, escalar, trasladar de sede, comisión de técnicos entre sedes, en espera, chat interno y tareas.
+2. Correo entrante (contactos por registrar, sin respuestas por correo) y avisos.
 3. Referencias de origen en Eventos, Telefonía y Oficios + acciones «crear desde el ticket» + «Relacionado».
 4. Reporte de tiempos (SMA / encargado / técnico) y datos ficticios.
 
-## 11. Preguntas abiertas
+## 12. Preguntas abiertas
 
-1. ¿Qué significa SMA?
-2. ¿«Asignado» y «pendiente» son el mismo estado o dos distintos? Mi lectura está en la sección 5.
-3. ¿Qué buzón y qué tecnología de correo es (IMAP, Microsoft 365, Google)? ¿Se pueden crear credenciales de aplicación?
-4. ¿Las respuestas por correo entran desde la primera versión?
-5. ¿Un técnico puede pertenecer a varias sedes? ¿El encargado puede cubrir varias?
-6. ¿Quién es el solicitante cuando el correo es de alguien que no es usuario del sistema (se crea contacto, se rechaza…)?
-7. Categorías definitivas y si cada una tiene un responsable por omisión.
-8. ¿Prioridades (baja/normal/alta/urgente) desde el inicio?
-9. ¿Horario laboral para los tiempos?
-10. ¿Quién recibe copia de los avisos?
+1. ¿Quién valida el cierre (solicitante, encargado de sede, SMA)?
+2. ¿Empezamos con **tareas** y dejamos el ticket hijo para después?
+3. Correo de Google: ¿IMAP con contraseña de aplicación o API de Gmail? ¿Quién administra la cuenta?
+4. ¿Prioridades (baja, normal, alta, urgente) desde el inicio, o después con el SLA?
+5. ¿Un técnico nivel 1 puede pasar el ticket a otro nivel 1 sin más (como en INTEC)?
+6. ¿Quién recibe copia de los avisos por defecto?
+7. ¿La sede del ticket es donde ocurre el problema o donde está el técnico? (propongo lo primero)
