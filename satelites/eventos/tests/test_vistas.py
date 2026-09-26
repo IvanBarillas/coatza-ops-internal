@@ -171,6 +171,7 @@ class VistasEventosTests(BaseEventos):
         self.client.force_login(self.coord)
         pagina = self.client.get(url("evento_detalle", e.pk))
         for color in ("slate", "blue", "amber", "violet", "emerald"):
-            self.assertContains(pagina, f"border-l-{color}-500")
+            self.assertContains(pagina, f"bg-{color}-")   # encabezado de la sección con su color
+        self.assertNotContains(pagina, "border-l-slate-500")  # sin franja lateral de color
         self.assertContains(pagina, "Vale vinculado")
         self.assertNotContains(pagina, "Valevinculado")
