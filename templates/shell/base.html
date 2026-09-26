@@ -146,6 +146,14 @@
             font-size: 0;
             opacity: 0;
         }
+        /* Encabezado estándar (shell/_sidebar_header.html): contraído solo queda el icono, centrado. */
+        #module-sidebar .ax-sb-head { transition: gap var(--ax-sb-time) var(--ax-sb-ease); }
+        html[data-module-sidebar="collapsed"] #module-sidebar .ax-sb-head {
+            gap: 0;
+            justify-content: center;
+            transition: gap var(--ax-sb-time) var(--ax-sb-ease),
+                        justify-content 0s calc(var(--ax-sb-time) * .75) allow-discrete;
+        }
         [data-axentra-sidebar-toggle] svg { transition: transform var(--ax-sb-time) var(--ax-sb-ease); }
         html[data-module-sidebar="collapsed"] [data-axentra-sidebar-toggle] svg { transform: rotate(180deg); }
         @media (prefers-reduced-motion: reduce) {

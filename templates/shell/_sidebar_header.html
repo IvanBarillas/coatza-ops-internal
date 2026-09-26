@@ -1,0 +1,16 @@
+{% comment %}
+Encabezado estándar de un sidebar contextual: icono (o avatar) de tamaño fijo + textos.
+Al contraer el sidebar solo queda el icono; los textos llevan ax-sb-hide.
+El icono es shrink-0: sin eso el flexbox lo aplasta cuando el texto se pliega.
+Parámetros: icon | avatar, eyebrow, title, subtitle (opcionales), tone (default | amber | accent).
+{% endcomment %}
+<div class="ax-sb-head flex items-center gap-3">
+    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border shadow-sm {% if tone == 'amber' %}border-amber-400/20 bg-amber-500/15 text-amber-300{% elif tone == 'accent' %}border-brand-accent/20 bg-brand-accent/20 text-white{% else %}border-white/10 bg-white/10 text-white{% endif %}">
+        {% if avatar %}<span class="text-sm font-black uppercase">{{ avatar }}</span>{% else %}<i data-lucide="{{ icon|default:'circle' }}" class="h-5 w-5"></i>{% endif %}
+    </div>
+    <div class="ax-sb-hide min-w-0 font-mono">
+        {% if eyebrow %}<p class="text-xs font-black uppercase leading-snug tracking-[0.18em] text-white/60">{{ eyebrow }}</p>{% endif %}
+        <h2 class="truncate text-sm font-black uppercase tracking-tight text-white">{{ title }}</h2>
+        {% if subtitle %}<p class="mt-0.5 truncate text-xs font-bold tracking-wide text-white/60">{{ subtitle }}</p>{% endif %}
+    </div>
+</div>

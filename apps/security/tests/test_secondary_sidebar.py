@@ -88,3 +88,21 @@ class CollapsibleModuleSidebarTests(SimpleTestCase):
             stripped = re.sub(r"/\*.*?\*/", "", block, flags=re.S)
             self.assertNotIn("*/", stripped)
             self.assertNotIn("/*", stripped)
+
+    def test_contextual_sidebars_share_the_standard_header(self):
+        """Todos usan el mismo encabezado; su icono es shrink-0 porque, sin eso, el
+        flexbox lo aplastaba al plegarse el texto (Seguridad, Identidad y Area)."""
+        header = get_template("shell/_sidebar_header.html").template.source
+        self.assertIn("shrink-0", header)
+        self.assertIn("ax-sb-hide", header)
+
+        for name in (
+            "security/contextual/security_sidebar.html",
+            "accounts/contextual/funcionario_sidebar.html",
+            "organigrama/contextual/sede_sidebar.html",
+            "organigrama/contextual/dependencia_sidebar.html",
+            "organigrama/contextual/area_sidebar.html",
+            "security/contextual/configuration_sidebar.html",
+        ):
+            with self.subTest(template=name):
+                self.assertIn("shell/_sidebar_header.html", get_template(name).template.source)
