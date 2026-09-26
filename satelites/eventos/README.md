@@ -21,6 +21,9 @@ Después: `migrate`, `check_axentra_modules --persist`, activar el módulo en el
 - **Vales de salida:** si está instalado el satélite de préstamos, el vale se **elige de una lista** (los vales abiertos que el usuario
   puede ver) y se guarda su UUID y etiqueta; en el evento se ve su estado y un botón «Abrir vale». Si no está instalado (o se trata de un
   vale de papel) se escribe el número a mano. Se consume la capacidad `prestamos.vales`, ver `docs/contratos-satelites.md`. No hay `ForeignKey`.
+- **Avisos por correo:** al técnico se le avisa cuando lo asignan, le quitan un tramo, el evento cambia de fecha o lugar, o se cancela
+  (por `enqueue_email`; no se avisa a quien hace el cambio ni a usuarios sin correo, ni con los datos ficticios). Para que el correo lleve
+  el enlace al evento, defina `EVENTOS_PUBLIC_BASE_URL` (p. ej. `https://ops.municipio.gob.mx`); sin ella el correo va sin enlace.
 - **Telefonía:** trámites en texto libre (reubicar una línea, contratar una nueva) con su estado: pendiente, en trámite o listo.
 - **Notas y bitácora:** cualquier técnico agrega notas; los movimientos quedan registrados (solo se agrega, no se edita).
 - **Mis eventos** muestra al técnico su próximo evento y su carga; el **calendario** mensual se filtra por técnico.
