@@ -16,7 +16,7 @@
         <select name="sede" aria-label="Sede" class="rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700"><option value="">Todas las sedes</option>{% for uuid, nombre in sedes %}<option value="{{ uuid }}" {% if sede == uuid %}selected{% endif %}>{{ nombre }}</option>{% endfor %}</select>
         <input type="search" name="q" value="{{ texto }}" placeholder="Nombre del empleado…" aria-label="Buscar empleado" class="min-w-[12rem] flex-1 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] font-medium text-gray-700 outline-none focus:border-gray-950 focus:bg-white">
         <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm transition hover:brightness-110">Filtrar</button>
-        <a href="{% url 'permisos_personal:solicitudes_exportar' %}?{{ query }}" download class="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-gray-600 transition hover:border-gray-950"><i data-lucide="file-spreadsheet" class="h-4 w-4"></i>Excel</a>
+        <a href="{% url 'permisos_personal:solicitudes_exportar' %}?{{ query }}" download class="inline-flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-700 transition hover:border-emerald-500 hover:bg-emerald-100"><i data-lucide="file-spreadsheet" class="h-4 w-4"></i>Excel</a>
     </form>
     <div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
         <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
