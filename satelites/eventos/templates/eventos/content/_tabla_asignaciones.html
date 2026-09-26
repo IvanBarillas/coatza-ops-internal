@@ -1,0 +1,18 @@
+<div class="bg-white rounded-[32px] border border-gray-200/80 shadow-3xs overflow-hidden">
+    <div class="max-h-[62vh] w-full overflow-auto overscroll-contain [scrollbar-gutter:stable]">
+        <table class="w-full text-left border-collapse">
+            <thead class="sticky top-0 z-10 bg-gray-50 shadow-[0_1px_0_rgba(229,231,235,.9)]">
+                <tr class="border-b border-gray-100 bg-gray-50/70 font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="py-4 px-6 font-semibold">Evento</th><th class="py-4 px-6 font-semibold">Mi horario</th><th class="py-4 px-6 font-semibold">Estado</th></tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 text-xs text-gray-700">
+            {% for a in filas %}
+                <tr class="group hover:bg-gray-50/75 transition-all duration-150 border-b border-gray-100">
+                    <td class="py-5 px-6 align-middle"><a class="font-black text-[15px] text-brand-accent font-mono tracking-tight hover:underline" href="{% url 'eventos:evento_detalle' a.evento_id %}" hx-get="{% url 'eventos:evento_detalle' a.evento_id %}" hx-target="#page-content" hx-push-url="true">{{ a.evento.nombre }}</a><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ a.evento.lugar }}{% if a.evento.ticket %} · Ticket {{ a.evento.ticket }}{% endif %}</div></td>
+                    <td class="py-5 px-6 align-middle"><div class="text-[15px] font-black text-gray-900">{{ a.desde|date:"D d/m/Y" }}</div><div class="mt-1 text-[12px] text-gray-400 font-mono">{{ a.desde|date:"H:i" }} a {{ a.hasta|date:"H:i" }}{% if a.hasta|date:"Ymd" != a.desde|date:"Ymd" %} ({{ a.hasta|date:"d/m" }}){% endif %}</div>{% if a.empalmada %}<div class="mt-1 text-[12px] font-black text-amber-700">⚠ Se empalma con otro evento</div>{% endif %}</td>
+                    <td class="py-5 px-6 align-middle">{% include "eventos/content/_estado.html" with e=a.evento %}</td>
+                </tr>
+            {% empty %}<tr><td colspan="3" class="py-14 text-center text-gray-400 font-mono uppercase text-xs font-black tracking-widest">{{ vacio }}</td></tr>{% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>

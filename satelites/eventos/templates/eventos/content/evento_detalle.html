@@ -1,0 +1,107 @@
+{% include "eventos/contextual/_menu_movil.html" %}
+{% url 'eventos:eventos' as volver_url %}
+{% with e=evento %}
+<div class="w-full space-y-4 font-mono text-left [&_.text-xs]:text-[13px]">
+    {% include "components/form_header.html" with module_label="Eventos" mode_label=e.get_estatus_display title=e.nombre description=e.lugar icon="calendar-clock" back_url=volver_url back_label="Volver a eventos" %}
+    {% include "eventos/content/_mensajes.html" %}
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+            <div class="flex items-center gap-2"><h2 class="text-xs font-black uppercase text-gray-700">Datos</h2>{% include "eventos/content/_estado.html" %}</div>
+            {% if puede_gestionar and e.abierto %}<a class="text-xs font-bold text-brand-accent underline" href="{% url 'eventos:evento_editar' e.pk %}" hx-get="{% url 'eventos:evento_editar' e.pk %}" hx-target="#page-content" hx-push-url="true">Editar</a>{% endif %}
+        </div>
+        <dl class="mt-3 grid grid-cols-2 gap-4 text-xs sm:grid-cols-4">
+            <div><dt class="font-bold uppercase text-gray-500">Inicio</dt><dd>{{ e.inicio|date:"D d/m/Y H:i" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Fin</dt><dd>{{ e.fin|date:"D d/m/Y H:i" }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Lugar</dt><dd>{{ e.lugar }}</dd></div>
+            <div><dt class="font-bold uppercase text-gray-500">Ticket</dt><dd>{{ e.ticket|default:"—" }}</dd></div>
+        </dl>
+        {% if e.descripcion %}<p class="mt-3 whitespace-pre-line text-[14px] text-gray-700">{{ e.descripcion }}</p>{% endif %}
+        {% if e.motivo_cancelacion %}<p class="mt-3 rounded-xl border border-red-100 bg-red-50 px-4 py-2 text-xs text-red-700"><b>Cancelado:</b> {{ e.motivo_cancelacion }}</p>{% endif %}
+        {% if e.notas_cierre %}<p class="mt-3 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700"><b>Notas de cierre:</b> {{ e.notas_cierre }}</p>{% endif %}
+        {% if puede_gestionar and e.abierto %}
+        <div class="mt-4 flex flex-wrap items-start gap-3 border-t border-gray-100 pt-4">
+            {% if e.estatus == 'programado' %}<form method="post">{% csrf_token %}<input type="hidden" name="accion" value="iniciar"><button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Iniciar evento</button></form>{% endif %}
+            <form method="post" class="flex flex-wrap items-center gap-2">{% csrf_token %}<input type="hidden" name="accion" value="concluir"><input type="text" name="notas" placeholder="Notas de cierre (opcional)" aria-label="Notas de cierre" class="w-64 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] text-gray-700"><button type="submit" class="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-700">Concluir</button></form>
+            <form method="post" class="flex flex-wrap items-center gap-2">{% csrf_token %}<input type="hidden" name="accion" value="cancelar"><input type="text" name="motivo" required minlength="5" placeholder="Motivo para cancelar" aria-label="Motivo" class="w-56 rounded-xl border border-gray-200 bg-gray-50/70 px-3 py-2.5 text-[14px] text-gray-700"><button type="submit" class="rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-xs font-black uppercase tracking-widest text-red-600">Cancelar evento</button></form>
+        </div>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Técnicos ({{ asignaciones|length }})</h2>
+        {% if not asignaciones %}<p class="text-xs font-black text-amber-700">Todavía no hay técnicos asignados.</p>{% endif %}
+        <div class="overflow-auto"><table class="w-full text-left text-xs">
+            {% if asignaciones %}<thead><tr class="font-mono text-xs font-bold uppercase tracking-wider text-gray-400"><th class="pb-2 pr-4">Técnico</th><th class="pb-2 pr-4">Tramo</th><th class="pb-2 pr-4">Nota</th><th class="pb-2"></th></tr></thead>{% endif %}
+            <tbody class="divide-y divide-gray-100">{% for a in asignaciones %}
+                <tr><td class="py-2 pr-4 font-bold text-gray-800">{{ a.tecnico_nombre }}</td>
+                    <td class="py-2 pr-4">{{ a.desde|date:"D d/m H:i" }} a {{ a.hasta|date:"D d/m H:i" }}{% for o in a.avisos %}<div class="text-[12px] font-black text-amber-700">⚠ También en «{{ o.evento.nombre }}» ({{ o.desde|date:"d/m H:i" }}–{{ o.hasta|date:"H:i" }})</div>{% endfor %}</td>
+                    <td class="py-2 pr-4 text-gray-500">{{ a.nota }}</td>
+                    <td class="py-2 text-right">{% if puede_gestionar and e.abierto %}<form method="post">{% csrf_token %}<input type="hidden" name="accion" value="quitar_tecnico"><input type="hidden" name="id" value="{{ a.pk }}"><button type="submit" class="text-xs font-bold text-red-600 underline">Quitar</button></form>{% endif %}</td></tr>
+            {% endfor %}</tbody>
+        </table></div>
+        {% if puede_gestionar and e.abierto %}
+        <form method="post" class="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 sm:grid-cols-2 lg:grid-cols-4">{% csrf_token %}<input type="hidden" name="accion" value="asignar">
+            {% for e2 in form_asignar.non_field_errors %}<p class="text-xs text-red-600 sm:col-span-full">{{ e2 }}</p>{% endfor %}
+            <div class="sm:col-span-2 lg:col-span-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_asignar.tecnico.id_for_label }}">Técnico</label>{{ form_asignar.tecnico }}{% for x in form_asignar.tecnico.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_asignar.desde.id_for_label }}">Desde</label>{{ form_asignar.desde }}{% for x in form_asignar.desde.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_asignar.hasta.id_for_label }}">Hasta</label>{{ form_asignar.hasta }}{% for x in form_asignar.hasta.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_asignar.nota.id_for_label }}">Nota</label>{{ form_asignar.nota }}</div>
+            <div class="sm:col-span-full"><button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Agregar técnico</button> <span class="ml-2 text-xs text-gray-400">Sin fechas, cubre todo el evento. Para un relevo, indique su tramo de horas. Un empalme con otro evento solo avisa.</span></div>
+        </form>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Vales de salida ({{ vales|length }})</h2>
+        {% if not vales %}<p class="text-xs text-gray-400">Sin vales vinculados.</p>{% endif %}
+        <ul class="divide-y divide-gray-100 text-xs">{% for v in vales %}
+            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ v.referencia }}</b>{% if v.nota %} · <span class="text-gray-500">{{ v.nota }}</span>{% endif %}</span>
+                <span class="flex items-center gap-3">{% if v.url %}<a href="{{ v.url }}" target="_blank" rel="noopener" class="rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wider text-brand-accent">Abrir vale</a>{% endif %}
+                {% if puede_gestionar and e.abierto %}<form method="post">{% csrf_token %}<input type="hidden" name="accion" value="quitar_vale"><input type="hidden" name="id" value="{{ v.pk }}"><button type="submit" class="text-xs font-bold text-red-600 underline">Quitar</button></form>{% endif %}</span></li>
+        {% endfor %}</ul>
+        {% if puede_gestionar and e.abierto %}
+        <form method="post" class="mt-4 flex flex-wrap items-end gap-3 border-t border-gray-100 pt-4">{% csrf_token %}<input type="hidden" name="accion" value="vale">
+            <div class="min-w-48 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_vale.referencia.id_for_label }}">Vale (número o UUID)</label>{{ form_vale.referencia }}{% for x in form_vale.referencia.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            <div class="min-w-48 flex-1"><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_vale.nota.id_for_label }}">Qué se lleva</label>{{ form_vale.nota }}</div>
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Vincular vale</button>
+        </form>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-1 text-xs font-black uppercase text-gray-700">Telefonía para el evento ({{ tramites|length }})</h2>
+        <p class="mb-3 text-xs text-gray-400">Reubicaciones de líneas o líneas nuevas que se trámitan para el evento.</p>
+        {% if not tramites %}<p class="text-xs text-gray-400">Sin trámites.</p>{% endif %}
+        <ul class="divide-y divide-gray-100 text-xs">{% for t in tramites %}
+            <li class="flex flex-wrap items-center justify-between gap-2 py-2"><span><b class="text-gray-800">{{ t.get_tipo_display }}</b> · {{ t.descripcion }}{% if t.referencia %} <span class="text-gray-400">({{ t.referencia }})</span>{% endif %}</span>
+                <span class="flex items-center gap-3">
+                    {% if puede_gestionar %}<form method="post" class="flex items-center gap-1">{% csrf_token %}<input type="hidden" name="accion" value="tramite_estado"><input type="hidden" name="id" value="{{ t.pk }}"><select name="estado" onchange="this.form.requestSubmit()" aria-label="Estado del trámite" class="rounded-lg border border-gray-200 bg-gray-50/70 px-2 py-1.5 text-[14px] text-gray-700">{% for v, n in estados_tramite %}<option value="{{ v }}" {% if t.estado == v %}selected{% endif %}>{{ n }}</option>{% endfor %}</select></form>
+                    {% if e.abierto %}<form method="post">{% csrf_token %}<input type="hidden" name="accion" value="quitar_tramite"><input type="hidden" name="id" value="{{ t.pk }}"><button type="submit" class="text-xs font-bold text-red-600 underline">Quitar</button></form>{% endif %}
+                    {% else %}<span class="rounded-lg border border-gray-200 px-3 py-1 text-xs font-black uppercase tracking-wider text-gray-600">{{ t.get_estado_display }}</span>{% endif %}
+                </span></li>
+        {% endfor %}</ul>
+        {% if puede_gestionar and e.abierto %}
+        <form method="post" class="mt-4 grid grid-cols-1 gap-3 border-t border-gray-100 pt-4 sm:grid-cols-3">{% csrf_token %}<input type="hidden" name="accion" value="tramite">
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.tipo.id_for_label }}">Trámite</label>{{ form_tramite.tipo }}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.descripcion.id_for_label }}">Descripción</label>{{ form_tramite.descripcion }}{% for x in form_tramite.descripcion.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            <div><label class="mb-1 block text-xs font-bold uppercase text-gray-500" for="{{ form_tramite.referencia.id_for_label }}">Línea o enlace (si existe)</label>{{ form_tramite.referencia }}</div>
+            <div class="sm:col-span-3"><button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Agregar trámite</button></div>
+        </form>
+        {% endif %}
+    </section>
+
+    <section class="rounded-2xl border border-gray-200/80 bg-white p-5 shadow-sm">
+        <h2 class="mb-3 text-xs font-black uppercase text-gray-700">Notas y bitácora</h2>
+        {% if puede_notas %}
+        <form method="post" class="mb-4 flex flex-wrap items-start gap-3">{% csrf_token %}<input type="hidden" name="accion" value="nota">
+            <div class="min-w-64 flex-1">{{ form_nota.texto }}{% for x in form_nota.texto.errors %}<p class="mt-1 text-xs text-red-600">{{ x }}</p>{% endfor %}</div>
+            <button type="submit" class="rounded-xl bg-brand-primary px-5 py-2.5 text-xs font-black uppercase tracking-widest text-white shadow-sm">Agregar nota</button>
+        </form>
+        {% endif %}
+        <ul class="space-y-2 text-xs">{% for b in bitacora %}
+            <li class="rounded-xl border px-4 py-2 {% if b.accion == 'nota' %}border-blue-100 bg-blue-50/50{% else %}border-gray-100 bg-gray-50/50 text-gray-500{% endif %}"><span class="font-black">{% if b.accion == 'nota' %}Nota{% else %}{{ b.accion|cut:"_"|capfirst }}{% endif %}</span> · {{ b.usuario_nombre|default:"—" }} · {{ b.created_at|date:"d/m/Y H:i" }}{% if b.detalle %}<div class="mt-1 whitespace-pre-line text-gray-700">{{ b.detalle }}</div>{% endif %}</li>
+        {% endfor %}</ul>
+    </section>
+</div>
+{% endwith %}
