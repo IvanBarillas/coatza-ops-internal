@@ -13,7 +13,8 @@ Cómo se hablan los satélites de este repo sin conocerse. Complementa la secci�
 3. Lo que se guarda del otro lado es una **referencia**: UUID + etiqueta (snapshot de texto). Si el proveedor desaparece o ya no
    deja ver el objeto, se muestra la etiqueta sin enlace.
 4. Cada método recibe la `request` y el proveedor aplica **sus propios** permisos y alcance; si el usuario no puede ver algo,
-   responde `None` o lo omite.
+   responde `None` o lo omite. **Los permisos se consultan por usuario y módulo** (`tiene_permiso(request.user, <módulo>, <llave>)` en el `integracion.py` del
+   proveedor): `request.axentra_permissions_list` solo trae los del módulo que atiende la petición, no los del dueño del proveedor.
 5. El contrato son **nombres, firmas y forma de las fichas (diccionarios simples)**, documentados aquí y con una prueba de contrato
    por proveedor. No hay paquete compartido de código.
 6. Los nombres que un satélite consume se declaran en `optional_integrations` de su manifiesto (nunca en `dependencies`).
@@ -34,6 +35,17 @@ Lo que devuelve `resolver` y cada elemento de `buscar`:
 | Nombre | Ofrece | Consume | Métodos |
 |---|---|---|---|
 | `prestamos.vales` | `seguimientos_oficios` (`proveedores.ProveedorVales`) | `eventos` | `resolver(request, ref_id)` → ficha o `None`; `buscar(request, texto="", *, limite=20, solo_abiertos=True)` → lista de fichas |
+| `telefonia.lineas` | `telefonia` (`proveedores.ProveedorLineas`) | `eventos` | `resolver(request, ref_id)` → ficha o `None`; `buscar(request, texto="", *, limite=20, solo_activas=True)` → lista de fichas |
+| `vinculos.eventos` | `eventos` (`proveedores.ProveedorVinculos`) | `telefonia`, `seguimientos_oficios` | `vinculos_de(request, tipo, ref_id)` → lista de fichas con `relacion` |
+
+Estados de una línea: `activa`, `inactiva`.
+
+## `vinculos_de`: qué hay relacionado con un objeto
+
+Un proveedor de vínculos responde, dado un objeto de **otro** satélite (`tipo` + UUID), qué cosas **suyas** lo usan. Cada ficha lleva además
+`relacion` («Salió al evento», «Trámite en el evento»). Quien consulta junta las respuestas de todos los proveedores que existan y las
+muestra en una sección «Relacionado» del detalle; no conoce a ninguno (solo la lista de nombres `PROVEEDORES_DE_VINCULOS` de su
+`integracion.py`). Sin proveedores no muestra nada. Tipos que hoy entiende `vinculos.eventos`: `prestamos.vale`, `telefonia.linea`.
 
 Estados de un vale: `vigente`, `por_vencer`, `vencido`, `devuelto`, `cancelado`.
 
@@ -41,8 +53,7 @@ Estados de un vale: `vigente`, `por_vencer`, `vencido`, `devuelto`, `cancelado`.
 
 - `mesa.tickets` (`resolver`, `buscar`, `vinculos_de`): la mesa de ayuda sería el origen común. Hoy `eventos.Evento.ticket` es texto libre;
   cuando exista, pasa a referencia sin romper nada.
-- `vinculos_de(ref)`: qué objetos de otros satélites se relacionan con una referencia (el ticket listaría evento, vale, reporte).
-- `telefonia.lineas`: elegir la línea a reubicar en los trámites de un evento.
+- `vinculos.<satelite>` en más satélites (p. ej. préstamos y telefonía respondiendo por lo suyo) para que un ticket liste evento, vale y reporte.
 - Avisos entre satélites (p. ej. «evento concluido»): un bus sencillo suscrito por nombre; se diseña cuando haya un consumidor real.
 
 ## Cómo agregar una capacidad

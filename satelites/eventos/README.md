@@ -24,7 +24,9 @@ Después: `migrate`, `check_axentra_modules --persist`, activar el módulo en el
 - **Avisos por correo:** al técnico se le avisa cuando lo asignan, le quitan un tramo, el evento cambia de fecha o lugar, o se cancela
   (por `enqueue_email`; no se avisa a quien hace el cambio ni a usuarios sin correo, ni con los datos ficticios). Para que el correo lleve
   el enlace al evento, defina `EVENTOS_PUBLIC_BASE_URL` (p. ej. `https://ops.municipio.gob.mx`); sin ella el correo va sin enlace.
-- **Telefonía:** trámites en texto libre (reubicar una línea, contratar una nueva) con su estado: pendiente, en trámite o listo.
+- **Telefonía:** trámites (reubicar una línea, contratar una nueva) con su estado: pendiente, en trámite o listo. Si está instalado el satélite de
+  telefonía, la línea se **elige de su lista** (con botón «Abrir línea»); si no, se escribe. Capacidad `telefonia.lineas`.
+- **Relacionado:** Eventos ofrece `vinculos.eventos`: la ficha de una línea (Telefonía) y de un vale (Oficios) muestra los eventos que las usan.
 - **Notas y bitácora:** cualquier técnico agrega notas; los movimientos quedan registrados (solo se agrega, no se edita).
 - **Mis eventos** muestra al técnico su próximo evento y su carga; el **calendario** mensual se filtra por técnico.
 

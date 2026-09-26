@@ -12,7 +12,7 @@ from django.views.decorators.http import require_http_methods
 from . import selectors as sel
 from . import services
 from .forms import AsignarForm, EventoForm, TextoForm, TramiteForm, ValeForm
-from .integracion import proteger_vista, vales
+from .integracion import lineas, proteger_vista, vales
 from .models import Asignacion, Evento, TramiteLinea, ValeSalida
 from .selectors import APP_SLUG, permitido
 
@@ -164,6 +164,11 @@ def _opciones_de_vales(request, evento):
     return [(f["id"], f"{f['etiqueta']} — {f['detalle']}"[:200]) for f in fichas if f["id"] not in {str(x) for x in ya}]
 
 
+def _opciones_de_lineas(request):
+    """Líneas que el satélite de telefonía ofrece (activas, las que el usuario puede ver)."""
+    return [(f["id"], f"{f['etiqueta']} — {f['detalle']}"[:200]) for f in (lineas().buscar(request, "", limite=300) or [])]
+
+
 def _accion(request, evento, accion):
     """Ejecuta una acción del detalle. Devuelve el formulario con errores si no es válido, o None."""
     usuario = request.user
@@ -208,9 +213,18 @@ def _accion(request, evento, accion):
         services.desvincular_vale(get_object_or_404(ValeSalida, pk=request.POST.get("id"), evento=evento), usuario=usuario)
         messages.success(request, "Vale desvinculado.")
     elif accion == "tramite":
-        form = TramiteForm(request.POST)
+        form = TramiteForm(request.POST, opciones=_opciones_de_lineas(request))
         if form.is_valid():
-            services.agregar_tramite(evento, usuario=usuario, **form.cleaned_data)
+            datos = form.cleaned_data
+            ref_id = etiqueta = None
+            if datos["linea"]:
+                ficha = lineas().resolver(request, datos["linea"])
+                if not ficha:
+                    raise ValidationError("Esa línea ya no está disponible o no tiene permiso para verla.")
+                ref_id, etiqueta = ficha["id"], ficha["etiqueta"]
+            services.agregar_tramite(
+                evento, usuario=usuario, tipo=datos["tipo"], descripcion=datos["descripcion"], referencia=datos["referencia"], ref_id=ref_id, etiqueta=etiqueta or "",
+            )
             messages.success(request, "Trámite agregado.")
             return None
         return form
@@ -261,11 +275,16 @@ def evento_detalle_view(request, pk):
         v.ficha = vales().resolver(request, v.ref_id) if v.ref_id else None
         v.url = v.ficha["url"] if v.ficha else None
         v.titulo = (v.ficha or {}).get("etiqueta") or v.etiqueta or v.referencia
+    tramites = list(evento.tramites.all())
+    for t in tramites:
+        t.ficha = lineas().resolver(request, t.ref_id) if t.ref_id else None
+        t.url = t.ficha["url"] if t.ficha else None
+        t.titulo = (t.ficha or {}).get("etiqueta") or t.etiqueta or t.referencia
     return _render(request, "evento_detalle", {
-        "evento": evento, "asignaciones": asignaciones, "vales": vinculados, "tramites": list(evento.tramites.all()),
+        "evento": evento, "asignaciones": asignaciones, "vales": vinculados, "tramites": tramites,
         "bitacora": list(evento.bitacora.all()[:50]), "estados_tramite": TramiteLinea.Estado.choices,
         "puede_gestionar": permitido(request, "can_manage_events"), "puede_notas": permitido(request, "can_add_notes"),
         "form_asignar": formularios.get("asignar") or AsignarForm(), "form_vale": formularios.get("vale") or ValeForm(opciones=_opciones_de_vales(request, evento)), "vales_disponibles": vales().available,
-        "form_tramite": formularios.get("tramite") or TramiteForm(), "form_nota": formularios.get("nota") or TextoForm(),
+        "form_tramite": formularios.get("tramite") or TramiteForm(opciones=_opciones_de_lineas(request)), "lineas_disponibles": lineas().available, "form_nota": formularios.get("nota") or TextoForm(),
         "asignar_desde": evento.inicio, "asignar_hasta": evento.fin,
     })

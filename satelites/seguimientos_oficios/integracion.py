@@ -21,6 +21,7 @@ __all__ = [
     "nombre_de_usuario",
     "proteger_vista",
     "registrar_proveedor",
+    "vinculos_de",
 ]
 
 
@@ -101,3 +102,15 @@ def usuarios_con_acceso(app_slug):
 def registrar_proveedor(nombre, proveedor):
     """Ofrece una capacidad a otros satélites por nombre (ver docs/contratos-satelites.md). Idempotente al reiniciar."""
     integration_registry.register(nombre, proveedor, replace=True)
+
+
+# Proveedores de `vinculos_de` que puede haber en la instalación (ver docs/contratos-satelites.md); solo son nombres, no código de otros satélites.
+PROVEEDORES_DE_VINCULOS = ("vinculos.eventos",)
+
+
+def vinculos_de(request, tipo, ref_id):
+    """Fichas de lo que otros satélites tienen relacionado con este objeto (tipo + UUID). Vacío si ninguno lo ofrece."""
+    fichas = []
+    for nombre in PROVEEDORES_DE_VINCULOS:
+        fichas.extend(integration_registry.resolve(nombre).vinculos_de(request, tipo, ref_id) or [])
+    return fichas

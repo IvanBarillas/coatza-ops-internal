@@ -7,7 +7,7 @@ from apps.shared.module_sdk import ModuleManifest
 from apps.shared.module_sdk.integrations import integration_registry
 from apps.shared.notifications.services import enqueue_email
 
-__all__ = ["ModuleManifest", "enqueue_email", "url_base", "nombre_de_usuario", "proteger_vista", "vales", "usuarios_con_acceso", "usuario_de_prueba"]
+__all__ = ["ModuleManifest", "tiene_permiso", "lineas", "registrar_proveedor", "enqueue_email", "url_base", "nombre_de_usuario", "proteger_vista", "vales", "usuarios_con_acceso", "usuario_de_prueba"]
 
 
 def proteger_vista(codigo, permiso):
@@ -51,3 +51,24 @@ def url_base():
     from django.conf import settings
 
     return str(getattr(settings, "EVENTOS_PUBLIC_BASE_URL", "") or "").strip().rstrip("/")
+
+
+def lineas():
+    """Capacidad opcional `telefonia.lineas` (líneas y enlaces). Sin el satélite que la ofrece devuelve una integración nula."""
+    return integration_registry.resolve("telefonia.lineas")
+
+
+def registrar_proveedor(nombre, proveedor):
+    """Ofrece una capacidad a otros satélites por nombre (ver docs/contratos-satelites.md). Idempotente al reiniciar."""
+    integration_registry.register(nombre, proveedor, replace=True)
+
+
+def tiene_permiso(usuario, app_slug, llave):
+    """¿Tiene el usuario ese permiso fino en ese módulo? Los proveedores lo usan porque `request.axentra_permissions_list`
+    solo trae los permisos del módulo que atiende la petición, no los del módulo dueño del proveedor."""
+    from apps.security.models import UserAppRole
+
+    rol = UserAppRole.objects.filter(
+        user=usuario, app__slug=app_slug, app__is_active=True, is_active=True, is_deleted=False,
+    ).first()
+    return bool(rol and llave in (rol.permissions_list or []))

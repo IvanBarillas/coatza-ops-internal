@@ -90,10 +90,13 @@ class ValeForm(forms.Form):
 class TramiteForm(forms.Form):
     tipo = forms.ChoiceField(label="Trámite", choices=TramiteLinea.Tipo.choices)
     descripcion = forms.CharField(label="Descripción", max_length=250)
-    referencia = forms.CharField(label="Línea o enlace (si ya existe)", max_length=120, required=False)
+    linea = forms.ChoiceField(label="Línea del sistema", required=False)
+    referencia = forms.CharField(label="Línea o enlace (si existe)", max_length=120, required=False)
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, opciones=(), **kwargs):
+        """`opciones`: [(uuid, etiqueta)] de las líneas que ofrece el satélite de telefonía (vacío si no está instalado)."""
         super().__init__(*args, **kwargs)
+        self.fields["linea"].choices = [("", "— Ninguna / nueva —")] + list(opciones)
         _estilo(self)
 
 
