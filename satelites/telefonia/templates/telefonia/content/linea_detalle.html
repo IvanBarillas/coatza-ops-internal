@@ -4,7 +4,7 @@
 <link rel="stylesheet" href="{% static 'telefonia/leaflet/leaflet.css' %}">
 <script src="{% static 'telefonia/leaflet/leaflet.js' %}"></script>
 <script src="{% static 'telefonia/mapa.js' %}"></script>
-<div class="mx-auto w-full max-w-4xl space-y-4 font-mono text-left">
+<div class="w-full space-y-4 font-mono text-left">
     {% url 'telefonia:lineas' as volver_url %}
     {% include "components/form_header.html" with module_label="Telefonía" mode_label="Línea" title=linea.identificador description=linea.sitio icon="radio-tower" back_url=volver_url back_label="Volver a líneas" %}
     {% include "telefonia/content/_mensajes.html" %}
